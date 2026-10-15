@@ -276,17 +276,31 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the actual drawing: paths along corridors, dragging dots, doors, rooms, and lifts/stairs connecting floors.
 
 **Tasks**
-- [ ] **✏ Path tool:** click-click-click to draw; **snap** to nearby dots (joins paths); Esc / double-click to finish
-- [ ] **↖ Select tool:** click / box-select; **drag dots** (connected lines follow); Delete key; arrow keys nudge
-- [ ] **Split a line** by clicking on it (adds a dot in the middle)
-- [ ] **Line properties:** type (walk / ramp), tags (step-free, outdoor, covered)
-- [ ] **🚪 Door tool:** click → door dot connected to the nearest path
-- [ ] **🏷 Room tool:** click a door → name, number, category; add extra doors to an existing room
-- [ ] **🛗 Lift / 🪜 Stairs:** place once → choose floors served → appears on each floor at the same spot → connect to paths
-- [ ] **Properties panel:** edit the landmark name, kind, tags of the selected item
-- [ ] **Keyboard shortcuts:** V select, P path, D door, R room, L lift, S stairs, Q QR
+- [x] **✏ Path tool:** click-click-click to draw; **snap** to nearby dots (joins paths); Esc / double-click to finish
+- [x] **↖ Select tool:** click / box-select; **drag dots** (connected lines follow); Delete key; arrow keys nudge
+- [x] **Split a line** by clicking on it (adds a dot in the middle)
+- [x] **Line properties:** type (walk / ramp), tags (step-free, outdoor, covered)
+- [x] **🚪 Door tool:** click → door dot connected to the nearest path
+- [x] **🏷 Room tool:** click a door → name, number, category; add extra doors to an existing room
+- [x] **🛗 Lift / 🪜 Stairs:** place once → choose floors served → appears on each floor at the same spot → connect to paths
+- [x] **Properties panel:** edit the landmark name, kind, tags of the selected item
+- [x] **Keyboard shortcuts:** V select, P path, D door, R room, L lift, S stairs, Q QR
 
 **Done when:** you can map the demo hospital **from scratch** in the editor, export it, and the visitor app navigates it exactly like the hand-made file.
+
+**Status (2026-10-15): done.**
+- **Proof in code:** a test rebuilds the whole Demo Hospital using only the tools' functions (lifts/stairs → Path → Door → Room → names). Result: the same 46 dots and 43 lines, and **word-for-word identical directions** for 6 routes across all 3 floors (`apps/editor/src/model/drawing.test.ts`).
+- **Proof with a real mouse:** a browser test (now in CI) draws a 2-floor clinic with clicks, exports it, validates it and checks the exact visitor directions from the entrance to Radiology upstairs (`apps/editor/e2e/draw.spec.ts`).
+
+**Decisions made in Phase 7**
+- All drawing logic is pure functions in `apps/editor/src/model/drawing.ts`; the canvas only turns clicks into calls. Each click is one undo step.
+- Path tool: clicking a dot joins it, clicking a line splits it (T-junction); splitting keeps the line's settings on both halves.
+- Door tool: the door joins the nearest corridor within 20 m, splitting it at the closest point (or reusing a dot within 1 m).
+- Lift/Stairs tool: one click adds a stop on **every** floor at the same spot; floors are then ticked on/off in the panel (a lift can skip floors).
+- Deleting a dot also removes its lines, room doors, amenities, QR stickers and lift stops; empty rooms/connectors go too.
+- Line tags offered in the panel are the ones routing understands: steps, covered, hazard, PPE required; plus one-way.
+- A floor without its own plan image is framed like the whole building (it used to zoom onto a lone lift stop — found by the browser test).
+- When labels overlap, the selected dot's label wins.
 
 ---
 

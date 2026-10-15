@@ -24,7 +24,8 @@ jobs:
       - run: pnpm size
 
   e2e:
-    # Built app in a real (headless) browser: 2G + slow CPU trip, airplane mode, resume.
+    # Built apps in a real (headless) browser: visitor (2G + slow CPU trip, airplane mode,
+    # resume) and editor (drawing a clinic with the mouse, export, route).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,4 +41,6 @@ jobs:
         if: failure()
         with:
           name: playwright-results
-          path: apps/visitor/test-results/
+          path: |
+            apps/visitor/test-results/
+            apps/editor/test-results/

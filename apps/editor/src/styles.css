@@ -263,7 +263,7 @@ input {
   stroke: #16202a;
   stroke-width: 2.5;
 }
-.node text {
+.labels text {
   fill: var(--text);
   paint-order: stroke;
   stroke: #fff;
@@ -380,4 +380,96 @@ input {
 }
 .issues li.warning {
   color: var(--warn);
+}
+
+/* ---------- Phase 7: drawing ---------- */
+.edges line.selected {
+  stroke: #111;
+  stroke-width: 6;
+}
+.edges line.ramp {
+  stroke-dasharray: 10 5;
+}
+.edges line.one-way {
+  stroke-dasharray: 2 6;
+}
+.node.selected circle {
+  stroke: #111;
+  stroke-width: 3;
+}
+.node.path-from circle {
+  stroke: #e0263b;
+  stroke-width: 3;
+}
+.node.kind-door.in-room circle {
+  fill: color-mix(in srgb, var(--lvl) 35%, #fff);
+}
+.preview {
+  stroke: var(--lvl);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.snap {
+  fill: none;
+  stroke: #e0263b;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.box {
+  fill: color-mix(in srgb, var(--brand) 10%, transparent);
+  stroke: var(--brand);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4 3;
+}
+.tool-path svg,
+.tool-door svg,
+.tool-lift svg,
+.tool-stairs svg {
+  cursor: crosshair;
+}
+.tool-room svg {
+  cursor: pointer;
+}
+
+select {
+  font: inherit;
+  padding: 0.4em 0.5em;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  width: 100%;
+}
+.side label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 6px;
+}
+.side label.check input {
+  width: auto;
+}
+.small {
+  font-size: 0.8rem;
+  margin: 0 0 10px;
+}
+.plain {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.link {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--brand);
+  text-align: left;
+  min-height: 0;
+}
+.side .danger {
+  margin-top: 6px;
 }

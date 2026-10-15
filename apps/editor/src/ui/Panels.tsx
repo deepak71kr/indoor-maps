@@ -8,6 +8,7 @@ import { saveImage } from '../infra/images';
 import { addLevel, moveLevel, removeLevel, renameSite, updateLevel } from '../model/commands';
 import { isLevelEmpty, newProject, nextLevel, pxPerMeter, sortedLevels } from '../model/project';
 import type { Tool } from '../model/store';
+import { Properties } from './Properties';
 import { useEditor } from './use-editor';
 
 // ---------- top bar ----------
@@ -79,11 +80,11 @@ const TOOLS: ReadonlyArray<{
 }> = [
   { id: 'select', icon: '↖', label: 'Select / move', key: 'V' },
   { id: 'scale', icon: '📏', label: 'Set scale', key: 'M' },
-  { id: null, icon: '✏️', label: 'Path', key: 'P', phase: 7 },
-  { id: null, icon: '🚪', label: 'Door', key: 'D', phase: 7 },
-  { id: null, icon: '🏷️', label: 'Room', key: 'R', phase: 7 },
-  { id: null, icon: '🛗', label: 'Lift', key: 'L', phase: 7 },
-  { id: null, icon: '🪜', label: 'Stairs', key: 'S', phase: 7 },
+  { id: 'path', icon: '✏️', label: 'Path', key: 'P' },
+  { id: 'door', icon: '🚪', label: 'Door', key: 'D' },
+  { id: 'room', icon: '🏷️', label: 'Room', key: 'R' },
+  { id: 'lift', icon: '🛗', label: 'Lift', key: 'L' },
+  { id: 'stairs', icon: '🪜', label: 'Stairs', key: 'S' },
   { id: null, icon: '🔳', label: 'QR sticker', key: 'Q', phase: 8 },
 ];
 
@@ -155,6 +156,7 @@ export function SidePanel() {
 
   return (
     <aside class="side">
+      <Properties />
       <section>
         <h2>Site</h2>
         <label>
