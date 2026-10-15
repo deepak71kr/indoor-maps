@@ -345,16 +345,31 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the phone shows a simple Google-Maps-style floor plan — grey walls, white corridors, pastel rooms with numbers, doors, stairs, lifts, emoji amenities — with the blue route line and "you are here". No photos, no map library. Design reference: the mockups in `images/`.
 
 **Tasks**
-- [ ] **Map file:** optional geometry per floor — room outlines, walls, floor outline, stair/lift boxes; kept in a separate small file per floor (on-demand loading)
-- [ ] **Editor:** ▭ Room-outline tool (rectangles / polygons traced over the floor-plan image), walls from room edges, doors snap onto walls
-- [ ] **Visitor map view:** hand-written SVG viewer (pan, pinch-zoom), route line, you-are-here dot, next checkpoint pulsing, destination pin
-- [ ] **Facing-up:** after a QR scan the map turns so "up" = straight ahead (🧭 button for north-up)
-- [ ] **Floor picker** dropdown ("Ground Floor (Current) ✓"); route switches floor at the lift/stairs
-- [ ] **New bottom panel:** "You are at: …", "Where to?" search, quick chips (Restroom · Cafe · Water); while walking: blue step card with big arrow, "Next: …", ✕ End route, ✓ I'm here, "scan the next QR" tip, minutes · metres
-- [ ] **Text-only fallback** when a floor has no geometry
-- [ ] Budgets: first visit ≤ 30 KB (still ≤ 50 KB hard limit); one floor's geometry ≤ 8 KB brotli
+- [x] **Map file:** optional `shapes` per floor — room outlines, floor area, lift/stair boxes, voids, wall lines (flat point lists, meters)
+- [x] **Editor:** ▭ Outline tool — drag a rectangle or click corner by corner over the floor-plan image; snaps to other outlines and a ½ m grid; drag corners to reshape; a room outline links itself to the room whose door is on its wall
+- [x] **Visitor map view:** hand-written SVG viewer (drag, pinch, wheel), blue route line (walked part grey), you-are-here dot with facing cone, next checkpoint pulsing, destination pin, "↑ Floor 2" badge where the route changes floor
+- [x] **Facing-up:** the map turns so "up" = the way the visitor faces (QR sticker at the start, then the way they walked); 🧭 button switches to north-up
+- [x] **Floor picker** ("Ground · you"); peek at other floors; taking the lift switches the map by itself
+- [x] **New step card:** floor-colored card with big arrow, "Next: …", ✕ End, ✓ I'm here, minutes · metres, "scan any QR sticker" tip
+- [x] **Fallback** when a floor has no outlines: a corridor sketch drawn from the walking lines (not text-only — better)
+- [x] Budgets: first visit **19.9 KB** (target ≤ 30 KB); the whole 3-floor demo map with outlines is 1.8 KB brotli
 
 **Done when:** the Demo Hospital has outlines on all 3 floors, and a full trip on simulated 2G shows the map, the route line and the floor change, within budget.
+
+**Status (2026-10-15): done.**
+- Demo Hospital: outlines on all 3 floors (sample `map.json`).
+- Visitor: map on the Choose, Step and Arrived screens; 4 browser tests incl. the 2G trip and a new map test (route line, floor badge, floor picker, lift switches floor, drag + re-centre).
+- Editor: browser test traces a room (rectangle, auto-linked), a courtyard (corner by corner), reshapes a corner, undoes, exports a valid file.
+- Tests: 177 unit + 11 browser tests.
+
+**Decisions made in Phase 9**
+- **Shapes are drawing only.** Routing never reads them, so a bad outline can never break directions.
+- **Doors need no extra data:** a gap is cut wherever a door / entrance / lift / stairs dot lies on a wall (`doorGaps` in core).
+- **Shapes live inside the map file, per floor** (prototype). Splitting each floor into its own file is a v0 publishing step; the whole demo is only 1.8 KB, so it isn't needed yet.
+- **Facing-up uses the way the visitor walked**, so "Turn RIGHT" always turns right on screen. North-up is one tap away.
+- **Labels are drawn in screen pixels**, so they stay upright and readable at any zoom/rotation; a room shows "201 · Radiology", "Radiology" or "201" — whichever fits — or nothing.
+- Floor colors stay: the step card takes the floor color instead of the mockups' fixed blue (it tells you which floor you are on).
+- "Set scale" in the editor rescales outlines together with dots; deleting a room unlinks its outline instead of breaking the file.
 
 ---
 

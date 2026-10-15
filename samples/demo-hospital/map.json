@@ -2,9 +2,53 @@
   "fmt": 0,
   "site": { "id": "demo-hospital", "name": "Demo Hospital" },
   "levels": [
-    { "id": "G", "name": "Ground", "ord": 0, "color": "teal" },
-    { "id": "1", "name": "Floor 1", "ord": 1, "color": "amber" },
-    { "id": "2", "name": "Floor 2", "ord": 2, "color": "violet" }
+    { "id": "G", "name": "Ground", "ord": 0, "color": "teal",
+      "shapes": [
+        { "kind": "floor", "pts": [1, 4, 59, 4, 59, 24, 35, 24, 35, 28, 25, 28, 25, 24, 12, 24, 12, 26, 1, 26] },
+        { "kind": "lift", "pts": [3, 6, 7, 6, 7, 10, 3, 10], "label": "Lift B" },
+        { "kind": "room", "pts": [12, 4, 24, 4, 24, 12, 12, 12], "room": "billing" },
+        { "kind": "room", "pts": [24, 4, 36, 4, 36, 12, 24, 12], "room": "pharmacy" },
+        { "kind": "room", "pts": [36, 4, 48, 4, 48, 12, 36, 12], "room": "xray" },
+        { "kind": "room", "pts": [50, 4, 59, 4, 59, 12, 50, 12], "label": "Toilets" },
+        { "kind": "room", "pts": [1, 18, 12, 18, 12, 26, 1, 26], "room": "emergency" },
+        { "kind": "room", "pts": [12, 18, 24, 18, 24, 24, 12, 24], "room": "canteen" },
+        { "kind": "lift", "pts": [34, 20, 38, 20, 38, 24, 34, 24], "label": "Lift A" },
+        { "kind": "room", "pts": [38, 18, 48, 18, 48, 24, 38, 24], "room": "blood-bank" },
+        { "kind": "room", "pts": [48, 18, 52, 18, 52, 24, 48, 24], "label": "Store" },
+        { "kind": "stairs", "pts": [52, 20, 59, 20, 59, 24, 52, 24] }
+      ]
+    },
+    { "id": "1", "name": "Floor 1", "ord": 1, "color": "amber",
+      "shapes": [
+        { "kind": "floor", "pts": [1, 4, 59, 4, 59, 24, 1, 24] },
+        { "kind": "lift", "pts": [3, 6, 7, 6, 7, 10, 3, 10], "label": "Lift B" },
+        { "kind": "room", "pts": [12, 4, 24, 4, 24, 12, 12, 12], "room": "opd-101" },
+        { "kind": "room", "pts": [24, 4, 36, 4, 36, 12, 24, 12], "room": "opd-103" },
+        { "kind": "room", "pts": [36, 4, 48, 4, 48, 12, 36, 12], "room": "opd-104" },
+        { "kind": "room", "pts": [50, 4, 59, 4, 59, 12, 50, 12], "label": "Toilets" },
+        { "kind": "room", "pts": [1, 18, 12, 18, 12, 24, 1, 24], "room": "opd-105" },
+        { "kind": "room", "pts": [12, 18, 24, 18, 24, 24, 12, 24], "room": "opd-102" },
+        { "kind": "lift", "pts": [34, 20, 38, 20, 38, 24, 34, 24], "label": "Lift A" },
+        { "kind": "room", "pts": [38, 18, 48, 18, 48, 24, 38, 24], "room": "sample-lab" },
+        { "kind": "room", "pts": [48, 18, 52, 18, 52, 24, 48, 24], "label": "Store" },
+        { "kind": "stairs", "pts": [52, 20, 59, 20, 59, 24, 52, 24] }
+      ]
+    },
+    { "id": "2", "name": "Floor 2", "ord": 2, "color": "violet",
+      "shapes": [
+        { "kind": "floor", "pts": [1, 4, 59, 4, 59, 24, 1, 24] },
+        { "kind": "lift", "pts": [3, 6, 7, 6, 7, 10, 3, 10], "label": "Lift B" },
+        { "kind": "room", "pts": [12, 4, 36, 4, 36, 12, 12, 12], "room": "radiology" },
+        { "kind": "room", "pts": [36, 4, 48, 4, 48, 12, 36, 12], "room": "mri" },
+        { "kind": "room", "pts": [50, 4, 59, 4, 59, 12, 50, 12], "label": "Store" },
+        { "kind": "room", "pts": [1, 18, 12, 18, 12, 24, 1, 24], "room": "doctors-lounge" },
+        { "kind": "room", "pts": [12, 18, 24, 18, 24, 24, 12, 24], "room": "pathology" },
+        { "kind": "lift", "pts": [34, 20, 38, 20, 38, 24, 34, 24], "label": "Lift A" },
+        { "kind": "room", "pts": [38, 18, 48, 18, 48, 24, 38, 24], "room": "ct-scan" },
+        { "kind": "room", "pts": [48, 18, 52, 18, 52, 24, 48, 24], "label": "Store" },
+        { "kind": "stairs", "pts": [52, 20, 59, 20, 59, 24, 52, 24] }
+      ]
+    }
   ],
   "nodes": [
     { "id": "G-ENT", "lvl": "G", "x": 30, "y": 28, "kind": "entrance", "landmark": "Main Entrance" },

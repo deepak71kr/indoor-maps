@@ -82,3 +82,41 @@ test('an unfinished trip survives closing the browser', async ({ page }) => {
   await expect(page.getByText('Step 2 of 5')).toBeVisible();
   await expect(page.getByText('To Radiology')).toBeVisible();
 });
+
+test('the 2D map follows the trip: route line, floor change, pan and re-centre', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 640 }); // a small phone
+  await page.goto('/?at=G-MAIN');
+  const map = page.getByRole('img', { name: /^Map of / });
+  await expect(map).toHaveAccessibleName('Map of Ground');
+  await expect(map.getByText('You are here')).toBeVisible();
+  await expect(map.getByText('Pharmacy')).toBeVisible(); // room names drawn from the plan
+
+  await page.getByRole('button', { name: /Radiology/ }).click();
+  await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
+  await expect(map.getByText('↑ Floor 2')).toBeVisible(); // where the route leaves this floor
+
+  // Peek at Floor 2 with the floor picker: the destination pin is there.
+  await page.getByRole('combobox', { name: 'Floor' }).selectOption('2');
+  await expect(map).toHaveAccessibleName('Map of Floor 2');
+  await expect(page.locator('.map .dest')).toBeVisible();
+
+  // Taking the lift brings the map to the visitor's new floor by itself.
+  for (let i = 0; i < 3; i++) await iAmHere(page).click();
+  await expect(page.getByText('Step 4 of 5')).toBeVisible();
+  await expect(map).toHaveAccessibleName('Map of Floor 2');
+
+  // Drag the map away, then come back to the route.
+  const box = await map.boundingBox();
+  if (!box) throw new Error('map not laid out');
+  await page.mouse.move(box.x + 100, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 220, box.y + 160, { steps: 5 });
+  await page.mouse.up();
+  const recentre = page.getByRole('button', { name: 'Back to my route' });
+  await expect(recentre).toBeVisible();
+  await recentre.click();
+  await expect(recentre).toBeHidden();
+  await page.screenshot({ path: test.info().outputPath('map-floor2.png') });
+});

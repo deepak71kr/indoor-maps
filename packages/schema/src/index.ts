@@ -12,4 +12,5 @@ export type {
   MapNode,
   QrAnchor,
   Room,
+  Shape,
 } from './format-v0';

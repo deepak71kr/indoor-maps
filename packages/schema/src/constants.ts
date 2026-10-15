@@ -62,5 +62,16 @@ export const AMENITY_KINDS = [
   'aed',
 ] as const;
 
+/**
+ * What a drawn shape on the floor plan is (Phase 9 — the 2D map). Shapes are drawing only:
+ * routing never reads them, so a floor without shapes still navigates (text + sketch).
+ * - `floor`: walkable area outline (corridors, lobbies) — drawn white with walls.
+ * - `room`: a room outline; linked to a `rooms[]` entry for its color and label.
+ * - `lift` / `stairs`: shaft or stairwell box.
+ * - `void`: courtyard, atrium, shaft — not walkable, drawn grey.
+ * - `wall`: an extra wall line (open polyline) not covered by an outline.
+ */
+export const SHAPE_KINDS = ['floor', 'room', 'lift', 'stairs', 'void', 'wall'] as const;
+
 /** `public` = anyone can navigate there; `locked` = shown with 🔒, route ends at the door. */
 export const VISIBILITIES = ['public', 'locked'] as const;

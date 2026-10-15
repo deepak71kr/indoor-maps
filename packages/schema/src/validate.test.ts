@@ -131,6 +131,34 @@ describe('reference errors', () => {
   });
 });
 
+describe('floor plan shapes', () => {
+  const level = (map: MapFile) => map.levels[0] as MapFile['levels'][number];
+
+  it('accepts room outlines, walls and a floor without any shapes', () => {
+    const map = demoMap();
+    level(map).shapes = [
+      { kind: 'room', pts: [12, 4, 24, 4, 24, 12, 12, 12], room: 'billing' },
+      { kind: 'wall', pts: [0, 0, 5, 0] },
+      { kind: 'void', pts: [0, 0, 1, 0, 1, 1], label: 'Shaft' },
+    ];
+    const result = validateMapFile(map);
+    expect(result.ok ? result.warnings : result.issues).toEqual([]);
+  });
+
+  it('flags odd or too few points, and a link to a missing room', () => {
+    const map = demoMap();
+    level(map).shapes = [
+      { kind: 'room', pts: [0, 0, 5, 0, 5], room: 'nope' },
+      { kind: 'floor', pts: [0, 0, 5, 0] },
+    ];
+    expect(issuesOf(map).map((i) => `${i.code} ${i.path}`)).toEqual([
+      'shape-points levels[0].shapes[0].pts',
+      'unknown-room levels[0].shapes[0].room',
+      'shape-points levels[0].shapes[1].pts',
+    ]);
+  });
+});
+
 describe('warnings do not block', () => {
   it('accepts a stop with the wrong kind but warns', () => {
     const map = demoMap();

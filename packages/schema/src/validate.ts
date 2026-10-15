@@ -30,7 +30,9 @@ export type IssueCode =
   | 'orphan-stop'
   | 'duplicate-door'
   | 'door-kind'
-  | 'image-without-scale';
+  | 'image-without-scale'
+  | 'shape-points'
+  | 'unknown-room';
 
 export interface Issue {
   severity: Severity;
@@ -234,6 +236,23 @@ function checkReferences(map: MapFile): Issue[] {
       const node = requireNode(doorId, path);
       if (node && node.kind !== 'door' && node.kind !== 'entrance')
         warn('door-kind', path, `room door "${doorId}" has kind "${node.kind}", expected "door"`);
+    });
+  });
+
+  // --- floor plan shapes ---
+  const roomIds = new Set(map.rooms.map((r) => r.id));
+  map.levels.forEach((level, levelIndex) => {
+    level.shapes?.forEach((shape, index) => {
+      const path = `levels[${levelIndex}].shapes[${index}]`;
+      const minPoints = shape.kind === 'wall' ? 2 : 3;
+      if (shape.pts.length % 2 !== 0 || shape.pts.length < minPoints * 2)
+        error(
+          'shape-points',
+          `${path}.pts`,
+          `a ${shape.kind} needs at least ${minPoints} points, given as x, y pairs`,
+        );
+      if (shape.room !== undefined && !roomIds.has(shape.room))
+        error('unknown-room', `${path}.room`, `unknown room "${shape.room}"`);
     });
   });
 

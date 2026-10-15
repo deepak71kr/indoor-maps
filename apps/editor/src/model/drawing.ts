@@ -5,6 +5,7 @@
  */
 import type { Amenity, Connector, Edge, MapFile, MapNode, Room } from '@innermap/schema';
 import type { Command } from './commands';
+import { unlinkMissingRooms } from './plan';
 
 export interface Point {
   readonly x: number;
@@ -330,7 +331,7 @@ export function deleteItems(
       stops: Object.fromEntries(Object.entries(c.stops).filter(([, n]) => keepNode(n))),
     }))
     .filter((c) => Object.keys(c.stops).length > 0);
-  return {
+  return unlinkMissingRooms({
     ...doc,
     nodes: doc.nodes.filter((n) => keepNode(n.id)),
     edges: doc.edges.filter(
@@ -340,11 +341,11 @@ export function deleteItems(
     connectors: changedList(doc.connectors, connectors),
     amenities: doc.amenities.filter((a) => keepNode(a.node)),
     qr: doc.qr.filter((q) => keepNode(q.node)),
-  };
+  });
 }
 
 export function deleteRoom(doc: MapFile, roomId: string): MapFile {
-  return { ...doc, rooms: doc.rooms.filter((r) => r.id !== roomId) };
+  return unlinkMissingRooms({ ...doc, rooms: doc.rooms.filter((r) => r.id !== roomId) });
 }
 
 /** Keep the original array when nothing changed (so undo only records real changes). */

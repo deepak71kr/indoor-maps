@@ -34,7 +34,8 @@ export function sortedLevels(doc: MapFile): Level[] {
 }
 
 export function isLevelEmpty(doc: MapFile, levelId: string): boolean {
-  return !doc.nodes.some((n) => n.lvl === levelId);
+  const level = doc.levels.find((l) => l.id === levelId);
+  return !doc.nodes.some((n) => n.lvl === levelId) && !level?.shapes?.length;
 }
 
 /** Pixels per meter used to draw a floor's image (its scale, or the default until set). */

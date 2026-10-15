@@ -657,3 +657,105 @@ select {
   width: 100%;
   height: 100%;
 }
+
+/* ---------- Phase 9: floor plan outlines ---------- */
+.plan-shapes polygon,
+.plan-shapes polyline,
+.outline-draft polygon,
+.outline-draft polyline {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+.shape {
+  fill: rgb(107 119 133 / 0.12);
+  stroke: #6b7785;
+  stroke-width: 1.5;
+}
+.shape.floor {
+  fill: rgb(255 255 255 / 0.55);
+  stroke-width: 2.5;
+}
+.shape.lift,
+.shape.stairs {
+  fill: rgb(107 119 133 / 0.28);
+}
+.shape.stairs {
+  stroke-dasharray: 3 3;
+}
+.shape.void {
+  fill: rgb(107 119 133 / 0.4);
+}
+.shape.wall {
+  fill: none;
+  stroke-width: 2.5;
+}
+.shape.cat-emergency {
+  fill: rgb(229 72 77 / 0.16);
+}
+.shape.cat-opd,
+.shape.cat-ward {
+  fill: rgb(62 123 250 / 0.14);
+}
+.shape.cat-lab,
+.shape.cat-diagnostics {
+  fill: rgb(142 78 198 / 0.14);
+}
+.shape.cat-pharmacy,
+.shape.cat-food {
+  fill: rgb(48 164 108 / 0.16);
+}
+.shape.cat-billing,
+.shape.cat-admin,
+.shape.cat-office {
+  fill: rgb(245 165 36 / 0.18);
+}
+.shape.selected {
+  stroke: var(--brand);
+  stroke-width: 3;
+}
+.plan-shapes .gap {
+  stroke: #fff;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.shape-label {
+  fill: #5a6573;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.outline-draft polyline,
+.outline-draft polygon {
+  fill: rgb(11 122 128 / 0.12);
+  stroke: var(--brand);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.outline-draft circle {
+  fill: var(--brand);
+}
+.outline-draft .corner {
+  fill: #fff;
+  stroke: var(--brand);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2;
+  cursor: move;
+}
+.tool-outline svg {
+  cursor: crosshair;
+}
+.outline-panel .kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.outline-panel .kinds button {
+  justify-content: flex-start;
+  text-align: left;
+}
+.outline-panel .kinds button.active {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, #fff);
+  font-weight: 600;
+}

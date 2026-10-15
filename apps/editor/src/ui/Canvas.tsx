@@ -3,6 +3,7 @@
  * (other floors faintly), handles zoom / pan / pinch, and turns clicks into tool actions.
  * All map changes go through the pure functions in model/drawing.ts.
  */
+import { doorGaps, labelPoint, shapePoints } from '@innermap/core';
 import type { Level, MapFile, MapNode } from '@innermap/schema';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { LoadedImage } from '../infra/images';
@@ -22,6 +23,7 @@ import {
   snapAngle,
   splitEdge,
 } from '../model/drawing';
+import { addShape, moveShapePoint, rectangle, shapeAt, snapToPlan } from '../model/plan';
 import { DEFAULT_PX_PER_METER, pxPerMeter } from '../model/project';
 import type { EditorState, EditorStore } from '../model/store';
 import { AMENITY_DRAG_TYPE, amenityEmoji } from './amenities';
@@ -48,7 +50,9 @@ type Gesture =
   | { kind: 'move-nodes'; start: Point; ids: string[]; moved: boolean }
   | { kind: 'box'; start: Point; moved: boolean }
   | { kind: 'pinch'; distance: number; view: View; mid: Point }
-  | { kind: 'qr-aim'; node: string; moved: boolean };
+  | { kind: 'qr-aim'; node: string; moved: boolean }
+  | { kind: 'outline'; start: Point; moved: boolean }
+  | { kind: 'vertex'; index: number; point: number; moved: boolean };
 
 /** Compass heading from one point to another (0 = up / north, 90 = right / east). */
 const compass = (from: Point, to: Point) =>
@@ -70,6 +74,10 @@ export function Canvas() {
   const [box, setBox] = useState<{ a: Point; b: Point } | null>(null);
   const [aim, setAim] = useState<{ node: string; facing: number } | null>(null); // QR tool
   const [flash, setFlash] = useState<string | null>(null);
+  // Outline tool: corners clicked so far, a rectangle being dragged, a corner being moved.
+  const [draft, setDraft] = useState<Point[] | null>(null);
+  const [rubber, setRubber] = useState<{ a: Point; b: Point } | null>(null);
+  const [corner, setCorner] = useState<{ point: number; to: Point } | null>(null);
 
   // Track canvas size.
   useEffect(() => {
@@ -101,7 +109,22 @@ export function Canvas() {
   useEffect(() => {
     if (tool !== 'scale') setMeasure(null);
     setFlash(null);
-  }, [tool]);
+    setDraft(null);
+  }, [tool, levelId, state.shapeKind]);
+
+  // While drawing an outline corner by corner: Enter finishes, Esc cancels (before App's keys).
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.key === 'Enter') finishDraft(draft);
+      else setDraft(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
 
   // Centre on whatever a check or a test step asked to show.
   useEffect(() => {
@@ -128,6 +151,10 @@ export function Canvas() {
     };
   };
   const hitAt = (p: Point): Hit => hitTest(doc, levelId, p, HIT_PX / view.scale);
+  const snap = (p: Point, skip?: { index: number; point: number }) =>
+    snapToPlan(doc, levelId, p, HIT_PX / view.scale, skip);
+  const selectedShape =
+    selection?.type === 'shape' && selection.levelId === levelId ? selection.index : null;
   const selectedIds = new Set(selection?.type === 'nodes' ? selection.ids : []);
 
   // ---------- zoom ----------
@@ -161,6 +188,16 @@ export function Canvas() {
         view,
         mid: { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 },
       };
+      return;
+    }
+    const handle = (e.target as Element).closest('[data-corner]');
+    if (handle && selectedShape !== null && e.button === 0) {
+      const point = Number(handle.getAttribute('data-corner'));
+      gesture.current = { kind: 'vertex', index: selectedShape, point, moved: false };
+      return;
+    }
+    if (tool === 'outline' && e.button === 0) {
+      gesture.current = { kind: 'outline', start: toWorld(e.clientX, e.clientY), moved: false };
       return;
     }
     const marker = (e.target as Element).closest('[data-amenity],[data-qr]');
@@ -238,6 +275,12 @@ export function Canvas() {
     } else if (g?.kind === 'box') {
       g.moved = true;
       setBox({ a: g.start, b: p });
+    } else if (g?.kind === 'outline') {
+      if (Math.hypot(p.x - g.start.x, p.y - g.start.y) * view.scale > 6 && !draft) g.moved = true;
+      if (g.moved) setRubber({ a: snap(g.start), b: snap(p) });
+    } else if (g?.kind === 'vertex') {
+      g.moved = true;
+      setCorner({ point: g.point, to: snap(p, { index: g.index, point: g.point }) });
     } else if (g?.kind === 'qr-aim') {
       const n = nodes.get(g.node);
       if (n && Math.hypot(p.x - n.x, p.y - n.y) * view.scale > 8) {
@@ -252,6 +295,20 @@ export function Canvas() {
     const g = gesture.current;
     gesture.current = null;
     const p = toWorld(e.clientX, e.clientY);
+    if (g?.kind === 'outline') {
+      setRubber(null);
+      if (g.moved) finishRectangle(snap(g.start), snap(p));
+      else outlineClick(snap(p));
+      return;
+    }
+    if (g?.kind === 'vertex') {
+      setCorner(null);
+      if (g.moved && corner) {
+        const to = corner.to;
+        store.edit('Move corner', (d) => moveShapePoint(d, levelId, g.index, g.point, to));
+      }
+      return;
+    }
     if (g?.kind === 'qr-aim') {
       const existing = doc.qr.find((q) => q.node === g.node);
       const facing = g.moved && aim ? aim.facing : (existing?.facing ?? 0);
@@ -291,8 +348,12 @@ export function Canvas() {
   const onClick = (p: Point) => {
     const hit = hitAt(p);
     switch (tool) {
-      case 'select':
-        store.select(null);
+      case 'select': {
+        const index = shapeAt(doc, levelId, p, HIT_PX / view.scale);
+        store.select(index === null ? null : { type: 'shape', levelId, index });
+        return;
+      }
+      case 'outline':
         return;
       case 'scale':
         if (!measure || measure.b) setMeasure({ a: p });
@@ -340,7 +401,49 @@ export function Canvas() {
     }
   };
 
+  // ---------- outline tool ----------
+  const finishDraft = (points: readonly Point[]) => {
+    setDraft(null);
+    const kind = state.shapeKind;
+    // A double-click also lands two clicks on the same spot: drop repeated corners.
+    const corners = points.filter(
+      (q, i) => i === 0 || q.x !== points[i - 1]?.x || q.y !== points[i - 1]?.y,
+    );
+    if (corners.length < (kind === 'wall' ? 2 : 3)) return;
+    const result = addShape(
+      doc,
+      levelId,
+      kind,
+      corners.flatMap((q) => [q.x, q.y]),
+    );
+    store.edit(`Draw ${kind}`, () => result.doc);
+    store.select({ type: 'shape', levelId, index: result.index });
+  };
+  const finishRectangle = (a: Point, b: Point) => {
+    const kind = state.shapeKind;
+    if (kind === 'wall') return finishDraft([a, b]);
+    if (Math.abs(a.x - b.x) < 0.5 || Math.abs(a.y - b.y) < 0.5) return;
+    const result = addShape(doc, levelId, kind, rectangle(a, b));
+    store.edit(`Draw ${kind}`, () => result.doc);
+    store.select({ type: 'shape', levelId, index: result.index });
+  };
+  const outlineClick = (p: Point) => {
+    const first = draft?.[0];
+    const closes =
+      draft &&
+      first &&
+      draft.length >= 3 &&
+      state.shapeKind !== 'wall' &&
+      Math.hypot(p.x - first.x, p.y - first.y) * view.scale < 12;
+    if (closes) finishDraft(draft);
+    else setDraft([...(draft ?? []), p]);
+  };
+
   const onDoubleClick = (e: MouseEvent) => {
+    if (tool === 'outline') {
+      if (draft) finishDraft(draft);
+      return;
+    }
     if (tool === 'path') {
       store.setPathFrom(null);
       return;
@@ -455,6 +558,83 @@ export function Canvas() {
       )}
     </g>
   );
+  // Floor plan outlines (a corner being dragged is drawn where it will land).
+  const shapes = (level?.shapes ?? []).map((shape, i) => {
+    if (i !== selectedShape || !corner) return shape;
+    const pts = [...shape.pts];
+    pts[corner.point * 2] = corner.to.x;
+    pts[corner.point * 2 + 1] = corner.to.y;
+    return { ...shape, pts };
+  });
+  const roomsById = new Map(doc.rooms.map((room) => [room.id, room]));
+  const gaps = doorGaps(
+    shapes,
+    levelNodes.filter((n) => n.kind !== 'junction' && n.kind !== 'corner'),
+  );
+  const planShapes = (
+    <g class="plan-shapes">
+      {shapes.map((shape, i) => {
+        const points = shapePoints(shape)
+          .map((q) => `${q.x},${q.y}`)
+          .join(' ');
+        const room = shape.room ? roomsById.get(shape.room) : undefined;
+        const cls = [
+          'shape',
+          shape.kind,
+          room ? `cat-${room.category}` : '',
+          i === selectedShape ? 'selected' : '',
+        ].join(' ');
+        return shape.kind === 'wall' ? (
+          <polyline key={i} class={cls} points={points} />
+        ) : (
+          <polygon key={i} class={cls} points={points} />
+        );
+      })}
+      {gaps.map(([x1, y1, x2, y2], i) => (
+        <line key={`gap${i}`} class="gap" x1={x1} y1={y1} x2={x2} y2={y2} />
+      ))}
+      {view.scale >= 6 &&
+        shapes.map((shape, i) => {
+          const room = shape.room ? roomsById.get(shape.room) : undefined;
+          const text = room ? (room.number ?? room.name) : shape.label;
+          if (!text || shape.kind === 'wall') return null;
+          const c = labelPoint(shape);
+          return (
+            <text key={`l${i}`} class="shape-label" x={c.x} y={c.y} font-size={10 / view.scale}>
+              {text}
+            </text>
+          );
+        })}
+    </g>
+  );
+  const cursorSnap = tool === 'outline' && cursor ? snap(cursor) : null;
+  const outlineDraft = (
+    <g class="outline-draft">
+      {draft && cursorSnap && (
+        <polyline points={[...draft, cursorSnap].map((q) => `${q.x},${q.y}`).join(' ')} />
+      )}
+      {rubber &&
+        (state.shapeKind === 'wall' ? (
+          <polyline points={`${rubber.a.x},${rubber.a.y} ${rubber.b.x},${rubber.b.y}`} />
+        ) : (
+          <polygon points={rectangle(rubber.a, rubber.b).join(' ')} />
+        ))}
+      {cursorSnap && <circle cx={cursorSnap.x} cy={cursorSnap.y} r={r * 0.8} />}
+      {selectedShape !== null &&
+        shapes[selectedShape] &&
+        shapePoints(shapes[selectedShape]).map((q, i) => (
+          <rect
+            key={i}
+            class="corner"
+            data-corner={i}
+            x={q.x - r}
+            y={q.y - r}
+            width={r * 2}
+            height={r * 2}
+          />
+        ))}
+    </g>
+  );
   const snapPoint: Point | null =
     hover.type === 'node'
       ? (nodes.get(hover.id) ?? null)
@@ -503,6 +683,7 @@ export function Canvas() {
               height={image.height / pxPerMeter(level)}
             />
           )}
+          {planShapes}
           <g class="other-floors">
             {doc.levels
               .filter((l) => l.id !== levelId)
@@ -566,6 +747,7 @@ export function Canvas() {
             )}
           </g>
           <g class="qr-markers">{qrMarkers}</g>
+          {outlineDraft}
           {test?.route && routeEnds}
           {hover.type !== 'none' && tool !== 'select' && snapPoint && (
             <circle class="snap" cx={snapPoint.x} cy={snapPoint.y} r={r * 2.2} />
@@ -692,6 +874,8 @@ function ToolHint({ state, flash }: { state: EditorState; flash: string | null }
     lift: '🛗 Click where the lift is — it is added to every floor (choose floors in the panel)',
     stairs: '🪜 Click where the stairs are — added to every floor (choose floors in the panel)',
   };
+  text.outline =
+    '▭ Drag a rectangle · or click corner by corner and click the first corner to close · Esc cancels';
   text.amenity = '🚻 Click near a dot to add it there (or drag icons from the palette)';
   text.qr = '🔳 Press on a dot and drag toward the wall the sticker is on';
   text.test = state.test.from

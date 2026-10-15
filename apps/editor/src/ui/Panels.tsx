@@ -13,6 +13,7 @@ import {
   PrintStickersButton,
   TestRoutePanel,
 } from './Phase8Panels';
+import { OutlinePanel } from './PlanPanels';
 import { Properties } from './Properties';
 import { useEditor } from './use-editor';
 
@@ -87,6 +88,7 @@ const TOOLS: ReadonlyArray<{
 }> = [
   { id: 'select', icon: '↖', label: 'Select / move', key: 'V' },
   { id: 'scale', icon: '📏', label: 'Set scale', key: 'M' },
+  { id: 'outline', icon: '▭', label: 'Outline', key: 'O' },
   { id: 'path', icon: '✏️', label: 'Path', key: 'P' },
   { id: 'door', icon: '🚪', label: 'Door', key: 'D' },
   { id: 'room', icon: '🏷️', label: 'Room', key: 'R' },
@@ -166,6 +168,7 @@ export function SidePanel() {
   return (
     <aside class="side">
       {state.tool === 'test' && <TestRoutePanel />}
+      {state.tool === 'outline' && <OutlinePanel />}
       <Properties />
       <section>
         <h2>Site</h2>

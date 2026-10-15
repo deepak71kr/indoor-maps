@@ -176,7 +176,9 @@ describe('drawing the Demo Hospital from scratch', () => {
   function drawDemoWithTools(): { doc: MapFile; idOf: (demoId: string) => string } {
     const source = demoDoc();
     const pos = new Map(source.nodes.map((n) => [n.id, n]));
-    let doc: MapFile = { ...newProject(), site: source.site, levels: source.levels };
+    // Floors only — the drawn outlines link to room ids this test creates afresh.
+    const levels = source.levels.map(({ id, name, ord, color }) => ({ id, name, ord, color }));
+    let doc: MapFile = { ...newProject(), site: source.site, levels };
 
     // 1. Lift and Stairs tools.
     for (const c of source.connectors) {

@@ -1,12 +1,14 @@
 import type { Step } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
 import { amenityChips, nearbyLandmarks, resolvePosition, searchRooms } from '../app/search';
+import { sceneFor } from '../app/map-scene';
 import type { Action, Position, State } from '../app/state';
 import { currentNode } from '../app/state';
 import type { Child } from './dom';
 import { h, replace } from './dom';
 import type { IconName } from './icons';
 import { icon } from './icons';
+import { MapView } from './map-view';
 
 export interface ViewContext {
   readonly state: State;
@@ -38,6 +40,17 @@ export function view(ctx: ViewContext): HTMLElement {
 }
 
 // ---------- shared pieces ----------
+
+/** One map for the whole visit, so pan, zoom and the chosen floor survive re-renders. */
+let mapView: MapView | null = null;
+
+function mapPanel(state: State): HTMLElement | null {
+  const scene = sceneFor(state);
+  if (!scene) return null;
+  mapView ??= new MapView();
+  mapView.update(scene);
+  return mapView.el;
+}
 
 function title(text: string, emoji?: string): HTMLElement {
   return h(
@@ -240,6 +253,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
   return h(
     'section',
     { class: 'screen' },
+    mapPanel(ctx.state),
     h('p', { class: 'site' }, site.map.site.name),
     h(
       'p',
@@ -274,18 +288,29 @@ function stepFreeToggle(ctx: ViewContext): HTMLElement {
 }
 
 function stepView(ctx: ViewContext, index: number): HTMLElement {
-  const { steps, target, notice } = ctx.state;
+  const { steps, target, notice, site } = ctx.state;
   const step = steps[index];
   if (!step) return h('section');
   const total = steps.length - 1; // the last one is the arrival message
+  const left = steps.slice(index);
+  const meters = left.reduce((sum, s) => sum + s.meters, 0);
+  const rides = left.filter((s) => s.kind === 'ride').length;
+  // ~1 m/s indoors with people around; each lift/stairs ride adds ~45 s.
+  const minutes = Math.max(1, Math.round(meters / 60 + rides * 0.75));
 
   return h(
     'section',
     { class: `screen trip lvl-${step.levelColor}` },
+    mapPanel(ctx.state),
     h(
       'header',
       { class: 'trip-head' },
-      h('span', { class: 'grow' }, tr('step.to', { place: target?.label ?? '' })),
+      h(
+        'span',
+        { class: 'grow' },
+        tr('step.to', { place: target?.label ?? '' }),
+        h('small', {}, ` · ${tr('step.eta', { min: minutes, m: meters })}`),
+      ),
       h(
         'button',
         {
@@ -309,7 +334,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
       ),
     ),
     notice === 'rerouted' && h('p', { class: 'notice', role: 'status' }, tr('rerouted')),
-    stepCard(step, index),
+    stepCard(step, index, steps[index + 1]),
     button(tr('step.here'), () => ctx.dispatch({ type: 'confirm' }), 'btn primary big', 'check'),
     h(
       'div',
@@ -317,16 +342,26 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
       button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'btn', 'help'),
       button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'btn', 'back'),
     ),
+    site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
   );
 }
 
-function stepCard(step: Step, index: number): HTMLElement {
+function stepCard(step: Step, index: number, next: Step | undefined): HTMLElement {
   return h(
     'article',
     { class: 'card step', 'data-step': index },
-    h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
-    h('p', { class: 'step-text', 'aria-live': 'polite' }, step.text),
-    step.meters > 0 && h('p', { class: 'muted' }, `≈ ${step.meters} m`),
+    h(
+      'div',
+      { class: 'step-main' },
+      h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
+      h(
+        'div',
+        { class: 'grow' },
+        h('p', { class: 'step-text', 'aria-live': 'polite' }, step.text),
+        step.meters > 0 && h('p', { class: 'step-meters' }, `≈ ${step.meters} m`),
+      ),
+    ),
+    next && h('p', { class: 'step-next' }, tr('step.next', { text: next.text })),
   );
 }
 
@@ -360,6 +395,7 @@ function arrivedView(ctx: ViewContext): HTMLElement {
   return h(
     'section',
     { class: `screen center arrived lvl-${arrive?.levelColor ?? 'teal'}` },
+    mapPanel(ctx.state),
     h('div', { class: 'step-icon' }, icon('arrive', 'icon huge')),
     h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
     arrive && floorBadge(arrive.levelName, arrive.levelColor),

@@ -42,6 +42,7 @@ export type LevelPatch = {
   readonly color?: Level['color'];
   readonly image?: string | null;
   readonly pxPerMeter?: number | null;
+  readonly shapes?: Level['shapes'] | null;
 };
 
 function patchLevel(level: Level, patch: LevelPatch): Level {
@@ -146,5 +147,13 @@ export function setScale(
   const moves: NodeMove[] = doc.nodes
     .filter((n) => n.lvl === levelId)
     .map((n) => ({ id: n.id, from: { x: n.x, y: n.y }, to: { x: n.x * factor, y: n.y * factor } }));
-  return composite('Set scale', [updateLevel(doc, levelId, { pxPerMeter }), moveNodes(moves)]);
+  // Outlines are drawn on the image too: rescale them with the dots.
+  const shapes = level.shapes?.map((shape) => ({
+    ...shape,
+    pts: shape.pts.map((v) => Math.round(v * factor * 100) / 100),
+  }));
+  return composite('Set scale', [
+    updateLevel(doc, levelId, shapes ? { pxPerMeter, shapes } : { pxPerMeter }),
+    moveNodes(moves),
+  ]);
 }

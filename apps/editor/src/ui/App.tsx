@@ -7,6 +7,7 @@ import {
   deleteQr,
   deleteRoom,
 } from '../model/drawing';
+import { deleteShape } from '../model/plan';
 import type { EditorStore, Tool } from '../model/store';
 import { Canvas } from './Canvas';
 import { FloorTabs, SidePanel, Toolbar, TopBar } from './Panels';
@@ -20,6 +21,7 @@ export function App() {
     const tools: Record<string, Tool> = {
       v: 'select',
       m: 'scale',
+      o: 'outline',
       p: 'path',
       d: 'door',
       r: 'room',
@@ -100,5 +102,9 @@ function deleteSelection(store: EditorStore): void {
       return store.edit('Delete amenity', (d) => deleteAmenity(d, selection.id));
     case 'qr':
       return store.edit('Delete QR sticker', (d) => deleteQr(d, selection.code));
+    case 'shape':
+      return store.edit('Delete outline', (d) =>
+        deleteShape(d, selection.levelId, selection.index),
+      );
   }
 }

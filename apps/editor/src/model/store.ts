@@ -9,10 +9,21 @@ import { replaceDocument } from './commands';
 import { change } from './drawing';
 import type { History } from './history';
 import { emptyHistory, execute, redo, undo } from './history';
+import type { ShapeKind } from './plan';
 import { sortedLevels } from './project';
 
 export type Tool =
-  'select' | 'scale' | 'path' | 'door' | 'room' | 'lift' | 'stairs' | 'amenity' | 'qr' | 'test';
+  | 'select'
+  | 'scale'
+  | 'outline'
+  | 'path'
+  | 'door'
+  | 'room'
+  | 'lift'
+  | 'stairs'
+  | 'amenity'
+  | 'qr'
+  | 'test';
 
 export type Selection =
   | { readonly type: 'nodes'; readonly ids: readonly string[] }
@@ -21,6 +32,8 @@ export type Selection =
   | { readonly type: 'connector'; readonly id: string }
   | { readonly type: 'amenity'; readonly id: string }
   | { readonly type: 'qr'; readonly code: string }
+  /** A floor plan outline: shapes have no ids, so (floor, index). */
+  | { readonly type: 'shape'; readonly levelId: string; readonly index: number }
   | null;
 
 /** ▶ Test route: start dot, destination, step-free. */
@@ -48,6 +61,8 @@ export interface EditorState {
   readonly pickDoorFor: string | null;
   /** Amenity tool: what a click places. */
   readonly amenityKind: Amenity['kind'];
+  /** Outline tool: what a drawn shape becomes. */
+  readonly shapeKind: ShapeKind;
   readonly test: RouteTest;
   readonly focus: Focus | null;
 }
@@ -68,6 +83,7 @@ export interface EditorStore {
   setPathFrom(nodeId: string | null): void;
   setPickDoorFor(roomId: string | null): void;
   setAmenityKind(kind: Amenity['kind']): void;
+  setShapeKind(kind: ShapeKind): void;
   setTest(test: Partial<RouteTest>): void;
   /** Switch to the target's floor, select it and ask the canvas to centre on it. */
   focusOn(target: Focus['target']): void;
@@ -83,6 +99,7 @@ export function createEditorStore(doc: MapFile): EditorStore {
     pathFrom: null,
     pickDoorFor: null,
     amenityKind: 'toilet',
+    shapeKind: 'room',
     test: { from: null, to: null, stepFree: false },
     focus: null,
   };
@@ -117,6 +134,7 @@ export function createEditorStore(doc: MapFile): EditorStore {
     setPathFrom: (pathFrom) => set({ ...state, pathFrom }),
     setPickDoorFor: (pickDoorFor) => set({ ...state, pickDoorFor }),
     setAmenityKind: (amenityKind) => set({ ...state, amenityKind, tool: 'amenity' }),
+    setShapeKind: (shapeKind) => set({ ...state, shapeKind, tool: 'outline' }),
     setTest: (test) => set({ ...state, test: { ...state.test, ...test } }),
     focusOn(target) {
       const nodeId = 'node' in target ? target.node : target.edge[0];
@@ -164,6 +182,10 @@ function sanitize(s: EditorState): EditorState {
   } else if (selection?.type === 'qr') {
     const { code } = selection;
     selection = doc.qr.some((q) => q.code === code) ? selection : null;
+  } else if (selection?.type === 'shape') {
+    const { levelId: shapeLevel, index } = selection;
+    const shapes = doc.levels.find((l) => l.id === shapeLevel)?.shapes ?? [];
+    selection = index < shapes.length && shapeLevel === levelId ? selection : null;
   }
   return {
     ...s,

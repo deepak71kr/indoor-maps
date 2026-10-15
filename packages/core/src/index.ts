@@ -2,7 +2,7 @@ import { FORMAT_VERSION } from '@innermap/schema';
 
 export type { DirectionsOptions, Step, StepIcon } from './directions/build-directions';
 export { buildDirections } from './directions/build-directions';
-export type { Turn } from './directions/geometry';
+export type { Point, Turn } from './directions/geometry';
 export type { CheckCode, CheckIssue } from './checks/check-map';
 export { checkMap, LONG_LINE_METERS } from './checks/check-map';
 export { buildGraph } from './graph/build-graph';
@@ -29,6 +29,18 @@ export {
 } from './routing/cost';
 export type { Path, RouterOptions } from './routing/router';
 export { Router } from './routing/router';
+export type { Bounds, Segment } from './plan/plan';
+export {
+  boundsOf,
+  containsPoint,
+  doorGaps,
+  facingAt,
+  labelPoint,
+  projectOnSegment,
+  routeLines,
+  shapePoints,
+  shapeSides,
+} from './plan/plan';
 export type { Site } from './site/site';
 export { loadSite } from './site/site';
 export type { Destination, Route, RouteError, RouteRequest } from './usecases/find-route';

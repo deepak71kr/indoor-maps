@@ -19,6 +19,10 @@ A small, hand-written 3-floor hospital used by tests and for trying the apps. Ev
 
 `(…)` corridor junctions · `[…]` doors / stops · LA = Lift A · LB = Lift B · ST = East staircase
 
+## 2D map outlines
+
+Each floor also has `shapes` for the phone's 2D map (Phase 9): the walkable floor area, one rectangle per room (linked by room id), Lift A / Lift B shafts and the east stairwell. Rooms are 8 m deep on both sides of the 6 m corridor (y = 12–18); every door dot sits exactly on a room wall, which is where the map cuts the door gap. The Ground floor sticks out at the main entrance (x = 25–35, down to y = 28) and at Emergency (down to y = 26).
+
 ## What's on each floor
 
 | Spot | Ground (teal)                                | Floor 1 (amber)          | Floor 2 (violet)              |

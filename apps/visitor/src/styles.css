@@ -334,8 +334,53 @@ h1:focus-visible {
   border-top: 6px solid var(--lvl);
 }
 .step {
-  text-align: center;
   animation: in 0.25s ease-out;
+}
+/* With the map above it, the step card is the blue card of the mockups: floor-colored. */
+.trip .card.step {
+  background: var(--lvl);
+  color: #fff;
+  border: none;
+  padding: 1em 1.1em;
+}
+.step-main {
+  display: flex;
+  gap: 0.9em;
+  align-items: center;
+}
+.trip .step-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  flex: none;
+  color: #fff;
+  background: rgb(255 255 255 / 0.18);
+}
+.trip .step-icon .icon.huge {
+  width: 44px;
+  height: 44px;
+}
+.trip .step-text {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.step-meters {
+  margin: 0.2em 0 0;
+  opacity: 0.85;
+}
+.step-next {
+  margin: 0.8em -1.1em -1em;
+  padding: 0.55em 1.1em;
+  font-size: 0.9rem;
+  background: rgb(0 0 0 / 0.16);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.tip {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 .step-icon {
   display: inline-grid;
@@ -411,4 +456,221 @@ h1:focus-visible {
   padding: 0 0.4em;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ---------- 2D map (Phase 9): flat shapes, no images ---------- */
+.map {
+  --m-out: #e6e9ed;
+  --m-floor: #ffffff;
+  --m-wall: #8c96a3;
+  --m-room: #f1f3f5;
+  --m-text: #3b4652;
+  --m-route: #1a73e8;
+  position: relative;
+  margin: calc(-1 * var(--gap)) calc(-1 * var(--gap)) 0;
+  height: min(42vh, 380px);
+  min-height: 210px;
+  background: var(--m-out);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+@media (prefers-color-scheme: dark) {
+  .map {
+    --m-out: #11161c;
+    --m-floor: #27303a;
+    --m-wall: #5d6a78;
+    --m-room: #1d242c;
+    --m-text: #d5dce3;
+    --m-route: #5b9cff;
+  }
+}
+.map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.map polygon,
+.map polyline,
+.map line {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.map .floor {
+  fill: var(--m-floor);
+  stroke: var(--m-wall);
+  stroke-width: 2.5;
+}
+.map .room {
+  fill: var(--m-room);
+  stroke: var(--m-wall);
+  stroke-width: 1.5;
+}
+.map .lift,
+.map .stairs {
+  fill: color-mix(in srgb, var(--m-wall) 22%, var(--m-floor));
+  stroke: var(--m-wall);
+  stroke-width: 1.5;
+}
+.map .stairs {
+  stroke-dasharray: 2 3;
+}
+.map .void {
+  fill: var(--m-out);
+  stroke: var(--m-wall);
+  stroke-width: 1.5;
+}
+.map .wall {
+  fill: none;
+  stroke: var(--m-wall);
+  stroke-width: 2.5;
+}
+.map .gap {
+  stroke: var(--m-floor);
+  stroke-width: 4;
+  stroke-linecap: butt;
+}
+.map .sketch {
+  stroke: var(--m-floor);
+  stroke-width: 22;
+}
+/* Rooms: a light tint of their category color. */
+.map .cat-emergency {
+  fill: color-mix(in srgb, #e5484d 16%, var(--m-room));
+}
+.map .cat-opd,
+.map .cat-ward {
+  fill: color-mix(in srgb, #3e7bfa 14%, var(--m-room));
+}
+.map .cat-lab,
+.map .cat-diagnostics {
+  fill: color-mix(in srgb, #8e4ec6 14%, var(--m-room));
+}
+.map .cat-pharmacy,
+.map .cat-food {
+  fill: color-mix(in srgb, #30a46c 16%, var(--m-room));
+}
+.map .cat-billing,
+.map .cat-admin,
+.map .cat-office {
+  fill: color-mix(in srgb, #f5a524 16%, var(--m-room));
+}
+.map .locked {
+  fill: color-mix(in srgb, var(--m-wall) 20%, var(--m-room));
+}
+.map .route polyline {
+  fill: none;
+  stroke-width: 7;
+}
+.map .route .casing {
+  stroke: #fff;
+  stroke-width: 11;
+}
+.map .route .ahead {
+  stroke: var(--m-route);
+}
+.map .route .walked {
+  stroke: var(--m-wall);
+  stroke-dasharray: 1 10;
+}
+.map text {
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+  fill: var(--m-text);
+  paint-order: stroke;
+  stroke: var(--m-floor);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.map .amenity text {
+  font-size: 15px;
+  stroke: none;
+}
+.map .you .dot {
+  fill: var(--m-route);
+  stroke: #fff;
+  stroke-width: 3;
+}
+.map .you .halo {
+  fill: color-mix(in srgb, var(--m-route) 22%, transparent);
+}
+.map .you .cone {
+  fill: color-mix(in srgb, var(--m-route) 30%, transparent);
+}
+.map .you text {
+  font-size: 12px;
+  fill: var(--m-route);
+}
+.map .next circle {
+  fill: var(--m-route);
+  stroke: #fff;
+  stroke-width: 2;
+}
+.map .next .pulse {
+  fill: none;
+  stroke: var(--m-route);
+  stroke-width: 3;
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+.map .dest path {
+  fill: #d93025;
+  stroke: #fff;
+  stroke-width: 2;
+}
+.map .dest circle {
+  fill: #fff;
+}
+.map .badge rect {
+  fill: var(--lvl);
+}
+.map .badge text {
+  fill: #fff;
+  stroke: none;
+  text-anchor: start;
+}
+.map-floor,
+.map-btn {
+  position: absolute;
+  top: 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+}
+.map-floor {
+  left: 10px;
+  padding: 0 0.6em;
+  font-weight: 600;
+}
+.map-btn {
+  right: 10px;
+  width: 44px;
+  padding: 0;
+  cursor: pointer;
+}
+.map-btn svg {
+  width: 26px;
+  height: 26px;
+  vertical-align: middle;
+}
+.map .recenter {
+  top: auto;
+  bottom: 10px;
+  font-size: 1.4rem;
+  color: var(--m-route);
+}
+.arrived .map {
+  align-self: stretch;
 }

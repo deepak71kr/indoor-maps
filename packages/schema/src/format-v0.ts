@@ -17,6 +17,7 @@ import {
   LEVEL_COLORS,
   NODE_KINDS,
   ROOM_CATEGORIES,
+  SHAPE_KINDS,
   VISIBILITIES,
 } from './constants';
 
@@ -26,6 +27,19 @@ const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, {
 const text = z.string().trim().min(1).max(120);
 const meters = z.number().finite().min(-10_000).max(10_000);
 
+export const ShapeSchema = z.strictObject({
+  kind: z.enum(SHAPE_KINDS),
+  /**
+   * Flat list of points in meters: `[x1, y1, x2, y2, …]` (compact on 2G).
+   * Closed polygon (last point joins the first) for every kind except `wall`.
+   */
+  pts: z.array(meters).min(4).max(4000),
+  /** `rooms[].id` this outline belongs to (color by category, label by number/name). */
+  room: id.optional(),
+  /** Text shown when not linked to a room, e.g. "Store" or "Courtyard". */
+  label: z.string().trim().min(1).max(40).optional(),
+});
+
 export const LevelSchema = z.strictObject({
   id,
   name: text,
@@ -34,6 +48,8 @@ export const LevelSchema = z.strictObject({
   color: z.enum(LEVEL_COLORS),
   image: z.string().min(1).optional(),
   pxPerMeter: z.number().positive().optional(),
+  /** The 2D map of this floor. Optional: without it the phone draws a corridor sketch. */
+  shapes: z.array(ShapeSchema).max(5000).optional(),
 });
 
 export const NodeSchema = z.strictObject({
@@ -104,6 +120,7 @@ export const MapFileSchema = z.strictObject({
   qr: z.array(QrAnchorSchema),
 });
 
+export type Shape = z.infer<typeof ShapeSchema>;
 export type Level = z.infer<typeof LevelSchema>;
 export type MapNode = z.infer<typeof NodeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;

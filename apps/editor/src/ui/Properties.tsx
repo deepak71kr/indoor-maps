@@ -20,6 +20,7 @@ import {
 import { sortedLevels } from '../model/project';
 import type { EditorStore } from '../model/store';
 import { AMENITIES } from './amenities';
+import { ShapeProps } from './PlanPanels';
 import { useEditor } from './use-editor';
 
 /** Plain-language names for dot kinds. */
@@ -68,6 +69,18 @@ export function Properties() {
           (e.a === selection.b && e.b === selection.a),
       );
       return edge ? <EdgeProps store={store} doc={doc} edge={edge} /> : null;
+    }
+    case 'shape': {
+      const shape = doc.levels.find((l) => l.id === selection.levelId)?.shapes?.[selection.index];
+      return shape ? (
+        <ShapeProps
+          store={store}
+          doc={doc}
+          levelId={selection.levelId}
+          index={selection.index}
+          shape={shape}
+        />
+      ) : null;
     }
     case 'room': {
       const room = doc.rooms.find((r) => r.id === selection.id);

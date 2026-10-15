@@ -188,10 +188,10 @@ The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design
 - **Campus** (Phase 10): building blocks, roads, green grounds and entrance arrows. Routes go between buildings.
 - **Bottom panel:** shows "You are at", a "Where to?" search and quick chips (Restroom · Cafe · Water). While walking, it shows a blue step card with a big arrow, "Next: …", ✕ End route and ✓ I'm here.
 - **Light by design:**
-  - our own SVG viewer (~4 KB), not Leaflet or MapLibre;
-  - map shapes in a separate small file per floor, loaded on demand;
-  - the first visit stays ≤ 30 KB.
-- **Text stays the hero.** The map adds confidence; it isn't required. A floor without shapes falls back to text only.
+  - our own SVG viewer (~4 KB brotli), not Leaflet or MapLibre;
+  - map shapes are optional `shapes` on each floor of the map file (the 3-floor demo is 1.8 KB); v0 publishing can split floors into separate files for huge campuses;
+  - the first visit is 19.9 KB (target ≤ 30 KB).
+- **Text stays the hero.** The map adds confidence; it isn't required. A floor without shapes shows a corridor sketch drawn from the walking lines.
 - **Facing-up:** after a QR scan the map rotates so "up" is straight ahead, using the sticker's known facing. Google Maps can't do this indoors.
 
 ---

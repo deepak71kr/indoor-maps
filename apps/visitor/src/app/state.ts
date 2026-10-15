@@ -36,6 +36,8 @@ export interface State {
   readonly position: Position | null;
   readonly target: Target | null;
   readonly steps: readonly Step[];
+  /** The route as node ids (for the map); empty without a route. */
+  readonly path: readonly string[];
   readonly stepFree: boolean;
   /** One-off message, e.g. after re-routing. */
   readonly notice: 'rerouted' | null;
@@ -67,6 +69,7 @@ export const initialState: State = {
   position: null,
   target: null,
   steps: [],
+  path: [],
   stepFree: false,
   notice: null,
 };
@@ -102,6 +105,7 @@ export function reducer(state: State, action: Action): State {
         position: action.position,
         target: null,
         steps: [],
+        path: [],
         screen: { name: 'choose' },
       };
     }
@@ -155,6 +159,7 @@ export function reducer(state: State, action: Action): State {
         position: node ? { node } : s.position,
         target: null,
         steps: [],
+        path: [],
         screen: { name: 'choose' },
       };
     }
@@ -178,6 +183,7 @@ function plan(state: State, position: Position, target: Target): State {
       position,
       target,
       steps: [],
+      path: [],
       screen: { name: 'no-route', reason: result.error.code },
     };
   }
@@ -187,5 +193,6 @@ function plan(state: State, position: Position, target: Target): State {
     position.facing === undefined ? {} : { startFacing: position.facing },
   );
   const screen: Screen = steps.length <= 1 ? { name: 'arrived' } : { name: 'navigate', step: 0 };
-  return { ...state, position, target, steps, screen };
+  const path = result.value.nodes.map((n) => n.id);
+  return { ...state, position, target, steps, path, screen };
 }
