@@ -31,6 +31,8 @@ export interface GraphLevel {
   readonly id: string;
   readonly name: string;
   readonly ord: number;
+  /** Floor color key (teal, amber…) used across the UI. */
+  readonly color: string;
   /** Position when levels are sorted by `ord` (0 = lowest). */
   readonly rank: number;
 }

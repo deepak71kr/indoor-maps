@@ -105,7 +105,7 @@
   ],
   "connectors": [
     { "id": "lift-a", "kind": "lift", "name": "Lift A", "stops": { "G": "G-LA", "1": "1-LA", "2": "2-LA" } },
-    { "id": "lift-b", "kind": "lift", "name": "Lift B (does not stop at Floor 1)", "stops": { "G": "G-LB", "2": "2-LB" } },
+    { "id": "lift-b", "kind": "lift", "name": "Lift B", "stops": { "G": "G-LB", "2": "2-LB" } },
     { "id": "stairs-east", "kind": "stairs", "name": "East staircase", "stops": { "G": "G-ST", "1": "1-ST", "2": "2-ST" } }
   ],
   "rooms": [

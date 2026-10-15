@@ -315,6 +315,16 @@ Role profiles = `public` + one per role that has layers (e.g. `electrical`). **N
 5. Text comes from **translation templates**: `turn.left.at = "Turn LEFT at {landmark}"` / Hindi: `"{landmark} पर बाएं मुड़ें"`.
 6. The last step: "Radiology reception is on your RIGHT 🎉". If it's `locked`: "This is a staff-only area 🔒. Please ask at the door."
 
+**Implemented in Phase 3** (`packages/core/src/directions/`), with these decisions:
+- A step **starts where the visitor must turn** and says "{turn} and walk to {next landmark}", so the turn happens where they are standing when they read it.
+- Straight stretches merge; passed landmarks appear as "walk **past** X to Y". After **30 m** without a step, a named landmark gets a reassurance step.
+- An unnamed turn point is described by distance ("the corner about 6 m ahead"). The editor checks (Phase 8) should push admins to name it.
+- **Lift exit assumption:** people turn around inside a lift and leave through the same door, so the exit heading = entry heading + 180°. Stairs exits have no assumed heading ("On Floor 2, walk to…"). Lifts with doors on both sides will need a per-stop facing later.
+- Consecutive flights of the same staircase merge into one step ("Use the East staircase to go up to Floor 2").
+- A final hop of **≤ 6 m into a door** becomes the arrival side ("on your LEFT / RIGHT / straight ahead").
+- The last step is always `arrive`, which is **the Arrived screen's message**, not a card to confirm.
+- Templates are whole sentences with `{placeholders}` (`packages/core/src/i18n/en.ts`). Hindi must provide every key (checked by the compiler).
+
 ---
 
 ## 6. Navigation state machine (visitor app)

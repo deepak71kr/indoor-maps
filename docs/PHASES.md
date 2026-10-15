@@ -140,18 +140,20 @@ A phase is done only when **all** of these are true:
 > **In simple words:** turn a list of dots into instructions a stressed hospital visitor can follow.
 
 **Tasks**
-- [ ] **`InstructionBuilder`:** merge straight stretches into one step
-- [ ] **Turn detection** from angles: straight / slight / turn / turn around
-- [ ] **Landmarks in every step:** "Turn LEFT at the Pharmacy counter (green board)"
-- [ ] **Only named dots become visible steps** (unnamed dots are only used by the router)
-- [ ] **Floor change = 3 steps:** go to lift → ride to Floor X (with floor color) → exit and turn
-- [ ] **First step uses the QR wall direction**, or "Walk towards…" if unknown
-- [ ] **Arrival step:** "Radiology is on your RIGHT 🎉" (left/right from the last walking direction)
-- [ ] **Text templates** in a message file (English now, ready for Hindi): `turn.left.at = "Turn LEFT at {landmark}"`
-- [ ] **Step object** includes: text, icon (arrow type), floor, floor color, target dot id (for "✓ I'm here")
-- [ ] **Snapshot tests:** full step lists for 6–8 demo routes, read by a human for clarity
+- [x] **`InstructionBuilder`:** merge straight stretches into one step
+- [x] **Turn detection** from angles: straight / slight / turn / turn around
+- [x] **Landmarks in every step:** "Turn LEFT at the Pharmacy counter (green board)"
+- [x] **Only named dots become visible steps** (unnamed dots are only used by the router)
+- [x] **Floor change = 3 steps:** go to lift → ride to Floor X (with floor color) → exit and turn
+- [x] **First step uses the QR wall direction**, or "Walk towards…" if unknown
+- [x] **Arrival step:** "Radiology is on your RIGHT 🎉" (left/right from the last walking direction)
+- [x] **Text templates** in a message file (English now, ready for Hindi): `turn.left.at = "Turn LEFT at {landmark}"`
+- [x] **Step object** includes: text, icon (arrow type), floor, floor color, target dot id (for "✓ I'm here")
+- [x] **Snapshot tests:** full step lists for 6–8 demo routes, read by a human for clarity
 
-**Done when:** `pnpm route G-E1 Radiology` prints human-readable steps that **you** read and approve.
+**Done when:** `pnpm route G-MAIN Radiology` prints human-readable steps that **you** read and approve.
+
+- [ ] **Founder approval of the wording** (golden directions in `packages/core/src/directions/build-directions.test.ts`)
 
 **Review checkpoint:** both founders read the snapshot outputs aloud. If a sentence sounds robotic, fix the template now.
 

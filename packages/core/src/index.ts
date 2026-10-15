@@ -1,6 +1,13 @@
 import { FORMAT_VERSION } from '@innermap/schema';
 
+export type { DirectionsOptions, Step, StepIcon } from './directions/build-directions';
+export { buildDirections } from './directions/build-directions';
+export type { Turn } from './directions/geometry';
 export { buildGraph } from './graph/build-graph';
+export type { MessageKey, Messages } from './i18n/en';
+export { en } from './i18n/en';
+export type { MessageParams, Translator } from './i18n/translator';
+export { createTranslator } from './i18n/translator';
 export type { Graph, GraphEdge, GraphEdgeKind, GraphLevel, GraphNode } from './graph/types';
 export type { Result } from './result';
 export { err, ok } from './result';

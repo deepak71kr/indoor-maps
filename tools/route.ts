@@ -1,17 +1,17 @@
 /**
  * Try a route from the terminal.
  *
- *   pnpm route <from> <to> [--step-free] [--map path/to/map.json]
+ *   pnpm route <from> <to> [--step-free] [--raw] [--map path/to/map.json]
  *
  *   <from>  QR code (G-MAIN) or node id (G-ENT)
  *   <to>    room id, number or name (radiology, 201, "Pathology lab"),
  *           node id (2-W), or nearest:<kinds> (nearest:toilet,toilet-accessible)
  *
- * Phase 3 replaces the raw path below with human directions.
+ * Prints the visitor's step-by-step directions; --raw prints the underlying path instead.
  */
 import { readFileSync } from 'node:fs';
 import type { Destination } from '@innermap/core';
-import { findRoute, loadSite } from '@innermap/core';
+import { buildDirections, findRoute, loadSite } from '@innermap/core';
 import type { Amenity } from '@innermap/schema';
 import { formatIssues, validateMapFile } from '@innermap/schema/validate';
 
@@ -23,7 +23,7 @@ function main(argv: readonly string[]): number {
   const mapPath = mapIndex >= 0 ? argv[mapIndex + 1] : DEFAULT_MAP;
   const [fromArg, toArg] = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--map');
   if (!fromArg || !toArg || !mapPath) {
-    console.error('Usage: pnpm route <from> <to> [--step-free] [--map file.json]');
+    console.error('Usage: pnpm route <from> <to> [--step-free] [--raw] [--map file.json]');
     return 2;
   }
 
@@ -55,6 +55,16 @@ function main(argv: readonly string[]): number {
     : (route.arrival.amenity?.name ?? route.arrival.amenity?.kind ?? route.arrival.nodeId);
 
   console.log(`\n${site.map.site.name}: ${fromArg} → ${target}\n`);
+  if (!flags.has('--raw')) {
+    const qr = site.findQr(fromArg);
+    const steps = buildDirections(site, route, qr ? { startFacing: qr.facing } : {});
+    steps.forEach((s, i) => {
+      const meters = s.meters > 0 ? `  (${s.meters} m)` : '';
+      console.log(`  ${String(i + 1).padStart(2)}. [${s.levelName}] ${s.text}${meters}`);
+    });
+    console.log('');
+    return 0;
+  }
   route.nodes.forEach((node, i) => {
     const label = node.landmark ?? '(unnamed dot)';
     console.log(`  ${(levelName.get(node.level) ?? node.level).padEnd(8)} ${label}  [${node.id}]`);

@@ -10,7 +10,13 @@ import type { Graph, GraphEdge, GraphLevel, GraphNode } from './types';
 export function buildGraph(map: MapFile): Graph {
   const levels: GraphLevel[] = [...map.levels]
     .sort((a, b) => a.ord - b.ord)
-    .map((level, rank) => ({ id: level.id, name: level.name, ord: level.ord, rank }));
+    .map((level, rank) => ({
+      id: level.id,
+      name: level.name,
+      ord: level.ord,
+      color: level.color,
+      rank,
+    }));
   const rankOf = new Map(levels.map((l) => [l.id, l.rank]));
 
   const nodes = new Map<string, GraphNode>();
