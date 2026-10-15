@@ -237,6 +237,8 @@ A phase is done only when **all** of these are true:
 - [ ] Note where they hesitated and which words confused them
 - [ ] **Decision:** ✅ continue to the editor · 🔁 fix the directions first (go back to Phase 3/4)
 
+**Status (2026-10-15): postponed, not skipped.** No real building was available yet, so the founders chose to start the editor (Phase 6) first. Gate A runs with the first real building, together with the real-phone checks left open in Phases 4–5.
+
 ---
 
 ## Phase 6 — Editor foundation
@@ -244,17 +246,28 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the empty drawing board: floors, floor-plan pictures, zoom, scale, and undo, before any drawing tools.
 
 **Tasks**
-- [ ] **Layout:** top bar · tools (left) · map canvas (center) · properties + issues panel (right) (`PROTOTYPE.md` §5)
-- [ ] **Document model** = the same `fmt: 0` structure, held in an editor store
-- [ ] **Command pattern:** every change is a command → **Undo / Redo** (Ctrl+Z / Ctrl+Y)
-- [ ] **Floors:** add / rename / reorder / color; floor tabs; other floors shown faintly
-- [ ] **Floor-plan image** per floor (upload from disk, kept in the browser)
-- [ ] **SVG viewport:** zoom (wheel / pinch), pan (drag / space+drag), fit-to-screen
-- [ ] **📏 Scale tool:** draw a line → enter meters → `pxPerMeter` saved
-- [ ] **Auto-save** to browser storage + **Export / Import** `.json` (validated by `packages/schema`)
-- [ ] **Load the demo hospital** from Phase 1 as a sample project
+- [x] **Layout:** top bar · tools (left) · map canvas (center) · properties + issues panel (right) (`PROTOTYPE.md` §5)
+- [x] **Document model** = the same `fmt: 0` structure, held in an editor store
+- [x] **Command pattern:** every change is a command → **Undo / Redo** (Ctrl+Z / Ctrl+Y)
+- [x] **Floors:** add / rename / reorder / color; floor tabs; other floors shown faintly
+- [x] **Floor-plan image** per floor (upload from disk, kept in the browser)
+- [x] **SVG viewport:** zoom (wheel / pinch), pan (drag / space+drag), fit-to-screen
+- [x] **📏 Scale tool:** draw a line → enter meters → `pxPerMeter` saved
+- [x] **Auto-save** to browser storage + **Export / Import** `.json` (validated by `packages/schema`)
+- [x] **Load the demo hospital** from Phase 1 as a sample project
 
 **Done when:** you can create 3 floors with images, set the scale, close the browser, reopen it, and everything's still there. Undo works for every action.
+
+**Status (2026-10-15): done**, verified in a browser: 3 floors with test plans → scale from a printed bar (200 px = 10 m → exactly 20.0 px/m) → reopen: floors, images and scales all restored → 8 undos back to an empty project, 8 redos forward → Export → New → Import gives the same project; a broken file is refused with a readable message. 19 model tests.
+
+**Decisions made in Phase 6**
+- Every change is a `Command` with `apply`/`revert` that records exactly what it changed (exact undo, no rounding drift). Multi-part changes are one `composite` undo step. New / Import / Load demo are undoable too.
+- Floor-plan images live in the browser's IndexedDB; a floor's `image` field holds only a reference. Visitors never download plans.
+- Setting a scale also rescales that floor's dots, so they stay where they were drawn on the image.
+- Drafts may have reference problems (shown under Checks), but files with a broken shape are refused.
+- Only empty floors can be deleted (for now).
+- Small fixes from browser testing: the scale confirm button was renamed "Apply scale" (two buttons shared one name); the view re-fits after a scale change; labels sit above dots (corridor lines showed through the gaps between words).
+- Known for Phase 7: labels of dots very close together overlap (e.g. Lift A and its lobby).
 
 ---
 
