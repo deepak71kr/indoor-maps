@@ -102,7 +102,7 @@ It's also our **demo for pitching** to colleges and hospitals.
   ]
 }
 ```
-- `x`, `y` in **meters** (converted from pixels using `pxPerMeter`). `facing` = the direction the sticker's wall faces, in degrees.
+- `x`, `y` in **meters** (converted from pixels using `pxPerMeter`); x grows east (right), y grows south (down). `facing` = **the direction a person looks while reading the sticker**, in degrees clockwise from "up" on the plan (0 = north, 90 = east). The implemented format lives in `packages/schema/src/format-v0.ts`.
 - Edge distance is **not stored**. It's calculated from the dot positions; lift/stairs costs come from the connector.
 
 ---

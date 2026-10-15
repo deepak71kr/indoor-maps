@@ -89,18 +89,18 @@ A phase is done only when **all** of these are true:
 > **In simple words:** decide exactly **what a map file looks like**, and hand-write a small 3-floor hospital in that format so we can build everything else against it.
 
 **Tasks**
-- [ ] `packages/schema`: TypeScript types for `fmt: 0` (levels, nodes, edges, connectors, rooms, amenities, qr), per `PROTOTYPE.md` §4
-- [ ] Zod validation for the file (wrong/missing fields → clear error messages)
-- [ ] ID rules (unique ids, edges point to existing nodes, connector stops exist on their levels)
-- [ ] `samples/demo-hospital/demo.json`, hand-written:
+- [x] `packages/schema`: TypeScript types for `fmt: 0` (levels, nodes, edges, connectors, rooms, amenities, qr), per `PROTOTYPE.md` §4
+- [x] Zod validation for the file (wrong/missing fields → clear error messages)
+- [x] ID rules (unique ids, edges point to existing nodes, connector stops exist on their levels)
+- [x] `samples/demo-hospital/demo.json`, hand-written:
   - 3 floors (Ground, 1, 2), each with a color
   - 1 lift (G, 1, 2), 1 staircase (G–1–2), 1 lift that **skips floor 1** (to test that case)
-  - ~20 rooms (OPD, Radiology, Pharmacy, Lab, Canteen…), 1 room with **2 doors**
+  - 17 rooms (OPD, Radiology, Pharmacy, Lab, Canteen…), 2 rooms with **2 doors** (Radiology, Emergency)
   - Amenities: toilets (incl. accessible), water, ATM
   - 8–10 QR anchors with wall direction
   - Landmark names on all decision points
-- [ ] A simple diagram (ASCII or SVG) of the demo building in `samples/demo-hospital/README.md`
-- [ ] Tests: the sample is valid; broken samples produce the expected errors
+- [x] A simple diagram (ASCII or SVG) of the demo building in `samples/demo-hospital/README.md`
+- [x] Tests: the sample is valid; broken samples produce the expected errors
 
 **Done when:** `pnpm test` validates the demo file, and breaking it on purpose shows a readable error.
 

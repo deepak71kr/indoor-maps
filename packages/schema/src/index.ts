@@ -1,5 +1,15 @@
 /**
- * Map file format version this package reads and writes.
- * Prototype format is 0; production starts at 1 (see docs/LOW_LEVEL_DESIGN.md §4.3).
+ * Map file format — types and constants only (zero runtime cost for the visitor app).
+ * Validation lives in `@innermap/schema/validate`.
  */
-export const FORMAT_VERSION = 0;
+export * from './constants';
+export type {
+  Amenity,
+  Connector,
+  Edge,
+  Level,
+  MapFile,
+  MapNode,
+  QrAnchor,
+  Room,
+} from './format-v0';
