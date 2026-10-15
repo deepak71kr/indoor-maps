@@ -1,25 +1,79 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite';
 
 const SAMPLES = fileURLToPath(new URL('../../samples/', import.meta.url));
+/** Maps published from the editor ("Open on phone"); git-ignored. Dev server only. */
+const PUBLISHED = fileURLToPath(new URL('../../.maps/', import.meta.url));
+const SITE_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+const MAX_MAP_BYTES = 2 * 1024 * 1024;
+
+/** Addresses a phone on the same Wi-Fi can open (it can't open "localhost"). */
+function lanUrls(port: number): string[] {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((i) => i && i.family === 'IPv4' && !i.internal)
+    .map((i) => `http://${i?.address}:${port}`);
+}
 
 /**
- * Prototype stand-in for the CDN: serves samples/<site>/map.json at /maps/<site>.json in dev,
- * and copies (minified) into the build. Replaced by the publish pipeline in v0.
+ * Prototype stand-in for the CDN: serves maps at /maps/<site>.json in dev (editor-published
+ * first, then samples/<site>/map.json) and copies the samples (minified) into the build.
+ * Replaced by the publish pipeline in v0.
  */
 function sampleMaps(): Plugin {
   const mapFile = (site: string) => `${SAMPLES}${site}/map.json`;
+  const publishedFile = (site: string) => `${PUBLISHED}${site}.json`;
   return {
     name: 'inner-map-sample-maps',
     configureServer(server) {
       server.middlewares.use('/maps', (req, res, next) => {
-        const site = /^\/([a-z0-9-]+)\.json$/.exec(req.url ?? '')?.[1];
-        if (!site || !existsSync(mapFile(site))) return next();
+        const site = /^\/([a-z0-9_-]+)\.json$/i.exec(req.url ?? '')?.[1];
+        const file = site && [publishedFile(site), mapFile(site)].find((f) => existsSync(f));
+        if (!file) return next();
         res.setHeader('Content-Type', 'application/json');
-        res.end(readFileSync(mapFile(site)));
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(readFileSync(file));
+      });
+
+      // Editor → visitor dev server: publish a map, and tell the editor our LAN address.
+      server.middlewares.use('/__inner-map', (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        const send = (status: number, body: unknown) => {
+          res.statusCode = status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(body));
+        };
+        if (req.method === 'OPTIONS') return send(204, {});
+        const port = server.config.server.port ?? 5173;
+        if (req.method === 'GET' && req.url === '/lan') return send(200, { urls: lanUrls(port) });
+
+        const site = /^\/maps\/([^/]+)$/.exec(req.url ?? '')?.[1];
+        if (req.method !== 'PUT' || !site || !SITE_ID.test(site))
+          return send(404, { error: 'not found' });
+        let size = 0;
+        const chunks: Buffer[] = [];
+        req.on('data', (chunk: Buffer) => {
+          size += chunk.length;
+          if (size <= MAX_MAP_BYTES) chunks.push(chunk);
+        });
+        req.on('end', () => {
+          if (size > MAX_MAP_BYTES) return send(413, { error: 'map too large' });
+          try {
+            const map = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { fmt?: unknown };
+            if (map.fmt !== 0) return send(400, { error: 'not a format-0 map' });
+            mkdirSync(PUBLISHED, { recursive: true });
+            writeFileSync(publishedFile(site), JSON.stringify(map));
+            send(200, { ok: true, urls: lanUrls(port) });
+          } catch {
+            send(400, { error: 'invalid JSON' });
+          }
+        });
       });
     },
     generateBundle() {

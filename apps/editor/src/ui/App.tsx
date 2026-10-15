@@ -1,6 +1,12 @@
 import { useEffect } from 'preact/hooks';
 import { moveNodes } from '../model/commands';
-import { deleteConnector, deleteItems, deleteRoom } from '../model/drawing';
+import {
+  deleteAmenity,
+  deleteConnector,
+  deleteItems,
+  deleteQr,
+  deleteRoom,
+} from '../model/drawing';
 import type { EditorStore, Tool } from '../model/store';
 import { Canvas } from './Canvas';
 import { FloorTabs, SidePanel, Toolbar, TopBar } from './Panels';
@@ -19,6 +25,9 @@ export function App() {
       r: 'room',
       l: 'lift',
       s: 'stairs',
+      a: 'amenity',
+      q: 'qr',
+      t: 'test',
     };
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -76,10 +85,20 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 function deleteSelection(store: EditorStore): void {
   const { selection } = store.getState();
   if (!selection) return;
-  if (selection.type === 'nodes')
-    store.edit('Delete', (d) => deleteItems(d, new Set(selection.ids), []));
-  else if (selection.type === 'edge')
-    store.edit('Delete line', (d) => deleteItems(d, new Set(), [[selection.a, selection.b]]));
-  else if (selection.type === 'room') store.edit('Delete room', (d) => deleteRoom(d, selection.id));
-  else store.edit('Delete', (d) => deleteConnector(d, selection.id));
+  switch (selection.type) {
+    case 'nodes':
+      return store.edit('Delete', (d) => deleteItems(d, new Set(selection.ids), []));
+    case 'edge':
+      return store.edit('Delete line', (d) =>
+        deleteItems(d, new Set(), [[selection.a, selection.b]]),
+      );
+    case 'room':
+      return store.edit('Delete room', (d) => deleteRoom(d, selection.id));
+    case 'connector':
+      return store.edit('Delete', (d) => deleteConnector(d, selection.id));
+    case 'amenity':
+      return store.edit('Delete amenity', (d) => deleteAmenity(d, selection.id));
+    case 'qr':
+      return store.edit('Delete QR sticker', (d) => deleteQr(d, selection.code));
+  }
 }

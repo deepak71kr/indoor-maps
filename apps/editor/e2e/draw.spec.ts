@@ -4,35 +4,7 @@ import { validateMapFile } from '@innermap/schema/validate';
 import type { MapFile } from '@innermap/schema';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-
-/** Screen position of a map point (meters) on the canvas, from the canvas transform. */
-async function screen(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
-  return page.evaluate(
-    ([wx, wy]) => {
-      const svg = document.querySelector('.canvas svg');
-      const g = svg?.querySelector(':scope > g');
-      const m = /translate\(([-\d.e]+) ([-\d.e]+)\) scale\(([-\d.e]+)\)/.exec(
-        g?.getAttribute('transform') ?? '',
-      );
-      const rect = svg?.getBoundingClientRect();
-      if (!m || !rect) throw new Error('canvas not ready');
-      const [tx, ty, s] = [Number(m[1]), Number(m[2]), Number(m[3])];
-      return { x: rect.left + tx + wx * s, y: rect.top + ty + wy * s };
-    },
-    [x, y] as const,
-  );
-}
-
-async function clickAt(page: Page, x: number, y: number): Promise<void> {
-  const p = await screen(page, x, y);
-  await page.mouse.click(p.x, p.y);
-}
-
-async function tool(page: Page, name: string): Promise<void> {
-  // Tool buttons are named by their label; the emoji is hidden from screen readers.
-  const toolbar = page.getByRole('navigation', { name: 'Tools' });
-  await toolbar.getByRole('button', { name, exact: true }).click();
-}
+import { clickAt, tool } from './helpers';
 
 /** Select the dot at (x, y) and give it a landmark name (and optionally a kind). */
 async function nameDot(page: Page, x: number, y: number, landmark: string, kind?: string) {
@@ -150,4 +122,19 @@ test('draw a two-floor clinic with the tools and export a valid, routable map', 
     'Turn LEFT and walk to Radiology waiting area.',
     'Radiology is on your RIGHT 🎉',
   ]);
+
+  // 📱 Open on phone: publish to the visitor dev server and open the link like a phone would.
+  await page.getByRole('button', { name: '📱 Open on phone' }).click();
+  const link = page.getByRole('dialog', { name: 'Open on phone' }).getByRole('link');
+  await expect(link).toBeVisible();
+  const url = (await link.getAttribute('href')) ?? '';
+  expect(url).toContain('site=my-site');
+  const phone = await page.context().newPage();
+  await phone.setViewportSize({ width: 390, height: 844 });
+  await phone.goto(url);
+  await phone.getByRole('button', { name: 'Main Entrance' }).click();
+  await phone.getByRole('button', { name: /Radiology/ }).click();
+  await expect(phone.locator('.step-text')).toHaveText(
+    'Walk past Reception desk (blue board) to Lift lobby.',
+  );
 });

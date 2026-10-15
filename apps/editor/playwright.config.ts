@@ -13,10 +13,19 @@ export default defineConfig({
     viewport: { width: 1280, height: 800 },
     baseURL: `http://localhost:${PORT}`,
   },
-  webServer: {
-    command: `pnpm build && pnpm exec vite preview --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env['CI'],
-    timeout: 180_000,
-  },
+  webServer: [
+    {
+      command: `pnpm build && pnpm exec vite preview --port ${PORT} --strictPort`,
+      url: `http://localhost:${PORT}`,
+      reuseExistingServer: !process.env['CI'],
+      timeout: 180_000,
+    },
+    {
+      // The visitor dev server receives maps from "Open on phone".
+      command: 'pnpm --dir ../visitor dev --port 5173 --strictPort',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env['CI'],
+      timeout: 120_000,
+    },
+  ],
 });

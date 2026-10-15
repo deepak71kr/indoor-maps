@@ -22,11 +22,13 @@
 | **6** | Editor foundation | Floors, floor-plan images, zoom/pan, scale, undo/redo, save/load | 2–3 days |
 | **7** | Editor drawing tools | Draw paths, drag dots, doors, rooms, lifts/stairs across floors | 3–4 days |
 | **8** | Editor smart features | Amenity drag-and-drop, QR stickers + print sheet, live checks, ▶ test route | 3 days |
-| **9** | Real building field test | A real building mapped in < 2 h; 5 strangers tested on real phones | 2–3 days |
+| **9** | 2D map — inside a building | Google-Maps-style floor plan on the phone: walls, rooms, doors, stairs, blue route line, floor picker | 4–5 days |
+| **10** | 2D map — campus view | Outdoor map of buildings, roads, grounds; routes between buildings | 3–4 days |
+| **11** | Real building field test | A real building mapped in < 2 h; 5 strangers tested on real phones | 2–3 days |
 | 🚦 | **Gate B: "Go / no-go for v0"** | Findings written down, v0 decisions made | ½ day |
-| **10** | Polish + stretch + demo | Hindi, mini map, parking spot, demo link, pitch-ready | 2–3 days |
+| **12** | Polish + stretch + demo | Hindi, parking spot, demo link, pitch-ready | 2–3 days |
 
-\* *Focused working days, rough. Real calendar time depends on hours per week.* **Total ≈ 4–6 focused weeks.**
+\* *Focused working days, rough. Real calendar time depends on hours per week.* **Total ≈ 6–8 focused weeks.**
 
 ```mermaid
 flowchart LR
@@ -40,12 +42,14 @@ flowchart LR
     GA --> P6
     P6 --> P7["7 · Drawing tools"]
     P7 --> P8["8 · Smart features"]
-    P8 --> P9["9 · Real building test"]
-    P9 --> GB{"🚦 Gate B<br/>go / no-go v0"}
-    GB --> P10["10 · Polish + demo"]
+    P8 --> P9["9 · 2D map<br/>(building)"]
+    P9 --> P10["10 · 2D map<br/>(campus)"]
+    P10 --> P11["11 · Real building test"]
+    P11 --> GB{"🚦 Gate B<br/>go / no-go v0"}
+    GB --> P12["12 · Polish + demo"]
 ```
 
-**Critical path:** 0 → 1 → 2 → 3 → 4 → 5 → Gate A → 6 → 7 → 8 → 9.
+**Critical path:** 0 → 1 → 2 → 3 → 4 → 5 → Gate A → 6 → 7 → 8 → 9 → 10 → 11.
 If two people work in parallel, **the editor (6–8) can start right after Phase 1**, because both apps share the same file format.
 
 ---
@@ -309,21 +313,67 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the features that make mapping fast and mistake-free, and the ones that look great in a demo.
 
 **Tasks**
-- [ ] **Amenities palette:** drag 🚻 💧 🏧 ☕ 💊 ♿ 🧯 🛐 onto the map → snaps to the nearest dot
-- [ ] **🔳 QR tool:** drop on a dot → **drag the arrow toward the wall** → auto code (e.g. `G-E1`) editable
-- [ ] **🖨 Print QR sheet:** A4 page of stickers (QR → visitor link, big short code, floor color, "Scan for directions")
-- [ ] **Live checks panel** (uses `packages/core`):
+- [x] **Amenities palette:** drag 🚻 💧 🏧 ☕ 💊 ♿ 🧯 🛐 onto the map → snaps to the nearest dot
+- [x] **🔳 QR tool:** drop on a dot → **drag the arrow toward the wall** → auto code (e.g. `G-E1`) editable
+- [x] **🖨 Print QR sheet:** A4 page of stickers (QR → visitor link, big short code, floor color, "Scan for directions")
+- [x] **Live checks panel** (uses `packages/core`):
   - ❌ unreachable dots, rooms without doors, duplicate QR codes, lifts serving 1 floor
   - ⚠️ decision points without landmark names, lines > 30 m
   - click an issue → zoom to it
-- [ ] **▶ Test route mode:** pick start + destination → route highlighted across floors + **the exact visitor steps** in the side panel
-- [ ] **"Open on phone"** button: shows a QR code linking the visitor app to this map (same Wi-Fi)
+- [x] **▶ Test route mode:** pick start + destination → route highlighted across floors + **the exact visitor steps** in the side panel
+- [x] **"Open on phone"** button: shows a QR code linking the visitor app to this map (same Wi-Fi)
 
 **Done when:** a new person maps one floor using only the editor's checks as guidance, and ▶ Test shows clean steps.
 
+**Status (2026-10-15): done** (the "new person" check happens with the first real building, Phase 11).
+- **Checks** live in `packages/core` (`checkMap`): unreachable dots, floors without an entrance, unnamed decision points and doors, lines > 30 m, lift stops not joined to a corridor — plus all file-format errors. Clicking an issue switches floor, selects the item and centres it.
+- **Amenities:** palette in the toolbar (drag onto the map, or click then click); snaps to the nearest dot.
+- **🔳 QR tool:** press on a dot and drag toward the wall → facing snapped to 45°; codes auto-numbered per floor (`G-1`, `G-2`…), editable, unique.
+- **🖨 Print QR:** A4 sheet with QR (→ visitor link), big code, floor colour, "You are at: …".
+- **▶ Test route:** click a start dot, pick a destination → route drawn on the plan + the exact visitor steps (uses the QR facing when the start has a sticker); step-free toggle; click a step → shows that floor.
+- **📱 Open on phone:** publishes the map to the visitor dev server (`.maps/`, git-ignored) and shows a QR with the laptop's Wi-Fi address.
+- Tests: 151 unit + 9 browser tests (6 editor, 3 visitor), all in CI.
+
+**Decisions made in Phase 8**
+- "Open on phone" is **development only** (the visitor dev server stores the map); real publishing comes in v0.
+- The `qrcode` library is used **only in the editor**; the visitor app stays at 12.9 KB.
+
 ---
 
-## Phase 9 — Real building field test
+## Phase 9 — 2D map inside a building
+
+> **In simple words:** the phone shows a simple Google-Maps-style floor plan — grey walls, white corridors, pastel rooms with numbers, doors, stairs, lifts, emoji amenities — with the blue route line and "you are here". No photos, no map library. Design reference: the mockups in `images/`.
+
+**Tasks**
+- [ ] **Map file:** optional geometry per floor — room outlines, walls, floor outline, stair/lift boxes; kept in a separate small file per floor (on-demand loading)
+- [ ] **Editor:** ▭ Room-outline tool (rectangles / polygons traced over the floor-plan image), walls from room edges, doors snap onto walls
+- [ ] **Visitor map view:** hand-written SVG viewer (pan, pinch-zoom), route line, you-are-here dot, next checkpoint pulsing, destination pin
+- [ ] **Facing-up:** after a QR scan the map turns so "up" = straight ahead (🧭 button for north-up)
+- [ ] **Floor picker** dropdown ("Ground Floor (Current) ✓"); route switches floor at the lift/stairs
+- [ ] **New bottom panel:** "You are at: …", "Where to?" search, quick chips (Restroom · Cafe · Water); while walking: blue step card with big arrow, "Next: …", ✕ End route, ✓ I'm here, "scan the next QR" tip, minutes · metres
+- [ ] **Text-only fallback** when a floor has no geometry
+- [ ] Budgets: first visit ≤ 30 KB (still ≤ 50 KB hard limit); one floor's geometry ≤ 8 KB brotli
+
+**Done when:** the Demo Hospital has outlines on all 3 floors, and a full trip on simulated 2G shows the map, the route line and the floor change, within budget.
+
+---
+
+## Phase 10 — 2D map: campus view
+
+> **In simple words:** zoom out to the whole campus — building blocks, roads, green grounds, entrances — and route from the gate to a room in another building.
+
+**Tasks**
+- [ ] **Site → buildings → floors** in the map file; the campus is an outdoor "floor"
+- [ ] **Editor:** trace building footprints, roads, green areas over a campus picture; mark building entrances
+- [ ] **Visitor:** campus map with building names + entrance arrows; tapping a building opens its floors
+- [ ] Routes across the campus: gate → road → building entrance → lift → room
+- [ ] Demo campus sample (2–3 buildings)
+
+**Done when:** a trip from the campus gate to a room on another building's upper floor works end to end, with the map following along.
+
+---
+
+## Phase 11 — Real building field test
 
 > **In simple words:** the real exam: map a real building, stick real QR codes, watch real people use it. (Details in `PROTOTYPE.md` §9.)
 
@@ -349,13 +399,13 @@ A phase is done only when **all** of these are true:
 
 ---
 
-## Phase 10 — Polish, stretch goals, demo
+## Phase 12 — Polish, stretch goals, demo
 
 > **In simple words:** make it pitch-ready and add the cheap "wow" features.
 
 **Tasks (pick based on Gate B findings)**
 - [ ] **Hindi** directions (the templates are ready from Phase 3)
-- [ ] **🗺 Mini map:** SVG sketch of the current floor with the route line (+ CSS "draw-on" animation)
+- [ ] **Route animation:** CSS "draw-on" of the blue line (the map itself is Phase 9)
 - [ ] **📍 Remember my parking spot** (saved on the phone only)
 - [ ] **"Staff-only" demo toggle**: clearly labelled as a demo, **not** real security
 - [ ] **Deploy to Cloudflare Pages** → a real demo link

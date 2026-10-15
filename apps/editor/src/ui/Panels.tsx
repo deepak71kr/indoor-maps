@@ -1,6 +1,4 @@
-import type { MapFile } from '@innermap/schema';
 import { LEVEL_COLORS } from '@innermap/schema';
-import { formatIssues, validateMapFile } from '@innermap/schema/validate';
 import demo from '../../../../samples/demo-hospital/map.json';
 import { parseDraft } from '../infra/autosave';
 import { downloadMap, pickFile, readMapFile } from '../infra/files';
@@ -8,6 +6,13 @@ import { saveImage } from '../infra/images';
 import { addLevel, moveLevel, removeLevel, renameSite, updateLevel } from '../model/commands';
 import { isLevelEmpty, newProject, nextLevel, pxPerMeter, sortedLevels } from '../model/project';
 import type { Tool } from '../model/store';
+import {
+  AmenityPalette,
+  Checks,
+  OpenOnPhoneButton,
+  PrintStickersButton,
+  TestRoutePanel,
+} from './Phase8Panels';
 import { Properties } from './Properties';
 import { useEditor } from './use-editor';
 
@@ -48,6 +53,8 @@ export function TopBar() {
       <button type="button" class="primary" onClick={() => downloadMap(state.doc)}>
         Export
       </button>
+      <PrintStickersButton />
+      <OpenOnPhoneButton />
       <span class="divider" />
       <button
         type="button"
@@ -85,7 +92,8 @@ const TOOLS: ReadonlyArray<{
   { id: 'room', icon: '🏷️', label: 'Room', key: 'R' },
   { id: 'lift', icon: '🛗', label: 'Lift', key: 'L' },
   { id: 'stairs', icon: '🪜', label: 'Stairs', key: 'S' },
-  { id: null, icon: '🔳', label: 'QR sticker', key: 'Q', phase: 8 },
+  { id: 'qr', icon: '🔳', label: 'QR sticker', key: 'Q' },
+  { id: 'test', icon: '▶️', label: 'Test route', key: 'T' },
 ];
 
 export function Toolbar() {
@@ -106,6 +114,7 @@ export function Toolbar() {
           <small>{t.label}</small>
         </button>
       ))}
+      <AmenityPalette />
     </nav>
   );
 }
@@ -156,6 +165,7 @@ export function SidePanel() {
 
   return (
     <aside class="side">
+      {state.tool === 'test' && <TestRoutePanel />}
       <Properties />
       <section>
         <h2>Site</h2>
@@ -263,33 +273,8 @@ export function SidePanel() {
         </section>
       )}
 
-      <Issues doc={doc} />
+      <Checks />
     </aside>
-  );
-}
-
-function Issues({ doc }: { doc: MapFile }) {
-  const result = validateMapFile(doc);
-  const issues = result.ok ? result.warnings : result.issues;
-  const errors = issues.filter((i) => i.severity === 'error').length;
-  return (
-    <section>
-      <h2>
-        Checks{' '}
-        {issues.length === 0 ? '✅' : `· ${errors} errors, ${issues.length - errors} warnings`}
-      </h2>
-      {issues.length === 0 ? (
-        <p class="muted">No problems found.</p>
-      ) : (
-        <ul class="issues">
-          {issues.slice(0, 30).map((issue, i) => (
-            <li key={i} class={issue.severity}>
-              {formatIssues([issue])}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 

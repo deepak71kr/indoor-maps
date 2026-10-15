@@ -3,7 +3,7 @@
  * changed document (plus ids the tool needs); `change()` turns that into an exact-undo Command.
  * The canvas only translates clicks into these calls, so all of this is unit-tested.
  */
-import type { Connector, Edge, MapFile, MapNode, Room } from '@innermap/schema';
+import type { Amenity, Connector, Edge, MapFile, MapNode, Room } from '@innermap/schema';
 import type { Command } from './commands';
 
 export interface Point {
@@ -360,4 +360,105 @@ function withPatch<T extends object>(item: T, patch: object): T {
   const given = Object.entries(patch).filter(([, value]) => value !== undefined);
   const merged = { ...item, ...Object.fromEntries(given) };
   return Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== null)) as T;
+}
+
+// ---------- amenities ----------
+
+/** How far (meters) a dropped amenity looks for a dot to attach to. */
+const AMENITY_REACH = 10;
+
+/** Drop an amenity: it attaches to the nearest dot on the floor (null if none is close). */
+export function placeAmenity(
+  doc: MapFile,
+  levelId: string,
+  p: Point,
+  kind: Amenity['kind'],
+): { doc: MapFile; id: string } | null {
+  let best: MapNode | undefined;
+  let bestDistance = AMENITY_REACH;
+  for (const n of doc.nodes) {
+    if (n.lvl !== levelId) continue;
+    const d = distance(n, p);
+    if (d < bestDistance) {
+      best = n;
+      bestDistance = d;
+    }
+  }
+  if (!best) return null;
+  const id = newId(
+    'amenity-',
+    doc.amenities.map((a) => a.id),
+  );
+  return { doc: { ...doc, amenities: [...doc.amenities, { id, kind, node: best.id }] }, id };
+}
+
+export type AmenityPatch = { readonly kind?: Amenity['kind']; readonly name?: string | null };
+
+export function updateAmenity(doc: MapFile, id: string, patch: AmenityPatch): MapFile {
+  return { ...doc, amenities: doc.amenities.map((a) => (a.id === id ? withPatch(a, patch) : a)) };
+}
+
+export function deleteAmenity(doc: MapFile, id: string): MapFile {
+  return { ...doc, amenities: doc.amenities.filter((a) => a.id !== id) };
+}
+
+// ---------- QR stickers ----------
+
+/** Codes are printed under the QR and typed by visitors: short, uppercase, unique. */
+export const QR_CODE_PATTERN = /^[A-Z0-9][A-Z0-9-]{1,15}$/;
+
+export function nextQrCode(doc: MapFile, levelId: string): string {
+  const prefix =
+    levelId
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 6) || 'Q';
+  return newId(
+    `${prefix}-`,
+    doc.qr.map((q) => q.code),
+  );
+}
+
+/** Round a facing to the nearest `step` degrees, in 0..359. */
+export function snapAngle(degrees: number, step = 15): number {
+  return (Math.round(degrees / step) * step + 360) % 360;
+}
+
+/** QR tool: a sticker on a dot (or that dot's existing sticker turned to `facing`). */
+export function placeQr(
+  doc: MapFile,
+  nodeId: string,
+  facing: number,
+): { doc: MapFile; code: string } {
+  const existing = doc.qr.find((q) => q.node === nodeId);
+  if (existing) return { doc: updateQr(doc, existing.code, { facing }), code: existing.code };
+  const node = doc.nodes.find((n) => n.id === nodeId);
+  const code = nextQrCode(doc, node?.lvl ?? 'Q');
+  return {
+    doc: { ...doc, qr: [...doc.qr, { code, node: nodeId, facing: snapAngle(facing, 1) }] },
+    code,
+  };
+}
+
+export function updateQr(
+  doc: MapFile,
+  code: string,
+  patch: { code?: string; facing?: number },
+): MapFile {
+  return {
+    ...doc,
+    qr: doc.qr.map((q) =>
+      q.code === code
+        ? {
+            ...q,
+            ...(patch.code !== undefined && { code: patch.code }),
+            ...(patch.facing !== undefined && { facing: snapAngle(patch.facing, 1) }),
+          }
+        : q,
+    ),
+  };
+}
+
+export function deleteQr(doc: MapFile, code: string): MapFile {
+  return { ...doc, qr: doc.qr.filter((q) => q.code !== code) };
 }

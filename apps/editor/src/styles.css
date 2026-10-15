@@ -473,3 +473,187 @@ select {
 .side .danger {
   margin-top: 6px;
 }
+
+/* ---------- Phase 8 ---------- */
+.palette {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.palette-title {
+  grid-column: 1 / -1;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+}
+.amenity-btn {
+  font-size: 1.1rem;
+  padding: 4px 0;
+  min-height: 34px;
+  cursor: grab;
+}
+.amenity-btn.active {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--panel));
+}
+
+.amenities text {
+  cursor: pointer;
+  user-select: none;
+}
+.amenities text.selected {
+  paint-order: stroke;
+  stroke: #111;
+  stroke-width: 0.4;
+}
+.qr-marker {
+  cursor: pointer;
+}
+.qr-marker rect {
+  fill: #fff;
+  stroke: #16202a;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.qr-marker line {
+  stroke: #16202a;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.qr-marker circle {
+  fill: #16202a;
+}
+.qr-marker.selected rect,
+.qr-marker.selected line {
+  stroke: #e0263b;
+}
+.qr-marker.selected circle {
+  fill: #e0263b;
+}
+.tool-qr svg,
+.tool-test svg,
+.tool-amenity svg {
+  cursor: crosshair;
+}
+
+.route line {
+  stroke: #f2b100;
+  stroke-width: 9;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.85;
+}
+.route-ends .start {
+  fill: #1d8a4e;
+  stroke: #fff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.route-ends .end {
+  fill: #e0263b;
+  stroke: #fff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.issues li {
+  padding: 0;
+  background: none;
+}
+.issue {
+  width: 100%;
+  text-align: left;
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  background: #f6f7f9;
+  border: 1px solid transparent;
+  min-height: 0;
+  line-height: 1.35;
+}
+.issue.error {
+  color: var(--danger);
+}
+.issue.warning {
+  color: var(--warn);
+}
+.issue:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.test-panel .steps {
+  margin: 8px 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.test-panel .step {
+  text-align: left;
+  font-size: 0.85rem;
+  min-height: 0;
+  padding: 4px 6px;
+  width: 100%;
+}
+.floor-badge {
+  display: inline-block;
+  padding: 0 0.5em;
+  border-radius: 999px;
+  background: var(--lvl);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.error-text {
+  color: var(--danger);
+}
+.compass {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.compass button {
+  min-height: 28px;
+  padding: 0;
+}
+.compass button[aria-pressed='true'] {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+.dialog {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 18px 20px;
+  width: min(420px, 92vw);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.phone-qr {
+  width: 220px;
+  height: 220px;
+  align-self: center;
+}
+.phone-qr svg {
+  width: 100%;
+  height: 100%;
+}

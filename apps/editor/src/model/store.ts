@@ -2,7 +2,8 @@
  * Editor state: the document, its undo history, and UI state (floor, tool, selection).
  * Plain object + subscribe; Preact components read it through `useEditor()`.
  */
-import type { MapFile } from '@innermap/schema';
+import type { Destination } from '@innermap/core';
+import type { Amenity, MapFile } from '@innermap/schema';
 import type { Command } from './commands';
 import { replaceDocument } from './commands';
 import { change } from './drawing';
@@ -10,14 +11,30 @@ import type { History } from './history';
 import { emptyHistory, execute, redo, undo } from './history';
 import { sortedLevels } from './project';
 
-export type Tool = 'select' | 'scale' | 'path' | 'door' | 'room' | 'lift' | 'stairs';
+export type Tool =
+  'select' | 'scale' | 'path' | 'door' | 'room' | 'lift' | 'stairs' | 'amenity' | 'qr' | 'test';
 
 export type Selection =
   | { readonly type: 'nodes'; readonly ids: readonly string[] }
   | { readonly type: 'edge'; readonly a: string; readonly b: string }
   | { readonly type: 'room'; readonly id: string }
   | { readonly type: 'connector'; readonly id: string }
+  | { readonly type: 'amenity'; readonly id: string }
+  | { readonly type: 'qr'; readonly code: string }
   | null;
+
+/** ▶ Test route: start dot, destination, step-free. */
+export interface RouteTest {
+  readonly from: string | null;
+  readonly to: Destination | null;
+  readonly stepFree: boolean;
+}
+
+/** "Show me this" requests (e.g. clicking a check); `n` changes on every request. */
+export interface Focus {
+  readonly target: { readonly node: string } | { readonly edge: readonly [string, string] };
+  readonly n: number;
+}
 
 export interface EditorState {
   readonly doc: MapFile;
@@ -29,6 +46,10 @@ export interface EditorState {
   readonly pathFrom: string | null;
   /** Room tool: the room waiting for "click another door". */
   readonly pickDoorFor: string | null;
+  /** Amenity tool: what a click places. */
+  readonly amenityKind: Amenity['kind'];
+  readonly test: RouteTest;
+  readonly focus: Focus | null;
 }
 
 export interface EditorStore {
@@ -46,6 +67,10 @@ export interface EditorStore {
   select(selection: Selection): void;
   setPathFrom(nodeId: string | null): void;
   setPickDoorFor(roomId: string | null): void;
+  setAmenityKind(kind: Amenity['kind']): void;
+  setTest(test: Partial<RouteTest>): void;
+  /** Switch to the target's floor, select it and ask the canvas to centre on it. */
+  focusOn(target: Focus['target']): void;
 }
 
 export function createEditorStore(doc: MapFile): EditorStore {
@@ -57,6 +82,9 @@ export function createEditorStore(doc: MapFile): EditorStore {
     selection: null,
     pathFrom: null,
     pickDoorFor: null,
+    amenityKind: 'toilet',
+    test: { from: null, to: null, stepFree: false },
+    focus: null,
   };
   const listeners = new Set<() => void>();
   const set = (next: EditorState) => {
@@ -88,6 +116,24 @@ export function createEditorStore(doc: MapFile): EditorStore {
     select: (selection) => set({ ...state, selection }),
     setPathFrom: (pathFrom) => set({ ...state, pathFrom }),
     setPickDoorFor: (pickDoorFor) => set({ ...state, pickDoorFor }),
+    setAmenityKind: (amenityKind) => set({ ...state, amenityKind, tool: 'amenity' }),
+    setTest: (test) => set({ ...state, test: { ...state.test, ...test } }),
+    focusOn(target) {
+      const nodeId = 'node' in target ? target.node : target.edge[0];
+      const level = state.doc.nodes.find((n) => n.id === nodeId)?.lvl ?? state.levelId;
+      const testing = state.tool === 'test';
+      const selection: Selection =
+        'node' in target
+          ? { type: 'nodes', ids: [target.node] }
+          : { type: 'edge', a: target.edge[0], b: target.edge[1] };
+      set({
+        ...state,
+        levelId: level,
+        tool: testing ? 'test' : 'select',
+        selection: testing ? state.selection : selection,
+        focus: { target, n: (state.focus?.n ?? 0) + 1 },
+      });
+    },
   };
 }
 
@@ -112,6 +158,12 @@ function sanitize(s: EditorState): EditorState {
   } else if (selection?.type === 'connector') {
     const { id } = selection;
     selection = doc.connectors.some((c) => c.id === id) ? selection : null;
+  } else if (selection?.type === 'amenity') {
+    const { id } = selection;
+    selection = doc.amenities.some((a) => a.id === id) ? selection : null;
+  } else if (selection?.type === 'qr') {
+    const { code } = selection;
+    selection = doc.qr.some((q) => q.code === code) ? selection : null;
   }
   return {
     ...s,
@@ -120,5 +172,6 @@ function sanitize(s: EditorState): EditorState {
     pathFrom: s.pathFrom && nodeIds.has(s.pathFrom) ? s.pathFrom : null,
     pickDoorFor:
       s.pickDoorFor && doc.rooms.some((r) => r.id === s.pickDoorFor) ? s.pickDoorFor : null,
+    test: s.test.from && !nodeIds.has(s.test.from) ? { ...s.test, from: null } : s.test,
   };
 }

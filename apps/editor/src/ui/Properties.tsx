@@ -1,8 +1,13 @@
 /** Properties of the selected dot(s), line, room or lift/staircase. */
-import type { Connector, Edge, MapFile, MapNode, Room } from '@innermap/schema';
+import type { Amenity, Connector, Edge, MapFile, MapNode, QrAnchor, Room } from '@innermap/schema';
 import { EDGE_KINDS, NODE_KINDS, ROOM_CATEGORIES } from '@innermap/schema';
 import {
+  deleteAmenity,
   deleteConnector,
+  deleteQr,
+  QR_CODE_PATTERN,
+  updateAmenity,
+  updateQr,
   deleteItems,
   deleteRoom,
   renameConnector,
@@ -14,6 +19,7 @@ import {
 } from '../model/drawing';
 import { sortedLevels } from '../model/project';
 import type { EditorStore } from '../model/store';
+import { AMENITIES } from './amenities';
 import { useEditor } from './use-editor';
 
 /** Plain-language names for dot kinds. */
@@ -66,6 +72,14 @@ export function Properties() {
     case 'room': {
       const room = doc.rooms.find((r) => r.id === selection.id);
       return room ? <RoomProps store={store} doc={doc} room={room} /> : null;
+    }
+    case 'amenity': {
+      const amenity = doc.amenities.find((a) => a.id === selection.id);
+      return amenity ? <AmenityProps store={store} doc={doc} amenity={amenity} /> : null;
+    }
+    case 'qr': {
+      const qr = doc.qr.find((q) => q.code === selection.code);
+      return qr ? <QrProps store={store} doc={doc} qr={qr} /> : null;
     }
     case 'connector': {
       const connector = doc.connectors.find((c) => c.id === selection.id);
@@ -344,6 +358,113 @@ function ConnectorProps({ store, doc, connector }: Props & { connector: Connecto
       <DeleteButton
         label={`Delete ${connector.kind === 'lift' ? 'lift' : 'staircase'} (all floors)`}
         onClick={() => store.edit('Delete', (d) => deleteConnector(d, connector.id))}
+      />
+    </section>
+  );
+}
+
+function AmenityProps({ store, doc, amenity }: Props & { amenity: Amenity }) {
+  const node = doc.nodes.find((n) => n.id === amenity.node);
+  return (
+    <section>
+      <h2>Amenity</h2>
+      <label>
+        Kind
+        <select
+          value={amenity.kind}
+          onChange={(e) => {
+            const kind = (e.target as HTMLSelectElement).value as Amenity['kind'];
+            store.edit('Change amenity', (d) => updateAmenity(d, amenity.id, { kind }));
+          }}
+        >
+          {AMENITIES.map((a) => (
+            <option key={a.kind} value={a.kind}>
+              {a.emoji} {a.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Name (optional)
+        <input
+          key={amenity.id}
+          value={amenity.name ?? ''}
+          placeholder="e.g. SBI ATM"
+          onChange={(e) => {
+            const name = (e.target as HTMLInputElement).value.trim();
+            if (name !== (amenity.name ?? ''))
+              store.edit('Name amenity', (d) =>
+                updateAmenity(d, amenity.id, { name: name || null }),
+              );
+          }}
+        />
+      </label>
+      <p class="muted small">At: {node?.landmark ?? amenity.node}</p>
+      <DeleteButton
+        label="Delete amenity"
+        onClick={() => store.edit('Delete amenity', (d) => deleteAmenity(d, amenity.id))}
+      />
+    </section>
+  );
+}
+
+const DIRECTIONS = [
+  ['N', 0],
+  ['NE', 45],
+  ['E', 90],
+  ['SE', 135],
+  ['S', 180],
+  ['SW', 225],
+  ['W', 270],
+  ['NW', 315],
+] as const;
+
+function QrProps({ store, doc, qr }: Props & { qr: QrAnchor }) {
+  const node = doc.nodes.find((n) => n.id === qr.node);
+  return (
+    <section>
+      <h2>🔳 QR sticker</h2>
+      <label>
+        Code printed under the QR
+        <input
+          key={qr.code}
+          value={qr.code}
+          onChange={(e) => {
+            const input = e.target as HTMLInputElement;
+            const code = input.value.trim().toUpperCase();
+            if (code === qr.code) return;
+            if (!QR_CODE_PATTERN.test(code) || doc.qr.some((q) => q.code === code)) {
+              input.value = qr.code;
+              alert('Codes are 2–16 capital letters, digits or "-", and must be unique.');
+              return;
+            }
+            store.edit('Rename QR sticker', (d) => updateQr(d, qr.code, { code }));
+            store.select({ type: 'qr', code });
+          }}
+        />
+      </label>
+      <div class="field">
+        <span>Reader faces (the wall it is stuck on): {qr.facing}°</span>
+        <div class="compass">
+          {DIRECTIONS.map(([label, deg]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={qr.facing === deg}
+              onClick={() =>
+                store.edit('Turn QR sticker', (d) => updateQr(d, qr.code, { facing: deg }))
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p class="muted small">Up on the plan is N. Tip: with the QR tool, drag from the dot.</p>
+      </div>
+      <p class="muted small">At: {node?.landmark ?? qr.node}</p>
+      <DeleteButton
+        label="Delete QR sticker"
+        onClick={() => store.edit('Delete QR sticker', (d) => deleteQr(d, qr.code))}
       />
     </section>
   );

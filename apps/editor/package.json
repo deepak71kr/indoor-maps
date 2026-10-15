@@ -14,11 +14,13 @@
   "dependencies": {
     "@innermap/core": "workspace:*",
     "@innermap/schema": "workspace:*",
-    "preact": "^11.0.1"
+    "preact": "^11.0.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "^2.10.6",
+    "@types/qrcode": "^1.5.6",
     "vite": "^8.3.4"
   }
 }

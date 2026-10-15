@@ -3,6 +3,8 @@ import { FORMAT_VERSION } from '@innermap/schema';
 export type { DirectionsOptions, Step, StepIcon } from './directions/build-directions';
 export { buildDirections } from './directions/build-directions';
 export type { Turn } from './directions/geometry';
+export type { CheckCode, CheckIssue } from './checks/check-map';
+export { checkMap, LONG_LINE_METERS } from './checks/check-map';
 export { buildGraph } from './graph/build-graph';
 export type { MessageKey, Messages } from './i18n/en';
 export { en } from './i18n/en';

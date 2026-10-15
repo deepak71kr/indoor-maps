@@ -181,6 +181,19 @@ What makes apps heavy is images, fonts and libraries, not good design.
 └────────────────────────────────┘
 ```
 
+### 6.1 2D map, Google-Maps style ✅ DECIDED (2026-10-15)
+
+The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design reference: the mockups in `images/`.
+- **Inside a building** (Phase 9): grey walls, white corridors, pastel rooms with numbers, doors, stairs, lifts, emoji amenities. On top of that: the blue route line, a "You are here" dot and a floor picker.
+- **Campus** (Phase 10): building blocks, roads, green grounds and entrance arrows. Routes go between buildings.
+- **Bottom panel:** shows "You are at", a "Where to?" search and quick chips (Restroom · Cafe · Water). While walking, it shows a blue step card with a big arrow, "Next: …", ✕ End route and ✓ I'm here.
+- **Light by design:**
+  - our own SVG viewer (~4 KB), not Leaflet or MapLibre;
+  - map shapes in a separate small file per floor, loaded on demand;
+  - the first visit stays ≤ 30 KB.
+- **Text stays the hero.** The map adds confidence; it isn't required. A floor without shapes falls back to text only.
+- **Facing-up:** after a QR scan the map rotates so "up" is straight ahead, using the sticker's known facing. Google Maps can't do this indoors.
+
 ---
 
 ## 7. Architecture: production-grade, SOLID, practical

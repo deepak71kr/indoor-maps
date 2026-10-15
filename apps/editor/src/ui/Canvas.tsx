@@ -14,13 +14,18 @@ import {
   addPathPoint,
   createRoom,
   hitTest,
+  placeAmenity,
   placeConnector,
   placeDoor,
+  placeQr,
   roomOfDoor,
+  snapAngle,
   splitEdge,
 } from '../model/drawing';
 import { DEFAULT_PX_PER_METER, pxPerMeter } from '../model/project';
 import type { EditorState, EditorStore } from '../model/store';
+import { AMENITY_DRAG_TYPE, amenityEmoji } from './amenities';
+import { testRoute } from './test-route';
 import { useEditor } from './use-editor';
 
 interface View {
@@ -42,7 +47,12 @@ type Gesture =
   | { kind: 'pan'; start: Point; view: View; moved: boolean }
   | { kind: 'move-nodes'; start: Point; ids: string[]; moved: boolean }
   | { kind: 'box'; start: Point; moved: boolean }
-  | { kind: 'pinch'; distance: number; view: View; mid: Point };
+  | { kind: 'pinch'; distance: number; view: View; mid: Point }
+  | { kind: 'qr-aim'; node: string; moved: boolean };
+
+/** Compass heading from one point to another (0 = up / north, 90 = right / east). */
+const compass = (from: Point, to: Point) =>
+  ((Math.atan2(to.x - from.x, -(to.y - from.y)) * 180) / Math.PI + 360) % 360;
 
 export function Canvas() {
   const { store, state } = useEditor();
@@ -58,6 +68,8 @@ export function Canvas() {
   const [cursor, setCursor] = useState<Point | null>(null);
   const [offset, setOffset] = useState<Point | null>(null); // live drag of selected dots
   const [box, setBox] = useState<{ a: Point; b: Point } | null>(null);
+  const [aim, setAim] = useState<{ node: string; facing: number } | null>(null); // QR tool
+  const [flash, setFlash] = useState<string | null>(null);
 
   // Track canvas size.
   useEffect(() => {
@@ -88,7 +100,22 @@ export function Canvas() {
 
   useEffect(() => {
     if (tool !== 'scale') setMeasure(null);
+    setFlash(null);
   }, [tool]);
+
+  // Centre on whatever a check or a test step asked to show.
+  useEffect(() => {
+    const target = state.focus?.target;
+    if (!target) return;
+    const ids = 'node' in target ? [target.node] : [...target.edge];
+    const points = ids
+      .map((id) => doc.nodes.find((n) => n.id === id))
+      .filter((n): n is MapNode => n !== undefined);
+    if (points.length === 0) return;
+    const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    setView((v) => ({ scale: Math.max(v.scale, 14), cx, cy }));
+  }, [state.focus?.n]);
 
   // ---------- coordinates & hits ----------
   const toWorld = (clientX: number, clientY: number): Point => {
@@ -135,6 +162,24 @@ export function Canvas() {
         mid: { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 },
       };
       return;
+    }
+    const marker = (e.target as Element).closest('[data-amenity],[data-qr]');
+    if (tool === 'select' && marker) {
+      const amenity = marker.getAttribute('data-amenity');
+      store.select(
+        amenity
+          ? { type: 'amenity', id: amenity }
+          : { type: 'qr', code: marker.getAttribute('data-qr') ?? '' },
+      );
+      gesture.current = null;
+      return;
+    }
+    if (tool === 'qr' && e.button === 0) {
+      const hit = hitAt(toWorld(e.clientX, e.clientY));
+      if (hit.type === 'node') {
+        gesture.current = { kind: 'qr-aim', node: hit.id, moved: false };
+        return;
+      }
     }
     const screen = { x: e.clientX, y: e.clientY };
     if (tool === 'select' && e.button === 0) {
@@ -193,6 +238,12 @@ export function Canvas() {
     } else if (g?.kind === 'box') {
       g.moved = true;
       setBox({ a: g.start, b: p });
+    } else if (g?.kind === 'qr-aim') {
+      const n = nodes.get(g.node);
+      if (n && Math.hypot(p.x - n.x, p.y - n.y) * view.scale > 8) {
+        g.moved = true;
+        setAim({ node: g.node, facing: snapAngle(compass(n, p)) });
+      }
     }
   };
 
@@ -201,6 +252,15 @@ export function Canvas() {
     const g = gesture.current;
     gesture.current = null;
     const p = toWorld(e.clientX, e.clientY);
+    if (g?.kind === 'qr-aim') {
+      const existing = doc.qr.find((q) => q.node === g.node);
+      const facing = g.moved && aim ? aim.facing : (existing?.facing ?? 0);
+      const result = placeQr(doc, g.node, facing);
+      store.edit(existing ? 'Turn QR sticker' : 'Add QR sticker', () => result.doc);
+      store.select({ type: 'qr', code: result.code });
+      setAim(null);
+      return;
+    }
     if (g?.kind === 'move-nodes' && g.moved && offset) {
       const byId = new Map(doc.nodes.map((n) => [n.id, n]));
       const moves = g.ids.flatMap((id) => {
@@ -252,6 +312,22 @@ export function Canvas() {
       }
       case 'room':
         roomClick(store, doc, hit, pickDoorFor);
+        return;
+      case 'amenity': {
+        const result = placeAmenity(doc, levelId, p, state.amenityKind);
+        if (!result) {
+          setFlash('Put amenities near a dot (within 10 m) — draw the corridor first.');
+          return;
+        }
+        store.edit('Add amenity', () => result.doc);
+        store.select({ type: 'amenity', id: result.id });
+        return;
+      }
+      case 'qr':
+        setFlash('Press on a dot, then drag toward the wall the sticker is on.');
+        return;
+      case 'test':
+        if (hit.type === 'node') store.setTest({ from: hit.id });
         return;
       case 'lift':
       case 'stairs': {
@@ -330,6 +406,55 @@ export function Canvas() {
         )
       : [];
   const pathStart = pathFrom ? nodes.get(pathFrom) : undefined;
+  const amenitiesAt = new Map<string, typeof doc.amenities>();
+  for (const a of doc.amenities) amenitiesAt.set(a.node, [...(amenitiesAt.get(a.node) ?? []), a]);
+
+  const aimingNew = aim && !doc.qr.some((q) => q.node === aim.node);
+  const qrMarkers = [
+    ...doc.qr.map((q) => ({ node: q.node, code: q.code, facing: q.facing })),
+    ...(aim && aimingNew ? [{ node: aim.node, code: '', facing: aim.facing }] : []),
+  ].flatMap((q) => {
+    const n = nodes.get(q.node);
+    if (!n || n.lvl !== levelId) return [];
+    const facing = aim?.node === q.node ? aim.facing : q.facing;
+    const rad = (facing * Math.PI) / 180;
+    const length = 24 / view.scale;
+    const tip = { x: n.x + Math.sin(rad) * length, y: n.y - Math.cos(rad) * length };
+    const half = 6 / view.scale;
+    const selected = selection?.type === 'qr' && selection.code === q.code;
+    return [
+      <g
+        key={q.code || 'aim'}
+        class={selected ? 'qr-marker selected' : 'qr-marker'}
+        data-qr={q.code || undefined}
+      >
+        <line x1={n.x} y1={n.y} x2={tip.x} y2={tip.y} />
+        <circle cx={tip.x} cy={tip.y} r={3 / view.scale} />
+        <rect x={n.x - half} y={n.y - half} width={half * 2} height={half * 2} />
+      </g>,
+    ];
+  });
+
+  const test = tool === 'test' ? testRoute(doc, state.test) : null;
+  const routeLines = (test?.route?.edges ?? []).flatMap((e, i) => {
+    const a = nodes.get(e.from);
+    const b = nodes.get(e.to);
+    return a && b && a.lvl === levelId && b.lvl === levelId
+      ? [<line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />]
+      : [];
+  });
+  const routeStart = test?.route?.nodes[0];
+  const routeEnd = test?.route?.nodes.at(-1);
+  const routeEnds = (
+    <g class="route-ends">
+      {routeStart?.level === levelId && (
+        <circle class="start" cx={routeStart.x} cy={routeStart.y} r={r * 2.2} />
+      )}
+      {routeEnd?.level === levelId && (
+        <circle class="end" cx={routeEnd.x} cy={routeEnd.y} r={r * 2.2} />
+      )}
+    </g>
+  );
   const snapPoint: Point | null =
     hover.type === 'node'
       ? (nodes.get(hover.id) ?? null)
@@ -348,6 +473,22 @@ export function Canvas() {
         onPointerCancel={onPointerUp}
         onPointerLeave={() => setCursor(null)}
         onDblClick={onDoubleClick}
+        onDragOver={(e: DragEvent) => {
+          if (e.dataTransfer?.types.includes(AMENITY_DRAG_TYPE)) e.preventDefault();
+        }}
+        onDrop={(e: DragEvent) => {
+          const kind = e.dataTransfer?.getData(AMENITY_DRAG_TYPE);
+          if (!kind) return;
+          e.preventDefault();
+          const known = kind as Parameters<typeof placeAmenity>[3];
+          const result = placeAmenity(doc, levelId, toWorld(e.clientX, e.clientY), known);
+          if (!result) {
+            setFlash('Put amenities near a dot (within 10 m) — draw the corridor first.');
+            return;
+          }
+          store.edit('Add amenity', () => result.doc);
+          store.select({ type: 'amenity', id: result.id });
+        }}
         role="img"
         aria-label={`Map of ${level?.name ?? 'floor'}`}
       >
@@ -370,6 +511,7 @@ export function Canvas() {
               ))}
           </g>
           <g class="edges">{edgesOf(levelId, true)}</g>
+          <g class="route">{routeLines}</g>
           {tool === 'path' && pathStart && snapPoint && (
             <line
               class="preview"
@@ -403,6 +545,28 @@ export function Canvas() {
               </text>
             ))}
           </g>
+          <g class="amenities">
+            {levelNodes.flatMap((n) =>
+              (amenitiesAt.get(n.id) ?? []).map((a, i) => (
+                <text
+                  key={a.id}
+                  class={
+                    selection?.type === 'amenity' && selection.id === a.id
+                      ? 'amenity selected'
+                      : 'amenity'
+                  }
+                  data-amenity={a.id}
+                  x={n.x - r * 3.4 * (i + 1)}
+                  y={n.y + r * 3.4}
+                  font-size={14 / view.scale}
+                >
+                  {amenityEmoji(a.kind)}
+                </text>
+              )),
+            )}
+          </g>
+          <g class="qr-markers">{qrMarkers}</g>
+          {test?.route && routeEnds}
           {hover.type !== 'none' && tool !== 'select' && snapPoint && (
             <circle class="snap" cx={snapPoint.x} cy={snapPoint.y} r={r * 2.2} />
           )}
@@ -488,7 +652,7 @@ export function Canvas() {
           )}
         </div>
       ) : (
-        <ToolHint state={state} />
+        <ToolHint state={state} flash={flash} />
       )}
     </div>
   );
@@ -513,7 +677,7 @@ function roomClick(store: EditorStore, doc: MapFile, hit: Hit, pickDoorFor: stri
   store.select({ type: 'room', id: result.id });
 }
 
-function ToolHint({ state }: { state: EditorState }) {
+function ToolHint({ state, flash }: { state: EditorState; flash: string | null }) {
   const room = state.pickDoorFor
     ? state.doc.rooms.find((r) => r.id === state.pickDoorFor)
     : undefined;
@@ -528,7 +692,12 @@ function ToolHint({ state }: { state: EditorState }) {
     lift: '🛗 Click where the lift is — it is added to every floor (choose floors in the panel)',
     stairs: '🪜 Click where the stairs are — added to every floor (choose floors in the panel)',
   };
-  const hint = text[state.tool];
+  text.amenity = '🚻 Click near a dot to add it there (or drag icons from the palette)';
+  text.qr = '🔳 Press on a dot and drag toward the wall the sticker is on';
+  text.test = state.test.from
+    ? '▶ Pick a destination in the panel · click another dot to change the start'
+    : '▶ Click the dot where the visitor starts (a QR sticker uses its facing)';
+  const hint = flash ?? text[state.tool];
   return hint ? (
     <div class="tool-hint">
       <p>{hint}</p>

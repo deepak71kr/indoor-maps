@@ -10,3 +10,6 @@ Thumbs.db
 !.env.example
 playwright-report/
 test-results/
+
+# Maps published from the editor to the visitor dev server ("Open on phone")
+.maps/
