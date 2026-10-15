@@ -33,11 +33,12 @@ pnpm install
 pnpm dev            # visitor on :5173 (also on your LAN for phone testing), editor on :5174
 ```
 
-| Command          | Does                                             |
-| ---------------- | ------------------------------------------------ |
-| `pnpm test`      | Unit tests (Vitest)                              |
-| `pnpm lint`      | ESLint + layer rules (dependency-cruiser)        |
-| `pnpm typecheck` | TypeScript in every package                      |
-| `pnpm build`     | Build both apps                                  |
-| `pnpm size`      | Fail if the visitor app is over 35 KB compressed |
-| `pnpm check`     | Everything above, as CI runs it                  |
+| Command                  | Does                                                                        |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `pnpm test`              | Unit tests (Vitest)                                                         |
+| `pnpm lint`              | ESLint + layer rules (dependency-cruiser)                                   |
+| `pnpm typecheck`         | TypeScript in every package                                                 |
+| `pnpm build`             | Build both apps                                                             |
+| `pnpm size`              | Fail if the visitor app is over 35 KB compressed                            |
+| `pnpm check`             | Everything above, as CI runs it                                             |
+| `pnpm route <from> <to>` | Try a route on the demo map, e.g. `pnpm route G-MAIN Radiology --step-free` |

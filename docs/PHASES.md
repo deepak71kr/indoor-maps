@@ -113,15 +113,15 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the code that answers "what's the best way from here to there?". Pure logic, no screens, fully tested.
 
 **Tasks**
-- [ ] **Graph builder:** map file → dots + lines in memory; distances computed from coordinates
-- [ ] **Connectors → lines:** lift = a line between every pair of its floors; stairs = neighboring floors only
-- [ ] **Edge costs** (walk / stairs / lift / ramp) as in `LOW_LEVEL_DESIGN.md` §5
-- [ ] **`RouteCostRule` interface** + first rules: `step-free`, `avoid-tags`
-- [ ] **A\* search** across floors
-- [ ] **Multi-door destinations:** route to the cheapest door of a room
-- [ ] **Nearest amenity:** "nearest 🚻 from here" (first one reached by walking, not straight-line)
-- [ ] **Result types** (`ok` / `no-route` / `unknown-start`…), no exceptions
-- [ ] **Tests:**
+- [x] **Graph builder:** map file → dots + lines in memory; distances computed from coordinates
+- [x] **Connectors → lines:** lift = a line between every pair of its floors; stairs = neighboring floors only
+- [x] **Edge costs** (walk / stairs / lift / ramp) as in `LOW_LEVEL_DESIGN.md` §5
+- [x] **`RouteCostRule` interface** + first rules: `step-free`, `avoid-tags`
+- [x] **A\* search** across floors
+- [x] **Multi-door destinations:** route to the cheapest door of a room
+- [x] **Nearest amenity:** "nearest 🚻 from here" (first one reached by walking, not straight-line)
+- [x] **Result types** (`ok` / `no-route` / `unknown-start`…), no exceptions
+- [x] **Tests:**
   - Golden routes on the demo hospital (same floor, other floor, skipped floor)
   - Step-free route never uses stairs
   - Room with 2 doors → the closer door is chosen
@@ -129,7 +129,9 @@ A phase is done only when **all** of these are true:
   - Unreachable destination → `no-route`
   - Speed: 1,000 random routes on the demo map in < 1 s
 
-**Done when:** all tests pass and a tiny command prints a route (`pnpm route G-E1 Radiology`).
+**Done when:** all tests pass and a tiny command prints a route (`pnpm route G-MAIN Radiology`).
+
+**Open product question (for Phase 4):** "Nearest toilet" currently means only `toilet`, so from Floor 2 it sends you downstairs even though an accessible toilet is 32 m away on the same floor. Proposal: the 🚻 chip searches both `toilet` and `toilet-accessible`; the ♿ toggle restricts to accessible ones.
 
 ---
 

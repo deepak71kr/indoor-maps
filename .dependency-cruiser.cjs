@@ -8,8 +8,9 @@ module.exports = {
       name: 'core-is-pure',
       comment: 'packages/core may only depend on packages/schema — no apps, no npm runtime deps.',
       severity: 'error',
-      from: { path: '^packages/core' },
-      to: { pathNot: ['^packages/(core|schema)', 'node_modules/vitest'] },
+      // Tests (and their helper) may also read sample maps.
+      from: { path: '^packages/core', pathNot: '(\\.test\\.ts|/test-support\\.ts)$' },
+      to: { pathNot: ['^packages/(core|schema)'] },
     },
     {
       name: 'schema-is-leaf',
