@@ -95,6 +95,15 @@ describe('nearest amenity', () => {
     expect(r.arrival.nodeId).toBe('2-W');
   });
 
+  it('picks the nearest by WALKING, not by straight line', () => {
+    const map = demoMap();
+    // A toilet directly above G-C30: 0 m away as the crow flies, but a lift ride on foot.
+    map.amenities.push({ id: '1-toilet-above', kind: 'toilet', node: '1-C30' });
+    const r = route({ from: 'G-C30', to: { type: 'amenity', kinds: ['toilet'] } }, loadSite(map));
+    expect(r.arrival.amenity?.id).toBe('g-toilet');
+    expect(ids(r)).toEqual(['G-C30', 'G-C42', 'G-E']);
+  });
+
   it('a step-free visitor gets a toilet reachable without stairs', () => {
     const r = route({
       from: '2-E',
