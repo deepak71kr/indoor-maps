@@ -1,0 +1,8 @@
+{
+  // Build config runs in Node, not in the phone: keep Node types out of the app's tsconfig.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import demo from '../../../samples/demo-hospital/demo.json';
+import demo from '../../../samples/demo-hospital/map.json';
 import type { MapFile } from './format-v0';
 import type { Issue } from './validate';
 import { formatIssues, validateMapFile } from './validate';

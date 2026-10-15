@@ -203,7 +203,7 @@ inner-map/
 │  ├─ visitor/         # plain TS + service worker                                 ← KEEP
 │  └─ editor/          # Preact + SVG editor
 ├─ samples/
-│  └─ demo-hospital/   # demo.json + floor-plan images (3 floors)
+│  └─ demo-hospital/   # map.json (3 floors) + floor-plan images later
 ├─ tools/
 │  └─ size-check.mjs
 └─ docs/            # design docs (this file and its companions)

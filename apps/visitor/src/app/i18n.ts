@@ -1,0 +1,69 @@
+/** Visitor app UI text (directions text comes from @innermap/core's templates). */
+import type { Room } from '@innermap/schema';
+
+export const ui = {
+  loading: 'Loading map…',
+  'error.title': 'Could not load the map',
+  'error.retry': 'Try again',
+  'where.title': 'Where are you?',
+  'where.hint': 'Type the code printed under any QR sticker, or the number on the nearest door.',
+  'where.placeholder': 'e.g. G-MAIN or 214',
+  'where.go': 'Go',
+  'where.unknown': 'We could not find "{text}". Check the code under the QR sticker.',
+  'where.entrances': 'Or start from an entrance',
+  scan: 'Scan a QR sticker',
+  'scan.hint': 'Open your camera app and point it at the nearest QR sticker.',
+  'scan.cancel': 'Cancel',
+  'choose.you-are-at': 'You are at {place}',
+  'choose.change': 'Change',
+  'choose.title': 'Where to?',
+  'choose.placeholder': 'Search room, department or number',
+  'choose.nearest': 'Nearest',
+  'choose.all': 'All places',
+  'choose.none': 'No matching places.',
+  'step-free': 'Step-free route (no stairs)',
+  'step.of': 'Step {n} of {total}',
+  'step.to': 'To {place}',
+  'step.here': "I'm here",
+  'step.lost': "I'm lost",
+  'step.back': 'Back',
+  'step.end': 'End',
+  rerouted: 'New route from here 🔁',
+  'lost.title': "Let's find you",
+  'lost.see': 'Do you see any of these?',
+  'lost.back': 'Back to directions',
+  'arrived.new': 'New destination',
+  'no-route.title': 'No route found',
+  'no-route.no-route': 'This place cannot be reached from here with the current settings.',
+  'no-route.unknown-start': 'We could not find your starting point.',
+  'no-route.unknown-destination': 'We could not find that place.',
+  'no-route.choose': 'Choose another place',
+  'chip.toilet': 'Toilet',
+  'chip.water': 'Water',
+  'chip.atm': 'ATM',
+  'chip.help': 'Help desk',
+} as const;
+
+export type UiKey = keyof typeof ui;
+
+export function tr(key: UiKey, params: Readonly<Record<string, string | number>> = {}): string {
+  return ui[key].replace(/\{(\w+)\}/g, (m, name: string) =>
+    name in params ? String(params[name]) : m,
+  );
+}
+
+export const CATEGORY: Readonly<Record<Room['category'], { emoji: string; label: string }>> = {
+  emergency: { emoji: '🚑', label: 'Emergency' },
+  opd: { emoji: '🩺', label: 'OPD' },
+  lab: { emoji: '🧪', label: 'Lab' },
+  diagnostics: { emoji: '🩻', label: 'Scans & X-ray' },
+  pharmacy: { emoji: '💊', label: 'Pharmacy' },
+  billing: { emoji: '🧾', label: 'Billing' },
+  food: { emoji: '☕', label: 'Food' },
+  admin: { emoji: '🏢', label: 'Admin' },
+  ward: { emoji: '🛏️', label: 'Ward' },
+  classroom: { emoji: '🎓', label: 'Classroom' },
+  office: { emoji: '🗂️', label: 'Office' },
+  staff: { emoji: '🔒', label: 'Staff only' },
+  other: { emoji: '📍', label: 'Other' },
+};

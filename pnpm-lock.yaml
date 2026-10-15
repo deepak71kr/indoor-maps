@@ -17,6 +17,9 @@ importers:
       '@innermap/schema':
         specifier: workspace:*
         version: link:packages/schema
+      '@playwright/test':
+        specifier: ^1.64.1
+        version: 1.64.1
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
@@ -72,6 +75,9 @@ importers:
       '@innermap/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@innermap/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
     devDependencies:
       vite:
         specifier: ^8.3.4
@@ -432,6 +438,11 @@ packages:
 
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
+
+  '@playwright/test@1.64.1':
+    resolution: {integrity: sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@preact/preset-vite@2.10.6':
     resolution: {integrity: sha512-ZZ5RIT2ZVXg8UxRA8VZpoT8CdpDG7RFIqOT4bELqNBp85+HKvQBbgmh3gsoW1UOQXx26TLe+ZRNKI7q281Kckw==}
@@ -1184,6 +1195,16 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
+  playwright-core@1.64.1:
+    resolution: {integrity: sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.64.1:
+    resolution: {integrity: sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   pnpm@10.34.7:
     resolution: {integrity: sha512-upirxYVTmTM3W1lx9LxtbHOhtLftxKh559EC/lQj0eAjCdZ8YKEfBJVQk6luUhrZw7E4zdZUylvlY/N4s65IvQ==}
     engines: {node: '>=18.12'}
@@ -1776,6 +1797,10 @@ snapshots:
   '@keyv/serialize@1.1.1': {}
 
   '@oxc-project/types@0.154.0': {}
+
+  '@playwright/test@1.64.1':
+    dependencies:
+      playwright: 1.64.1
 
   '@preact/preset-vite@2.10.6(@babel/core@7.29.7)(preact@11.0.1)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))':
     dependencies:
@@ -2486,6 +2511,12 @@ snapshots:
   picomatch@2.3.2: {}
 
   picomatch@4.0.7: {}
+
+  playwright-core@1.64.1: {}
+
+  playwright@1.64.1:
+    dependencies:
+      playwright-core: 1.64.1
 
   pnpm@10.34.7: {}
 

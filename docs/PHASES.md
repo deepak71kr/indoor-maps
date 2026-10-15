@@ -93,7 +93,7 @@ A phase is done only when **all** of these are true:
 - [x] `packages/schema`: TypeScript types for `fmt: 0` (levels, nodes, edges, connectors, rooms, amenities, qr), per `PROTOTYPE.md` §4
 - [x] Zod validation for the file (wrong/missing fields → clear error messages)
 - [x] ID rules (unique ids, edges point to existing nodes, connector stops exist on their levels)
-- [x] `samples/demo-hospital/demo.json`, hand-written:
+- [x] `samples/demo-hospital/map.json`, hand-written:
   - 3 floors (Ground, 1, 2), each with a color
   - 1 lift (G, 1, 2), 1 staircase (G–1–2), 1 lift that **skips floor 1** (to test that case)
   - 17 rooms (OPD, Radiology, Pharmacy, Lab, Canteen…), 2 rooms with **2 doors** (Radiology, Emergency)
@@ -154,7 +154,7 @@ A phase is done only when **all** of these are true:
 
 **Done when:** `pnpm route G-MAIN Radiology` prints human-readable steps that **you** read and approve.
 
-- [ ] **Founder approval of the wording** (golden directions in `packages/core/src/directions/build-directions.test.ts`)
+- [x] **Founder approval of the wording** (golden directions in `packages/core/src/directions/build-directions.test.ts`). Approved 2026-10-15 with defaults: landmark names used as admins write them (no automatic "the"); turns stay in CAPITALS for quick scanning.
 
 **Review checkpoint:** both founders read the snapshot outputs aloud. If a sentence sounds robotic, fix the template now.
 
@@ -165,21 +165,30 @@ A phase is done only when **all** of these are true:
 > **In simple words:** the phone experience: open from a QR, choose where to go, follow steps, recover when lost.
 
 **Tasks**
-- [ ] **Design tokens** (`tokens.css`): colors, floor colors, category colors, spacing, radius, dark mode
-- [ ] **SVG icon sheet:** arrows (straight, left, right, slight, U-turn), lift, stairs, toilet, water, ATM, pharmacy, lab, lock, wheelchair, QR
-- [ ] **Tiny store + state machine:** Locating → Choosing → Routing → Navigating ↔ Lost → Arrived (`LOW_LEVEL_DESIGN.md` §6)
-- [ ] **Screens:** Arrive/Search · Step card · Lost · Arrived (mockups in `PROTOTYPE.md` §6)
-- [ ] **Start point** from `/?at=QR-CODE`; no `at` → "Where are you?" (room number / list)
-- [ ] **Search:** by name, room number, category chips; "Nearest 🚻 / 💧"
-- [ ] **♿ Step-free toggle**
-- [ ] **Step navigation:** ✓ I'm here · ← Back · progress dots
-- [ ] **Lost flow:** scan a QR (camera / `BarcodeDetector` where available) · type a room number · "Do you see any of these?" (nearest named dots)
-- [ ] **Re-route to the same destination** when a new QR is opened mid-trip
-- [ ] **Session saved on the phone** (3-hour expiry)
-- [ ] **Accessibility:** buttons ≥ 48 px, contrast ≥ 4.5:1, screen-reader announces each new step
+- [x] **Design tokens** (`tokens.css`): colors, floor colors, category colors, spacing, radius, dark mode
+- [x] **SVG icon sheet:** arrows (straight, left, right, slight, U-turn), lift, stairs, toilet, water, ATM, pharmacy, lab, lock, wheelchair, QR
+- [x] **Tiny store + state machine:** Locating → Choosing → Routing → Navigating ↔ Lost → Arrived (`LOW_LEVEL_DESIGN.md` §6)
+- [x] **Screens:** Arrive/Search · Step card · Lost · Arrived (mockups in `PROTOTYPE.md` §6)
+- [x] **Start point** from `/?at=QR-CODE`; no `at` → "Where are you?" (room number / list)
+- [x] **Search:** by name, room number, category chips; "Nearest 🚻 / 💧"
+- [x] **♿ Step-free toggle**
+- [x] **Step navigation:** ✓ I'm here · ← Back · progress dots
+- [x] **Lost flow:** scan a QR (camera / `BarcodeDetector` where available) · type a room number · "Do you see any of these?" (nearest named dots)
+- [x] **Re-route to the same destination** when a new QR is opened mid-trip
+- [x] **Session saved on the phone** (3-hour expiry)
+- [x] **Accessibility:** buttons ≥ 48 px, contrast ≥ 4.5:1, screen-reader announces each new step
 - [ ] **Test on a real phone** over the same Wi-Fi (`vite --host`) with printed QR codes on your desk/room doors
 
 **Done when:** on a real phone, someone completes: scan → Radiology (other floor) → tap Lost → scan another QR → re-routed → Arrived.
+
+**Status (2026-10-15):** built and verified in a phone-sized headless browser: QR open → search → steps → lost → rescan on another floor → re-routed to the same destination → Arrived; resume after reload; dark mode; no console errors. App shell **11.9 KB**, demo map **1.5 KB**. Remaining: the real-phone test above (needs a founder + phone).
+
+**Decisions made in Phase 4**
+- URL format: `/?site=<site>&at=<QR code>`; `at` is removed from the address after use so a refresh doesn't restart the trip. QR stickers may contain the full link or just the code.
+- In-app scanning uses the browser's built-in BarcodeDetector (Android Chrome), loaded only when tapped (0.3 KB). Elsewhere (iPhone) the visitor scans with the normal camera app.
+- 🚻 Toilet searches toilets + accessible toilets; with ♿ step-free on, accessible toilets only.
+- **Animations move things, never fade them**: a stalled fade-in left the first screen invisible for up to a second in testing.
+- Sample maps live at `samples/<site>/map.json` and are served as `/maps/<site>.json` (stand-in for the CDN until v0).
 
 ---
 

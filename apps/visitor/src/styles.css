@@ -1,13 +1,19 @@
-/* Design tokens — expanded in Phase 4 (see docs/PROJECT_CONTEXT.md §6). */
+/* ---------- Design tokens (docs/PROJECT_CONTEXT.md §6) ---------- */
 :root {
-  --c-brand: #0e7c86;
-  --c-bg: #f7f8fa;
-  --c-text: #1b1f24;
-  --c-muted: #5b6470;
-  --radius: 14px;
-  --space: 16px;
-  font-family:
-    system-ui,
+  --brand: #0b7a80;
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --text: #16202a;
+  --muted: #5a6573;
+  --line: #dde3ea;
+  --danger: #c0352b;
+  --ok: #1d8a4e;
+  --radius: 16px;
+  --gap: 16px;
+  --tap: 52px;
+  --lvl: var(--brand);
+  font:
+    17px/1.45 system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
@@ -17,28 +23,392 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --c-bg: #111418;
-    --c-text: #eef1f4;
-    --c-muted: #9aa4b0;
+    --bg: #0f1419;
+    --surface: #1a2129;
+    --text: #eef2f5;
+    --muted: #a3adb8;
+    --line: #2c3640;
   }
 }
 
-body {
-  margin: 0;
-  background: var(--c-bg);
-  color: var(--c-text);
+/* Each floor has a color used everywhere (badge, step icon, card edge). */
+.lvl-teal {
+  --lvl: #0f8b8d;
+}
+.lvl-amber {
+  --lvl: #b86e00;
+}
+.lvl-violet {
+  --lvl: #7448d0;
+}
+.lvl-blue {
+  --lvl: #2a66d6;
+}
+.lvl-rose {
+  --lvl: #cc3d64;
+}
+.lvl-green {
+  --lvl: #24894f;
+}
+.lvl-orange {
+  --lvl: #d05a22;
+}
+.lvl-slate {
+  --lvl: #546271;
 }
 
+/* ---------- Base ---------- */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
 main {
   max-width: 480px;
   margin: 0 auto;
-  padding: var(--space);
+  padding: var(--gap);
+  min-height: 100vh;
 }
-
 h1 {
-  color: var(--c-brand);
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin: 0.2em 0 0.6em;
+  outline: none;
+}
+h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 1.4em 0 0.5em;
+}
+p {
+  margin: 0 0 0.8em;
+}
+small {
+  color: var(--muted);
+}
+.muted {
+  color: var(--muted);
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  animation: in 0.25s ease-out;
+}
+.center {
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+.row {
+  display: flex;
+  gap: 0.6em;
+}
+.row > * {
+  flex: 1;
+}
+.site {
+  color: var(--brand);
+  font-weight: 600;
+  margin: 0;
 }
 
-p {
-  color: var(--c-muted);
+.icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon.huge {
+  width: 72px;
+  height: 72px;
+  stroke-width: 2.2;
+}
+
+/* ---------- Controls ---------- */
+.btn,
+.item,
+.chip,
+.icon-btn {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: var(--tap);
+  padding: 0 1em;
+  transition: transform 0.1s ease;
+}
+.btn:active,
+.item:active,
+.chip:active {
+  transform: scale(0.98);
+}
+.btn.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+.trip .btn.primary {
+  background: var(--lvl);
+  border-color: var(--lvl);
+}
+.btn.big {
+  min-height: 64px;
+  font-size: 1.15rem;
+}
+.icon-btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+}
+.chip {
+  border-radius: 999px;
+  min-height: 48px;
+}
+
+input[type='text'],
+input[type='search'] {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 0.9em;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search .icon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+}
+.search input {
+  padding-left: 44px;
+}
+h1:focus-visible {
+  outline: none; /* focused by code for screen readers, not by the user */
+}
+:focus-visible:not(h1) {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: var(--tap);
+  cursor: pointer;
+}
+.toggle input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--brand);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+.item {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.place .emoji {
+  font-size: 1.3rem;
+}
+.place .icon {
+  color: var(--muted);
+  width: 18px;
+}
+
+.floor {
+  display: inline-block;
+  padding: 0.15em 0.65em;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--lvl);
+  white-space: nowrap;
+}
+
+.here {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--muted);
+  margin: 0;
+}
+.error {
+  color: var(--danger);
+  min-height: 1em;
+  margin: 0;
+}
+.hint {
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  color: var(--muted);
+}
+.notice {
+  background: color-mix(in srgb, var(--lvl) 14%, var(--surface));
+  border-radius: var(--radius);
+  padding: 0.6em 0.9em;
+}
+
+/* ---------- Trip ---------- */
+.trip-head {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.dots {
+  display: flex;
+  gap: 4px;
+}
+.dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.dots i.on {
+  background: var(--lvl);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.4em;
+  border-top: 6px solid var(--lvl);
+}
+.step {
+  text-align: center;
+  animation: in 0.25s ease-out;
+}
+.step-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  color: var(--lvl);
+  background: color-mix(in srgb, var(--lvl) 12%, var(--surface));
+  margin-bottom: 0.6em;
+}
+.step-text {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* ---------- Scanner ---------- */
+.scan {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  padding: 1em;
+  z-index: 10;
+}
+.scan-frame {
+  width: min(80vw, 360px);
+  aspect-ratio: 1;
+  border: 3px solid #fff;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.scan-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Movement only, never opacity: if an animation stalls on a slow phone, content stays visible. */
+@keyframes in {
+  from {
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.code-form > input {
+  flex: 1 1 auto;
+}
+.code-form > .btn {
+  flex: 0 0 auto;
+  min-width: 88px;
+}
+.link {
+  font: inherit;
+  color: var(--brand);
+  background: none;
+  border: none;
+  min-height: 48px;
+  padding: 0 0.4em;
+  font-weight: 600;
+  cursor: pointer;
 }

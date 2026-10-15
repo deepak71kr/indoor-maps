@@ -161,6 +161,7 @@ What makes apps heavy is images, fonts and libraries, not good design.
 
 **Rules for future animations:**
 - Animate only `transform` + `opacity` (runs smoothly on cheap phones).
+- **Never hide content behind an animation** (no fade-in from opacity 0): if the animation stalls on a slow phone, the screen stays blank. Learned in Phase 4.
 - Route line "draws itself" in CSS on the SVG map sketch.
 - **Avoid:** Lottie (~60 KB), blur/glass effects, heavy shadows.
 - Respect the phone's **reduce motion** setting.

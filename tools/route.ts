@@ -15,7 +15,7 @@ import { buildDirections, findRoute, loadSite } from '@innermap/core';
 import type { Amenity } from '@innermap/schema';
 import { formatIssues, validateMapFile } from '@innermap/schema/validate';
 
-const DEFAULT_MAP = 'samples/demo-hospital/demo.json';
+const DEFAULT_MAP = 'samples/demo-hospital/map.json';
 
 function main(argv: readonly string[]): number {
   const flags = new Set(argv.filter((a) => a.startsWith('--') && !a.startsWith('--map')));

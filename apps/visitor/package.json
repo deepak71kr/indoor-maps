@@ -8,10 +8,11 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json"
   },
   "dependencies": {
-    "@innermap/core": "workspace:*"
+    "@innermap/core": "workspace:*",
+    "@innermap/schema": "workspace:*"
   },
   "devDependencies": {
     "vite": "^8.3.4"
