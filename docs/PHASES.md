@@ -197,15 +197,34 @@ A phase is done only when **all** of these are true:
 > **In simple words:** make sure it's tiny, works without internet, and feels smooth on a cheap phone.
 
 **Tasks**
-- [ ] **Hand-written service worker:** precache app shell; map file network-first (2 s timeout) → cached copy
-- [ ] **Update flow:** new app version → applied on next open (no broken half-updates)
-- [ ] **Size check:** app shell ≤ 35 KB, demo map ≤ 15 KB compressed; **total first visit ≤ 50 KB**
-- [ ] **Playwright tests:**
+- [x] **Hand-written service worker:** precache app shell; map file network-first (2 s timeout) → cached copy
+- [x] **Update flow:** new app version → applied on next open (no broken half-updates)
+- [x] **Size check:** app shell ≤ 35 KB, demo map ≤ 15 KB compressed; **total first visit ≤ 50 KB**
+- [x] **Playwright tests:**
   - Full trip on a **simulated slow 3G/2G network + 4× slower CPU**
   - Second visit with the **network off** → still navigates
 - [ ] **Real cheap Android phone test** (~₹6–8k phone), mobile data limited, then airplane mode
 
 **Done when:** all Playwright tests pass and the cheap-phone test feels instant after the first load.
+
+**Status (2026-10-15):** done except the real cheap-phone test (needs a founder + phone).
+
+| Measure | Result |
+|---|---|
+| App shell (incl. service worker) | **12.9 KB** / 35 KB |
+| First visit (shell + Demo Hospital map) | **14.4 KB** / 50 KB |
+| First screen on simulated 2G (800 ms RTT, 250 kbit/s) + 4× slower CPU | **≈ 3.3 s** (was 4.1 s before the map preload); test fails above 8 s |
+| Second visit in airplane mode | Works: QR link opens, routes, arrives |
+| Deploy of a new version | Open #1 after deploy: old version keeps working while the new one installs. Open #2: new version |
+
+**Bugs found and fixed in Phase 5**
+- **Offline was completely broken** until the airplane-mode test caught it: the server sends `Vary: Origin`, so the page's script requests never matched what the service worker had saved. The service worker now ignores `Vary` (our files are versioned by name).
+- First visit didn't save the map (the service worker starts after the page downloaded it). The page now saves it itself.
+- The precache list missed `index.html` (plugin ran before Vite emitted it).
+- The cache version came from file names only, so an edited `index.html` would never update. It now comes from file contents.
+- New versions only arrived on the 3rd open after a deploy. The app now asks for an update check on every open.
+
+**Decisions:** the map download starts from a tiny inline script in `index.html`, in parallel with the app's JavaScript (one map download confirmed, no double fetch). Browser tests run in a separate CI job (`e2e`).
 
 ---
 

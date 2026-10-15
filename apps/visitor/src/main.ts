@@ -12,6 +12,7 @@ import { loadTrip, persistTrip } from './app/session';
 import { initialState } from './app/state';
 import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
+import { registerServiceWorker, saveMap } from './infra/offline';
 import { installIcons } from './ui/icons';
 import { view } from './ui/views';
 import './styles.css';
@@ -78,13 +79,16 @@ const scanner: (() => void) | null =
 // ---------- boot ----------
 async function boot(): Promise<void> {
   installIcons();
+  if (import.meta.env.PROD) registerServiceWorker();
   render();
   store.subscribe(render);
 
   let map: MapFile;
   try {
-    const response = await fetch(`/maps/${siteId}.json`);
+    const mapUrl = `/maps/${siteId}.json`;
+    const response = await fetch(mapUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    void saveMap(mapUrl, response.clone());
     map = (await response.json()) as MapFile;
     if (map.fmt !== FORMAT_VERSION) throw new Error(`Unsupported map format ${String(map.fmt)}`);
   } catch (error) {

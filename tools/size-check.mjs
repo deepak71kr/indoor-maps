@@ -1,5 +1,6 @@
 // Fails the build if the visitor app or a map file grows past its budget.
-// Budgets: docs/LOW_LEVEL_DESIGN.md §14 — app shell ≤ 35 KB, each map file ≤ 15 KB (brotli).
+// Budgets: docs/LOW_LEVEL_DESIGN.md §14 — app shell ≤ 35 KB, each map file ≤ 15 KB,
+// first visit (shell + largest map) ≤ 50 KB — all brotli-compressed.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { brotliCompressSync, constants } from 'node:zlib';
@@ -7,6 +8,7 @@ import { brotliCompressSync, constants } from 'node:zlib';
 const DIST = 'apps/visitor/dist';
 const SHELL_BUDGET = 35 * 1024;
 const MAP_BUDGET = 15 * 1024;
+const FIRST_VISIT_BUDGET = 50 * 1024;
 const COUNTED = /\.(html|js|css|svg|json|webmanifest)$/;
 
 function listFiles(dir) {
@@ -57,6 +59,17 @@ if (maps.length > 0) {
       failed = true;
     }
   }
+}
+
+const largestMap = Math.max(0, ...maps.map((r) => r.br));
+const firstVisit = shellTotal + largestMap;
+console.log(
+  `
+First visit (shell + largest map)        ${kb(firstVisit).padStart(9)}  / budget ${kb(FIRST_VISIT_BUDGET)}`,
+);
+if (firstVisit > FIRST_VISIT_BUDGET) {
+  console.error(`✖ First visit over budget by ${kb(firstVisit - FIRST_VISIT_BUDGET)}.`);
+  failed = true;
 }
 
 if (failed) process.exit(1);

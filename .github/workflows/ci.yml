@@ -22,3 +22,22 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm size
+
+  e2e:
+    # Built app in a real (headless) browser: 2G + slow CPU trip, airplane mode, resume.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @innermap/visitor exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: apps/visitor/test-results/

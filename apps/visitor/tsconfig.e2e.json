@@ -1,0 +1,9 @@
+{
+  // Playwright tests and config run in Node and drive a browser.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

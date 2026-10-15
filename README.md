@@ -41,4 +41,5 @@ pnpm dev            # visitor on :5173 (also on your LAN for phone testing), edi
 | `pnpm build`             | Build both apps                                                             |
 | `pnpm size`              | Fail if the visitor app is over 35 KB compressed                            |
 | `pnpm check`             | Everything above, as CI runs it                                             |
+| `pnpm e2e`               | Browser tests of the built app: 2G + slow CPU trip, airplane mode, resume   |
 | `pnpm route <from> <to>` | Try a route on the demo map, e.g. `pnpm route G-MAIN Radiology --step-free` |
