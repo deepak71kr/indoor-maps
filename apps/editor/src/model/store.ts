@@ -65,6 +65,8 @@ export interface EditorState {
   readonly shapeKind: ShapeKind;
   readonly test: RouteTest;
   readonly focus: Focus | null;
+  /** Counts New / Import / Load demo, so the canvas re-frames a freshly loaded map. */
+  readonly loads: number;
 }
 
 export interface EditorStore {
@@ -102,6 +104,7 @@ export function createEditorStore(doc: MapFile): EditorStore {
     shapeKind: 'room',
     test: { from: null, to: null, stepFree: false },
     focus: null,
+    loads: 0,
   };
   const listeners = new Set<() => void>();
   const set = (next: EditorState) => {
@@ -126,8 +129,10 @@ export function createEditorStore(doc: MapFile): EditorStore {
     },
     undo: () => applied(undo(state.doc, state.history)),
     redo: () => applied(redo(state.doc, state.history)),
-    load: (label, next) =>
-      applied(execute(state.doc, state.history, replaceDocument(label, state.doc, next))),
+    load(label, next) {
+      const result = execute(state.doc, state.history, replaceDocument(label, state.doc, next));
+      if (result) set({ ...state, ...result, loads: state.loads + 1 });
+    },
     setLevel: (levelId) => set({ ...state, levelId, selection: null, pathFrom: null }),
     setTool: (tool) => set({ ...state, tool, pathFrom: null, pickDoorFor: null }),
     select: (selection) => set({ ...state, selection }),

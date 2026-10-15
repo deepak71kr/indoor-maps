@@ -104,7 +104,7 @@ export function Canvas() {
   useEffect(() => {
     setView(fit(doc, level, image ?? null, size));
     setMeasure(null);
-  }, [levelId, image, level?.pxPerMeter, size.w > 0 && size.h > 0]);
+  }, [levelId, image, level?.pxPerMeter, size.w > 0 && size.h > 0, state.loads]);
 
   useEffect(() => {
     if (tool !== 'scale') setMeasure(null);

@@ -3,7 +3,9 @@ import type { Page } from '@playwright/test';
 /** Screen position of a map point (meters) on the canvas, from the canvas transform. */
 export async function screen(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
   return page.evaluate(
-    ([wx, wy]) => {
+    async ([wx, wy]) => {
+      // The canvas re-frames one effect after a floor switch or load: let it settle first.
+      for (let i = 0; i < 3; i++) await new Promise((r) => requestAnimationFrame(r));
       const svg = document.querySelector('.canvas svg');
       const g = svg?.querySelector(':scope > g');
       const m = /translate\(([-\d.e]+) ([-\d.e]+)\) scale\(([-\d.e]+)\)/.exec(

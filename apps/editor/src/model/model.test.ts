@@ -133,6 +133,7 @@ describe('editor store', () => {
     store.load('New project', newProject());
     expect(store.getState().levelId).toBe('G');
     expect(store.getState().doc.nodes).toHaveLength(0);
+    expect(store.getState().loads).toBe(1); // the canvas re-frames on this, even on the same floor id
     store.undo();
     expect(store.getState().doc.nodes.length).toBeGreaterThan(0);
   });
