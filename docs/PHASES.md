@@ -59,6 +59,7 @@ A phase is done only when **all** of these are true:
 - [ ] No `any`, no shortcuts that break the layer rules (core never imports browser code)
 - [ ] Docs updated if a decision changed (`PROJECT_CONTEXT.md` / `LOW_LEVEL_DESIGN.md`)
 - [ ] Committed with a clear message
+- [ ] **Pushed to GitHub and CI is green** (`git push`, then check the Actions tab)
 
 ---
 
@@ -75,7 +76,7 @@ A phase is done only when **all** of these are true:
 - [x] `apps/editor`: Vite + Preact "Hello" page
 - [x] `tools/size-check.mjs`: compresses the visitor build and **fails above 35 KB**
 - [x] Root scripts: `pnpm dev`, `pnpm test`, `pnpm lint`, `pnpm size`, `pnpm build`
-- [ ] GitHub repo + GitHub Actions running lint → test → size → build *(workflow ready in `.github/workflows/ci.yml`; waiting for a GitHub remote)*
+- [x] GitHub repo + GitHub Actions running lint → test → size → build ([deepak71kr/indoor-maps](https://github.com/deepak71kr/indoor-maps), first CI run green)
 - [x] Short `README.md` pointing to the design docs
 
 **Done when:** `pnpm dev` opens both apps, CI is green, and a deliberately oversized file makes the size check fail.
