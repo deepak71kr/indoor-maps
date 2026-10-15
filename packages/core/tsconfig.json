@@ -1,0 +1,5 @@
+{
+  // lib has no DOM and types has no node: core must stay free of browser and server APIs.
+  "extends": "../../tsconfig.base.json",
+  "include": ["src"]
+}

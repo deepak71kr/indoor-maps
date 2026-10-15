@@ -1,0 +1,22 @@
+{
+  "name": "@innermap/editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Drag-and-drop map editor (Preact).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@innermap/core": "workspace:*",
+    "@innermap/schema": "workspace:*",
+    "preact": "^11.0.1"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "vite": "^8.3.4"
+  }
+}

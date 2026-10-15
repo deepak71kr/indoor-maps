@@ -1,0 +1,44 @@
+/* Design tokens — expanded in Phase 4 (see docs/PROJECT_CONTEXT.md §6). */
+:root {
+  --c-brand: #0e7c86;
+  --c-bg: #f7f8fa;
+  --c-text: #1b1f24;
+  --c-muted: #5b6470;
+  --radius: 14px;
+  --space: 16px;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #111418;
+    --c-text: #eef1f4;
+    --c-muted: #9aa4b0;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space);
+}
+
+h1 {
+  color: var(--c-brand);
+}
+
+p {
+  color: var(--c-muted);
+}

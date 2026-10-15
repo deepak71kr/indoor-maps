@@ -1,0 +1,19 @@
+{
+  "name": "@innermap/visitor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Ultra-light visitor navigation app (plain TypeScript, no framework).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@innermap/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}

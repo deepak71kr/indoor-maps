@@ -1,0 +1,16 @@
+{
+  "name": "@innermap/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure domain logic: graph, routing, directions. No browser or server code.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@innermap/schema": "workspace:*"
+  }
+}
