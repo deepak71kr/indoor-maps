@@ -21,7 +21,7 @@ import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
 import { registerServiceWorker, saveMap } from './infra/offline';
 import { installIcons } from './ui/icons';
-import { applyTextSize, offerCompass, setLiveHeading, view } from './ui/views';
+import { applyTextSize, loadTripScreens, offerCompass, setLiveHeading, view } from './ui/views';
 import { CALIBRATE_WINDOW_MS, northOffset, toMapHeading } from './app/heading';
 import { startCompass } from './infra/compass';
 import './styles.css';
@@ -138,6 +138,8 @@ async function boot(): Promise<void> {
   if (import.meta.env.PROD) registerServiceWorker();
   render();
   store.subscribe(render);
+  // The trip screens (card, preview, walking) arrive right after the first screen.
+  setTimeout(() => void loadTripScreens(render), 0);
 
   let map: MapFile;
   try {

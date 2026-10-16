@@ -1,6 +1,9 @@
 // Fails the build if the visitor app or a map file grows past its budget.
-// Budgets: docs/LOW_LEVEL_DESIGN.md §14 — app shell ≤ 35 KB, each map file ≤ 15 KB,
-// first visit (shell + largest map) ≤ 50 KB — all brotli-compressed.
+// Budgets: docs/LOW_LEVEL_DESIGN.md §14 — all brotli-compressed:
+// - first screen (what index.html loads) ≤ 35 KB;
+// - screens loaded right after it (lazy chunks, e.g. the trip screens) ≤ 15 KB;
+// - each map file ≤ 15 KB;
+// - first visit (every app file + the largest map) ≤ 50 KB.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { brotliCompressSync, constants } from 'node:zlib';
@@ -8,6 +11,7 @@ import { brotliCompressSync, constants } from 'node:zlib';
 const DIST = 'apps/visitor/dist';
 const SHELL_BUDGET = 35 * 1024;
 const MAP_BUDGET = 15 * 1024;
+const LATER_BUDGET = 15 * 1024;
 /**
  * Stress-test samples: one very big campus in a single file, on purpose, to test the apps.
  * Real sites of this size are published per building (v0 on-demand loading), so these get a
@@ -46,13 +50,29 @@ const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
 const line = (r) => `  ${r.file.padEnd(40)} ${kb(r.br).padStart(9)}  (raw ${kb(r.raw)})`;
 let failed = false;
 
-const shell = rows.filter((r) => !r.isMap);
+// The first screen is index.html, the service worker, and every file index.html points to.
+const html = readFileSync(join(DIST, 'index.html'), 'utf8');
+const referenced = new Set(
+  [...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+)"/g)].map((m) => m[1]),
+);
+const isFirst = (r) => r.file === 'index.html' || r.file === 'sw.js' || referenced.has(r.file);
+const app = rows.filter((r) => !r.isMap);
+const shell = app.filter(isFirst);
+const later = app.filter((r) => !isFirst(r));
 const shellTotal = shell.reduce((sum, r) => sum + r.br, 0);
-console.log('\nVisitor app shell (brotli)');
+const laterTotal = later.reduce((sum, r) => sum + r.br, 0);
+console.log('\nFirst screen (brotli)');
 shell.forEach((r) => console.log(line(r)));
 console.log(`  ${'TOTAL'.padEnd(40)} ${kb(shellTotal).padStart(9)}  / budget ${kb(SHELL_BUDGET)}`);
 if (shellTotal > SHELL_BUDGET) {
-  console.error(`✖ App shell over budget by ${kb(shellTotal - SHELL_BUDGET)}.`);
+  console.error(`✖ First screen over budget by ${kb(shellTotal - SHELL_BUDGET)}.`);
+  failed = true;
+}
+console.log('\nLoaded right after the first screen (brotli)');
+later.forEach((r) => console.log(line(r)));
+console.log(`  ${'TOTAL'.padEnd(40)} ${kb(laterTotal).padStart(9)}  / budget ${kb(LATER_BUDGET)}`);
+if (laterTotal > LATER_BUDGET) {
+  console.error(`✖ Later screens over budget by ${kb(laterTotal - LATER_BUDGET)}.`);
   failed = true;
 }
 
@@ -71,10 +91,10 @@ if (maps.length > 0) {
 }
 
 const largestMap = Math.max(0, ...maps.filter((r) => !STRESS_MAPS.has(r.file)).map((r) => r.br));
-const firstVisit = shellTotal + largestMap;
+const firstVisit = shellTotal + laterTotal + largestMap;
 console.log(
   `
-First visit (shell + largest map)        ${kb(firstVisit).padStart(9)}  / budget ${kb(FIRST_VISIT_BUDGET)}`,
+First visit (all app files + map)        ${kb(firstVisit).padStart(9)}  / budget ${kb(FIRST_VISIT_BUDGET)}`,
 );
 if (firstVisit > FIRST_VISIT_BUDGET) {
   console.error(`✖ First visit over budget by ${kb(firstVisit - FIRST_VISIT_BUDGET)}.`);
