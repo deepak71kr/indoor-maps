@@ -70,8 +70,31 @@ export const AMENITY_KINDS = [
  * - `lift` / `stairs`: shaft or stairwell box.
  * - `void`: courtyard, atrium, shaft — not walkable, drawn grey.
  * - `wall`: an extra wall line (open polyline) not covered by an outline.
+ *
+ * Outdoors (Phase 10 — campus view), drawn on a shared level:
+ * - `building`: a building footprint; linked to a `buildings[]` entry for its name and floors.
+ * - `road`: roads and paved paths.  `green`: lawns, gardens.  `parking`: parking areas.
  */
-export const SHAPE_KINDS = ['floor', 'room', 'lift', 'stairs', 'void', 'wall'] as const;
+export const SHAPE_KINDS = [
+  'floor',
+  'room',
+  'lift',
+  'stairs',
+  'void',
+  'wall',
+  'building',
+  'road',
+  'green',
+  'parking',
+] as const;
+
+/** Shape kinds that describe the outdoors (campus view) rather than a building's inside. */
+export const OUTDOOR_SHAPE_KINDS: ReadonlySet<string> = new Set([
+  'building',
+  'road',
+  'green',
+  'parking',
+]);
 
 /** `public` = anyone can navigate there; `locked` = shown with 🔒, route ends at the door. */
 export const VISIBILITIES = ['public', 'locked'] as const;

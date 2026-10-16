@@ -5,7 +5,8 @@ import type { Graph, GraphEdge, GraphLevel, GraphNode } from './types';
  * Turns a (validated) map file into a routable graph:
  * - same-floor edges get their length from node positions; two-way edges become two directed edges;
  * - a lift joins EVERY pair of its stops (you ride G → 4 directly, even past skipped floors);
- * - stairs join only neighbouring stops (you climb flight by flight).
+ * - stairs join only neighbouring stops (you climb flight by flight);
+ * - on a campus, floors are counted within one building: its own levels plus the shared ones.
  */
 export function buildGraph(map: MapFile): Graph {
   const levels: GraphLevel[] = [...map.levels]
@@ -16,8 +17,21 @@ export function buildGraph(map: MapFile): Graph {
       ord: level.ord,
       color: level.color,
       rank,
+      ...(level.building !== undefined && { building: level.building }),
     }));
-  const rankOf = new Map(levels.map((l) => [l.id, l.rank]));
+  const levelById = new Map(levels.map((l) => [l.id, l]));
+  /** Floors between two levels of the same building (skipped ones count, shared ones too). */
+  const floorsBetween = (a: string, b: string): number => {
+    const la = levelById.get(a);
+    const lb = levelById.get(b);
+    if (!la || !lb) return 0;
+    const building = la.building ?? lb.building;
+    const [low, high] = la.ord < lb.ord ? [la.ord, lb.ord] : [lb.ord, la.ord];
+    return levels.filter(
+      (l) => (l.building === undefined || l.building === building) && l.ord > low && l.ord <= high,
+    ).length;
+  };
+  const ordOf = new Map(levels.map((l) => [l.id, l.ord]));
 
   const nodes = new Map<string, GraphNode>();
   for (const n of map.nodes) {
@@ -55,8 +69,8 @@ export function buildGraph(map: MapFile): Graph {
   }
 
   for (const connector of map.connectors) {
-    for (const [a, b] of connectorPairs(connector, rankOf)) {
-      const floors = Math.abs((rankOf.get(a.level) ?? 0) - (rankOf.get(b.level) ?? 0));
+    for (const [a, b] of connectorPairs(connector, ordOf)) {
+      const floors = floorsBetween(a.level, b.level);
       const base = {
         kind: connector.kind,
         length: lengthBetween(a.node, b.node),
@@ -87,11 +101,11 @@ interface Stop {
 
 function connectorPairs(
   connector: Connector,
-  rankOf: ReadonlyMap<string, number>,
+  ordOf: ReadonlyMap<string, number>,
 ): Array<readonly [Stop, Stop]> {
   const stops: Stop[] = Object.entries(connector.stops)
     .map(([level, node]) => ({ level, node }))
-    .sort((a, b) => (rankOf.get(a.level) ?? 0) - (rankOf.get(b.level) ?? 0));
+    .sort((a, b) => (ordOf.get(a.level) ?? 0) - (ordOf.get(b.level) ?? 0));
 
   const pairs: Array<readonly [Stop, Stop]> = [];
   if (connector.kind === 'stairs') {

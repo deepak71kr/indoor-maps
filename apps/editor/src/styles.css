@@ -759,3 +759,44 @@ select {
   background: color-mix(in srgb, var(--brand) 12%, #fff);
   font-weight: 600;
 }
+
+/* ---------- Phase 10: campus outlines ---------- */
+.shape.building {
+  fill: rgb(107 119 133 / 0.22);
+  stroke-width: 2.5;
+}
+.shape.road {
+  fill: rgb(255 255 255 / 0.7);
+  stroke: #b4bcc6;
+  stroke-width: 1;
+}
+.shape.green {
+  fill: rgb(76 175 80 / 0.25);
+  stroke: rgb(76 175 80 / 0.6);
+  stroke-width: 1;
+}
+.shape.parking {
+  fill: rgb(107 119 133 / 0.15);
+  stroke-dasharray: 4 3;
+}
+.shape.ghost {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.building-list {
+  list-style: none;
+  margin: 0 0 0.5em;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+.building-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.building-list input {
+  flex: 1;
+  min-width: 0;
+}

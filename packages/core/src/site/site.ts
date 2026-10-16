@@ -1,5 +1,6 @@
-import type { Amenity, MapFile, QrAnchor, Room } from '@innermap/schema';
+import type { Amenity, Building, MapFile, QrAnchor, Room } from '@innermap/schema';
 import { buildGraph } from '../graph/build-graph';
+import { containsPoint } from '../plan/plan';
 import type { Graph } from '../graph/types';
 import type { RouterOptions } from '../routing/router';
 import { Router } from '../routing/router';
@@ -17,6 +18,11 @@ export interface Site {
   findRoom(query: string): Room | undefined;
   /** All amenities of the given kinds. */
   amenitiesOfKind(kinds: readonly Amenity['kind'][]): readonly Amenity[];
+  /**
+   * The building a dot is in: its floor's building, or on a shared level the footprint it
+   * stands in. Undefined outdoors and on sites without buildings.
+   */
+  buildingAt(nodeId: string): Building | undefined;
 }
 
 /** Expects a map that already passed `validateMapFile`. */
@@ -35,6 +41,22 @@ export function loadSite(map: MapFile, options: RouterOptions = {}): Site {
   for (const r of map.rooms) index(r.number, r);
   for (const r of map.rooms) index(r.name, r);
 
+  const buildings = new Map((map.buildings ?? []).map((b) => [b.id, b]));
+  const levelBuilding = new Map(map.levels.map((l) => [l.id, l.building]));
+  const footprints = map.levels.flatMap((level) =>
+    (level.shapes ?? [])
+      .filter((shape) => shape.kind === 'building' && shape.building !== undefined)
+      .map((shape) => ({ level: level.id, shape })),
+  );
+  const buildingAt = (nodeId: string): Building | undefined => {
+    const node = graph.nodes.get(nodeId);
+    if (!node || buildings.size === 0) return undefined;
+    const own = levelBuilding.get(node.level);
+    if (own !== undefined) return buildings.get(own);
+    const around = footprints.find((f) => f.level === node.level && containsPoint(f.shape, node));
+    return around?.shape.building === undefined ? undefined : buildings.get(around.shape.building);
+  };
+
   return {
     map,
     graph,
@@ -43,5 +65,6 @@ export function loadSite(map: MapFile, options: RouterOptions = {}): Site {
     findQr: (code) => qr.get(code.trim().toUpperCase()),
     findRoom: (query) => rooms.get(query.trim().toLowerCase()),
     amenitiesOfKind: (kinds) => map.amenities.filter((a) => kinds.includes(a.kind)),
+    buildingAt,
   };
 }

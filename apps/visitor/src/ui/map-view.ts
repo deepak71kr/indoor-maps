@@ -9,8 +9,18 @@
  *   so text stays upright and readable at any zoom and rotation.
  */
 import type { Point, Site } from '@innermap/core';
-import { boundsOf, doorGaps, labelPoint, routeLines, shapePoints } from '@innermap/core';
+import {
+  boundsOf,
+  containsPoint,
+  doorGaps,
+  labelPoint,
+  projectOnSegment,
+  routeLines,
+  shapePoints,
+  shapeSides,
+} from '@innermap/core';
 import type { Amenity, Room, Shape } from '@innermap/schema';
+import { OUTDOOR_SHAPE_KINDS } from '@innermap/schema';
 import { tr } from '../app/i18n';
 import type { MapScene } from '../app/map-scene';
 import { h } from './dom';
@@ -29,6 +39,10 @@ interface Pin {
   readonly el: SVGGElement;
   /** Room labels: texts to try, longest first, and the outline they must fit in. */
   readonly fit?: { readonly texts: readonly string[]; readonly box: readonly Point[] };
+  /** Degrees on the plan (0 = up): the icon turns with the map, e.g. an entrance arrow. */
+  readonly angle?: number;
+  /** Campus maps: building names show zoomed out, room names zoomed in. */
+  readonly zoom?: 'far' | 'near';
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -39,6 +53,10 @@ const MIN_EXTENT = 34;
 /** Pixels per meter when framing: big screens show more of the building, not bigger rooms. */
 const FIT_MAX_SCALE = 16;
 const CHAR_PX = 6.6;
+/** Below this many pixels per meter a campus shows buildings, not their insides. */
+const FAR_SCALE = 4.5;
+/** A tap moves the finger less than this (pixels); more is a drag. */
+const TAP_PX = 8;
 
 const AMENITY_EMOJI: Readonly<Record<Amenity['kind'], string>> = {
   toilet: '🚻',
@@ -95,6 +113,12 @@ export class MapView {
   private pins: Pin[] = [];
   private markers: Pin[] = [];
   private pointers = new Map<number, Point>();
+  private travel = 0;
+  /** Shown level has building footprints: switch between campus and inside views by zoom. */
+  private campus = false;
+  private footprints: Shape[] = [];
+  /** A building the visitor tapped: the floor picker lists its floors. */
+  private building: string | null = null;
   private queued = false;
   private animation = 0;
 
@@ -145,7 +169,10 @@ export class MapView {
 
   /** Show a scene; cheap to call on every render. */
   update(scene: MapScene): void {
-    if (scene.levelId !== this.scene?.levelId) this.browsing = null;
+    if (scene.levelId !== this.scene?.levelId) {
+      this.browsing = null;
+      this.building = null;
+    }
     this.scene = scene;
     const levelId = this.browsing ?? scene.levelId;
     if (levelId !== this.shownLevel) this.buildLevel(levelId);
@@ -175,7 +202,19 @@ export class MapView {
     const shapes = level?.shapes ?? [];
     const nodes = [...site.graph.nodes.values()].filter((n) => n.level === levelId);
     const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
-    this.svg.setAttribute('aria-label', tr('map.label', { floor: level?.name ?? '' }));
+    const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
+    this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
+    this.footprints = shapes.filter((shape) => shape.kind === 'building');
+    this.campus = this.footprints.length > 0;
+
+    // On a building's own floor, the campus around it, faded, so the visitor sees where it is.
+    if (level?.building !== undefined) {
+      for (const shape of campusShapes(site)) {
+        const el = this.shapeEl(shape, rooms);
+        el.classList.add('ghost');
+        this.plan.append(el);
+      }
+    }
 
     if (shapes.length > 0) {
       for (const shape of shapes) this.plan.append(this.shapeEl(shape, rooms));
@@ -196,6 +235,11 @@ export class MapView {
     // Labels: outlined rooms at their centre, others next to their first door.
     const outlined = new Set<string>();
     for (const shape of shapes) {
+      const building = shape.building ? buildings.get(shape.building) : undefined;
+      if (building) {
+        this.addLabel(labelPoint(shape), [building.name], shapePoints(shape), 'label big', 'far');
+        continue;
+      }
       const room = shape.room ? rooms.get(shape.room) : undefined;
       if (room) outlined.add(room.id);
       const texts = room
@@ -207,8 +251,11 @@ export class MapView {
         labelPoint(shape),
         texts.filter(Boolean).map((t) => lock + t),
         shapePoints(shape),
+        'label',
+        OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'near',
       );
     }
+    this.addEntranceArrows(nodes);
     for (const room of site.map.rooms) {
       const door = site.graph.nodes.get(room.doors[0] ?? '');
       if (outlined.has(room.id) || door?.level !== levelId) continue;
@@ -233,24 +280,81 @@ export class MapView {
 
   private shapeEl(shape: Shape, rooms: ReadonlyMap<string, Room>): SVGElement {
     const points = flat(shapePoints(shape));
-    if (shape.kind === 'wall') return s('polyline', { class: 'wall', points });
+    // "in": a building's inside, hidden on a zoomed-out campus.
+    const inside = OUTDOOR_SHAPE_KINDS.has(shape.kind) ? '' : ' in';
+    if (shape.kind === 'wall') return s('polyline', { class: `wall${inside}`, points });
     const room = shape.room ? rooms.get(shape.room) : undefined;
     const cls = room
       ? `room cat-${room.category}${room.visibility === 'locked' ? ' locked' : ''}`
       : shape.kind;
-    return s('polygon', { class: cls, points });
+    return s('polygon', { class: cls + inside, points });
   }
 
-  private addLabel(p: Point, texts: string[], box?: readonly Point[]): void {
-    const g = s('g', { class: 'label' });
+  private addLabel(
+    p: Point,
+    texts: string[],
+    box?: readonly Point[],
+    cls = 'label',
+    zoom?: 'far' | 'near',
+  ): void {
+    const g = s('g', { class: cls });
     g.append(s('text', { y: 4 }, texts[0]));
     this.overlay.append(g);
-    this.pins.push(box ? { p, el: g, fit: { texts, box } } : { p, el: g });
+    this.pins.push({ p, el: g, ...(box && { fit: { texts, box } }), ...(zoom && { zoom }) });
+  }
+
+  /** An arrow just outside every building entrance, pointing in. */
+  private addEntranceArrows(nodes: ReadonlyArray<Point & { readonly kind: string }>): void {
+    for (const node of nodes) {
+      if (node.kind !== 'entrance') continue;
+      for (const shape of this.footprints) {
+        for (const [a, b] of shapeSides(shape)) {
+          const { point } = projectOnSegment(node, a, b);
+          if (Math.hypot(point.x - node.x, point.y - node.y) > 0.4) continue;
+          const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+          let n = { x: -(b.y - a.y) / length, y: (b.x - a.x) / length };
+          if (!containsPoint(shape, { x: point.x + n.x, y: point.y + n.y })) {
+            n = { x: -n.x, y: -n.y };
+          }
+          const g = s('g', { class: 'entry' });
+          g.append(s('path', { d: 'M0-8 7 5 0 1-7 5Z' }));
+          this.overlay.append(g);
+          const angle = (Math.atan2(n.x, -n.y) * 180) / Math.PI;
+          this.pins.push({ p: { x: point.x - n.x * 2, y: point.y - n.y * 2 }, el: g, angle });
+        }
+      }
+    }
+  }
+
+  /** "Block A · Floor 2" on a campus, just "Floor 2" otherwise. */
+  private levelName(levelId: string): string {
+    const site = this.scene?.site;
+    const level = site?.map.levels.find((l) => l.id === levelId);
+    const building = level?.building
+      ? site?.map.buildings?.find((b) => b.id === level.building)
+      : undefined;
+    return building ? `${building.name} · ${level?.name ?? ''}` : (level?.name ?? '');
   }
 
   private fillPicker(scene: MapScene, levelId: string): void {
-    const levels = [...scene.site.graph.levels].reverse();
-    const signature = `${scene.levelId}|${levels.length}`;
+    // On a campus: the shared levels plus the floors of one building — the one tapped, else the
+    // one being looked at, else the one the visitor is in.
+    const shown = scene.site.graph.levels.find((l) => l.id === levelId);
+    const building =
+      this.building ??
+      shown?.building ??
+      (scene.here ? scene.site.buildingAt(scene.here)?.id : undefined) ??
+      null;
+    const levels = [...scene.site.graph.levels]
+      .filter(
+        (l) =>
+          l.building === undefined ||
+          l.building === building ||
+          l.id === scene.levelId ||
+          l.id === levelId,
+      )
+      .reverse();
+    const signature = `${scene.levelId}|${building ?? ''}|${levels.length}`;
     if (this.picker.dataset['for'] !== signature) {
       this.picker.dataset['for'] = signature;
       this.picker.replaceChildren(
@@ -258,7 +362,9 @@ export class MapView {
           h(
             'option',
             { value: l.id },
-            l.id === scene.levelId ? `${l.name} · ${tr('map.you-short')}` : l.name,
+            l.id === scene.levelId
+              ? `${this.levelName(l.id)} · ${tr('map.you-short')}`
+              : this.levelName(l.id),
           ),
         ),
       );
@@ -339,6 +445,10 @@ export class MapView {
       const onRoute = scene.path.map((id) => nodes.get(id)).filter((n) => n?.level === levelId);
       points = onRoute.length > 0 ? (onRoute as Point[]) : this.levelPoints(scene.site, levelId);
     }
+    return this.fitPoints(points, rot);
+  }
+
+  private fitPoints(points: readonly Point[], rot: number): View {
     // Bounds in the rotated frame, then back to meters for the centre.
     const a = rad(-rot);
     const turned = points.map((p) => ({
@@ -370,6 +480,7 @@ export class MapView {
 
   private reframe(): void {
     this.framed = '';
+    this.building = null;
     if (this.scene) this.update(this.scene);
   }
 
@@ -433,10 +544,15 @@ export class MapView {
     );
     const you = this.markers.find((m) => m.el.classList.contains('you'));
     const youAt = you ? this.project(you.p) : null;
+    const far = this.campus && scale < FAR_SCALE;
+    this.svg.classList.toggle('far', far);
     for (const pin of [...this.pins, ...this.markers]) {
       const at = this.project(pin.p);
-      pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`);
-      if (pin.fit) {
+      const turn = pin.angle === undefined ? '' : ` rotate(${(pin.angle - rot).toFixed(1)})`;
+      pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
+      if (this.campus && pin.zoom && (pin.zoom === 'far') !== far) {
+        pin.el.style.display = 'none';
+      } else if (pin.fit) {
         // Room names give way to the "You are here" label just below the blue dot.
         const underYou =
           !!youAt && Math.abs(at.x - youAt.x) < 70 && Math.abs(at.y - youAt.y - 26) < 24;
@@ -471,11 +587,13 @@ export class MapView {
     this.svg.addEventListener('pointerdown', (e) => {
       this.svg.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, local(e));
+      if (this.pointers.size === 1) this.travel = 0;
     });
     this.svg.addEventListener('pointermove', (e) => {
       const before = this.pointers.get(e.pointerId);
       if (!before) return;
       const now = local(e);
+      this.travel += Math.hypot(now.x - before.x, now.y - before.y);
       const others = [...this.pointers].filter(([id]) => id !== e.pointerId);
       const other = others[0]?.[1];
       if (other) {
@@ -488,7 +606,11 @@ export class MapView {
       this.pointers.set(e.pointerId, now);
     });
     const up = (e: PointerEvent) => this.pointers.delete(e.pointerId);
-    this.svg.addEventListener('pointerup', up);
+    this.svg.addEventListener('pointerup', (e) => {
+      const single = this.pointers.size === 1;
+      up(e);
+      if (single && this.travel < TAP_PX) this.tap(local(e));
+    });
     this.svg.addEventListener('pointercancel', up);
     this.svg.addEventListener(
       'wheel',
@@ -503,6 +625,29 @@ export class MapView {
     } else {
       addEventListener('resize', () => this.resize());
     }
+  }
+
+  /** Tapping a building on the campus zooms into it and lists its floors in the picker. */
+  private tap(at: Point): void {
+    if (!this.campus || !this.scene) return;
+    const p = this.unproject(at);
+    const shape = this.footprints.find((f) => f.building !== undefined && containsPoint(f, p));
+    if (!shape?.building) return;
+    this.building = shape.building;
+    this.fillPicker(this.scene, this.shownLevel);
+    this.moved = true;
+    this.animateTo(this.fitPoints(shapePoints(shape), this.view.rot));
+  }
+
+  /** Screen pixel → meters on the plan. */
+  private unproject(at: Point): Point {
+    const a = rad(this.view.rot);
+    const dx = (at.x - this.width / 2) / this.view.s;
+    const dy = (at.y - this.height / 2) / this.view.s;
+    return {
+      x: this.view.cx + dx * Math.cos(a) - dy * Math.sin(a),
+      y: this.view.cy + dx * Math.sin(a) + dy * Math.cos(a),
+    };
   }
 
   private resize(): void {
@@ -528,17 +673,19 @@ export class MapView {
     cancelAnimationFrame(this.animation);
     const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.view.s * factor));
     // Keep the spot under the fingers still: zoom, then pan it back under them.
-    const a = rad(this.view.rot);
-    const dx = (at.x - this.width / 2) / this.view.s;
-    const dy = (at.y - this.height / 2) / this.view.s;
-    const world = {
-      x: this.view.cx + dx * Math.cos(a) - dy * Math.sin(a),
-      y: this.view.cy + dx * Math.sin(a) + dy * Math.cos(a),
-    };
+    const world = this.unproject(at);
     this.view.s = scale;
     const moved = this.project(world);
     this.moved = true;
     this.panBy(at.x - moved.x, at.y - moved.y);
     this.requestDraw();
   }
+}
+
+/** The outdoor shapes of the campus (roads, lawns, footprints), from the shared levels. */
+function campusShapes(site: Site): Shape[] {
+  return site.map.levels
+    .filter((l) => l.building === undefined)
+    .flatMap((l) => l.shapes ?? [])
+    .filter((shape) => OUTDOOR_SHAPE_KINDS.has(shape.kind));
 }

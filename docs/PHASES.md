@@ -385,13 +385,26 @@ A phase is done only when **all** of these are true:
 > **In simple words:** zoom out to the whole campus — building blocks, roads, green grounds, entrances — and route from the gate to a room in another building.
 
 **Tasks**
-- [ ] **Site → buildings → floors** in the map file; the campus is an outdoor "floor"
-- [ ] **Editor:** trace building footprints, roads, green areas over a campus picture; mark building entrances
-- [ ] **Visitor:** campus map with building names + entrance arrows; tapping a building opens its floors
-- [ ] Routes across the campus: gate → road → building entrance → lift → room
-- [ ] Demo campus sample (2–3 buildings)
+- [x] **Site → buildings → floors** in the map file; the campus is an outdoor "floor"
+- [x] **Editor:** trace building footprints, roads, green areas over a campus picture; mark building entrances
+- [x] **Visitor:** campus map with building names + entrance arrows; tapping a building opens its floors
+- [x] Routes across the campus: gate → road → building entrance → lift → room
+- [x] Demo campus sample (2–3 buildings)
 
 **Done when:** a trip from the campus gate to a room on another building's upper floor works end to end, with the map following along.
+
+**Status (2026-10-16): done.**
+- Demo College (`samples/demo-campus`): main gate, roads, two lawns, sports ground, parking; Admin Block (ground only), Block A (3 floors, lift + stairs), Library (2 floors, stairs only). 2.0 KB on the wire. Try it: `/?site=demo-campus&at=GATE`, or `pnpm route GATE A-204 --map samples/demo-campus/map.json`.
+- Visitor: campus view zoomed out (blocks + names + green entrance arrows), rooms zoomed in, tap a building → its floors in the picker, "Block A · Floor 2" badges, search by building name. Browser test: gate → Computer lab on Block A Floor 2, end to end.
+- Editor: 🏢 Buildings list, "Belongs to" per floor, Outline kinds Building / Road / Lawn / Parking (drawn underneath the rooms automatically), footprints link to the first building not drawn yet, the campus shows faded under a building's own floors, **Load campus** button. 2 new browser tests.
+- Tests: 190 unit + 15 browser tests (6 visitor, 9 editor). First visit 22.3 KB.
+
+**Decisions made in Phase 10**
+- **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
+- **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
+- **Entrances are ordinary entrance dots on a footprint wall**: the map cuts a door gap and draws an arrow pointing in. No new data.
+- **Building names show zoomed out, room names zoomed in** (switch at 4.5 px per meter).
+- On-demand loading per building is still a v0 publishing step: the 3-building demo is only 2 KB.
 
 ---
 

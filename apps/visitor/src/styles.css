@@ -931,3 +931,55 @@ h1:focus-visible {
     font-size: 1.15rem;
   }
 }
+
+/* ---------- Campus view (Phase 10): roads, lawns, buildings ---------- */
+.map {
+  --m-road: #fbfbfc;
+  --m-green: #d5ecd4;
+  --m-park: #dde2e9;
+  --m-building: #d9dee6;
+  --m-entry: #1e8e3e;
+}
+@media (prefers-color-scheme: dark) {
+  .map {
+    --m-road: #2c343d;
+    --m-green: #1c3124;
+    --m-park: #222a33;
+    --m-building: #323c47;
+    --m-entry: #4cc274;
+  }
+}
+.map .road {
+  fill: var(--m-road);
+  stroke: color-mix(in srgb, var(--m-wall) 45%, transparent);
+  stroke-width: 1;
+}
+.map .green {
+  fill: var(--m-green);
+}
+.map .parking {
+  fill: var(--m-park);
+  stroke: var(--m-wall);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.map .building {
+  fill: var(--m-building);
+  stroke: var(--m-wall);
+  stroke-width: 2.5;
+}
+.map .ghost {
+  opacity: 0.45;
+}
+.map-svg.far .in {
+  display: none;
+}
+.map .big text {
+  font-size: 13px;
+  font-weight: 700;
+}
+.map .entry path {
+  fill: var(--m-entry);
+  stroke: #fff;
+  stroke-width: 1.5;
+}

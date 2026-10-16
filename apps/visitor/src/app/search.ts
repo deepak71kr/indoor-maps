@@ -5,10 +5,12 @@ import type { Position, Target } from './state';
 export interface RoomResult {
   readonly room: Room;
   readonly levelId: string;
+  /** Building name on a campus ("Block A"), so a search for it lists its rooms. */
+  readonly building?: string;
   readonly target: Target;
 }
 
-/** Rooms whose name, number or category matches; all rooms when the query is empty. */
+/** Rooms whose name, number, category or building matches; all rooms when the query is empty. */
 export function searchRooms(
   site: Site,
   query: string,
@@ -17,20 +19,26 @@ export function searchRooms(
   const q = query.trim().toLowerCase();
   const levelOrder = new Map(site.graph.levels.map((l) => [l.id, l.rank]));
   return site.map.rooms
-    .filter((room) => {
-      if (!q) return true;
-      return [room.name, room.number ?? '', room.id, categoryLabel(room.category)].some((text) =>
-        text.toLowerCase().includes(q),
-      );
-    })
-    .map((room) => {
+    .map((room): RoomResult => {
       const door = room.doors[0] ?? '';
       const levelId = site.graph.nodes.get(door)?.level ?? '';
+      const building = site.buildingAt(door)?.name;
       const destination: Destination = { type: 'room', roomId: room.id };
-      return { room, levelId, target: { destination, label: room.name } };
+      return {
+        room,
+        levelId,
+        ...(building !== undefined && { building }),
+        target: { destination, label: room.name },
+      };
+    })
+    .filter(({ room, building }) => {
+      if (!q) return true;
+      const texts = [room.name, room.number ?? '', room.id, categoryLabel(room.category)];
+      return [...texts, building ?? ''].some((text) => text.toLowerCase().includes(q));
     })
     .sort(
       (a, b) =>
+        (a.building ?? '').localeCompare(b.building ?? '') ||
         (levelOrder.get(a.levelId) ?? 0) - (levelOrder.get(b.levelId) ?? 0) ||
         a.room.name.localeCompare(b.room.name),
     );

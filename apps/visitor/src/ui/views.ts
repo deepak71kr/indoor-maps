@@ -100,8 +100,17 @@ function title(text: string, emoji?: string): HTMLElement {
   );
 }
 
-function floorBadge(levelName: string, color: string): HTMLElement {
-  return h('span', { class: `floor lvl-${color}` }, levelName);
+/** "Floor 2", or "Block A · Floor 2" on a campus. */
+function floorBadge(levelName: string, color: string, building?: string): HTMLElement {
+  return h(
+    'span',
+    { class: `floor lvl-${color}` },
+    building ? `${building} · ${levelName}` : levelName,
+  );
+}
+
+function buildingOf(state: State, nodeId: string): string | undefined {
+  return state.site?.buildingAt(nodeId)?.name;
 }
 
 function button(
@@ -229,7 +238,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
     }
     replace(
       results,
-      ...found.map(({ room, levelId, target }) => {
+      ...found.map(({ room, levelId, building, target }) => {
         const level = levels.get(levelId);
         const cat = CATEGORY[room.category];
         return h(
@@ -245,7 +254,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
                 room.number ? h('small', {}, ` ${room.number}`) : null,
               ),
               room.visibility === 'locked' ? icon('lock') : null,
-              level ? floorBadge(level.name, level.color) : null,
+              level ? floorBadge(level.name, level.color, building) : null,
             ].reduce<DocumentFragment>((frag, child) => {
               if (child) frag.append(child);
               return frag;
@@ -367,7 +376,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
     h(
       'div',
       { class: 'progress' },
-      floorBadge(step.levelName, step.levelColor),
+      floorBadge(step.levelName, step.levelColor, buildingOf(ctx.state, step.target)),
       h('span', { class: 'grow' }, tr('step.of', { n: index + 1, total })),
       h(
         'span',
@@ -440,7 +449,7 @@ function arrivedView(ctx: ViewContext): HTMLElement {
     `center arrived lvl-${arrive?.levelColor ?? 'teal'}`,
     h('div', { class: 'step-icon' }, icon('arrive', 'icon huge')),
     h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
-    arrive && floorBadge(arrive.levelName, arrive.levelColor),
+    arrive && floorBadge(arrive.levelName, arrive.levelColor, buildingOf(ctx.state, arrive.target)),
     button(
       tr('arrived.new'),
       () => ctx.dispatch({ type: 'new-destination' }),

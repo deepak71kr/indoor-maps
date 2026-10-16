@@ -112,7 +112,7 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
     if (segment.type === 'ride') {
       const name = (segment.connector && connectorNames.get(segment.connector)) ?? segment.kind;
       const up =
-        (levels.get(segment.to.level)?.rank ?? 0) > (levels.get(segment.from.level)?.rank ?? 0);
+        (levels.get(segment.to.level)?.ord ?? 0) > (levels.get(segment.from.level)?.ord ?? 0);
       const key: MessageKey = `ride.${segment.kind}.${up ? 'up' : 'down'}`;
       const level = levels.get(segment.to.level)?.name ?? segment.to.level;
       step({

@@ -1,9 +1,11 @@
 import { LEVEL_COLORS } from '@innermap/schema';
+import campus from '../../../../samples/demo-campus/map.json';
 import demo from '../../../../samples/demo-hospital/map.json';
 import { parseDraft } from '../infra/autosave';
 import { downloadMap, pickFile, readMapFile } from '../infra/files';
 import { saveImage } from '../infra/images';
 import { addLevel, moveLevel, removeLevel, renameSite, updateLevel } from '../model/commands';
+import { levelLabel } from '../model/campus';
 import { isLevelEmpty, newProject, nextLevel, pxPerMeter, sortedLevels } from '../model/project';
 import type { Tool } from '../model/store';
 import {
@@ -13,6 +15,7 @@ import {
   PrintStickersButton,
   TestRoutePanel,
 } from './Phase8Panels';
+import { BuildingsPanel, FloorBuildingField } from './CampusPanels';
 import { OutlinePanel } from './PlanPanels';
 import { Properties } from './Properties';
 import { useEditor } from './use-editor';
@@ -36,6 +39,10 @@ export function TopBar() {
     const doc = parseDraft(demo);
     if (doc) store.load('Load Demo Hospital', doc);
   };
+  const loadCampus = () => {
+    const doc = parseDraft(campus);
+    if (doc) store.load('Load Demo College', doc);
+  };
 
   return (
     <header class="topbar">
@@ -47,6 +54,9 @@ export function TopBar() {
       </button>
       <button type="button" onClick={loadDemo}>
         Load demo
+      </button>
+      <button type="button" onClick={loadCampus} title="A 3-building college campus">
+        Load campus
       </button>
       <button type="button" onClick={() => void importMap()}>
         Import
@@ -126,7 +136,9 @@ export function Toolbar() {
 export function FloorTabs() {
   const { store, state } = useEditor();
   const add = () => {
-    const level = nextLevel(state.doc);
+    // On a campus, a new floor goes on top of the building being edited.
+    const current = state.doc.levels.find((l) => l.id === state.levelId);
+    const level = nextLevel(state.doc, current?.building);
     store.run(addLevel(level));
     store.setLevel(level.id);
   };
@@ -141,7 +153,7 @@ export function FloorTabs() {
           class={`floor-tab lvl-${l.color}`}
           onClick={() => store.setLevel(l.id)}
         >
-          <i class="swatch" /> {l.name}
+          <i class="swatch" /> {levelLabel(state.doc, l)}
         </button>
       ))}
       <button type="button" class="floor-tab add" onClick={add}>
@@ -183,6 +195,7 @@ export function SidePanel() {
           />
         </label>
       </section>
+      <BuildingsPanel />
 
       {level && (
         <section>
@@ -198,6 +211,7 @@ export function SidePanel() {
               }}
             />
           </label>
+          <FloorBuildingField level={level} />
           <div class="field">
             <span>Color</span>
             <div class="swatches">

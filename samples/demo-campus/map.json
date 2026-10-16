@@ -1,0 +1,217 @@
+{
+  "fmt": 0,
+  "site": { "id": "demo-campus", "name": "Demo College" },
+  "buildings": [
+    { "id": "admin", "name": "Admin Block" },
+    { "id": "a", "name": "Block A" },
+    { "id": "lib", "name": "Library" }
+  ],
+  "levels": [
+    { "id": "G", "name": "Ground", "ord": 0, "color": "teal",
+      "shapes": [
+        { "kind": "road", "pts": [76, 36, 84, 36, 84, 110, 76, 110] },
+        { "kind": "road", "pts": [50, 58, 105, 58, 105, 66, 50, 66] },
+        { "kind": "green", "pts": [52, 70, 74, 70, 74, 108, 52, 108], "label": "West lawn" },
+        { "kind": "green", "pts": [86, 70, 103, 70, 103, 108, 86, 108], "label": "East lawn" },
+        { "kind": "green", "pts": [102, 8, 155, 8, 155, 36, 102, 36], "label": "Sports ground" },
+        { "kind": "parking", "pts": [10, 86, 48, 86, 48, 108, 10, 108], "label": "Parking" },
+
+        { "kind": "building", "pts": [10, 45, 50, 45, 50, 80, 10, 80], "building": "admin" },
+        { "kind": "building", "pts": [105, 40, 155, 40, 155, 80, 105, 80], "building": "a" },
+        { "kind": "building", "pts": [60, 8, 100, 8, 100, 35, 60, 35], "building": "lib" },
+
+        { "kind": "floor", "pts": [10, 58, 50, 58, 50, 66, 10, 66] },
+        { "kind": "room", "pts": [10, 45, 30, 45, 30, 58, 10, 58], "room": "admission" },
+        { "kind": "room", "pts": [30, 45, 50, 45, 50, 58, 30, 58], "room": "fees" },
+        { "kind": "room", "pts": [10, 66, 36, 66, 36, 80, 10, 80], "room": "principal" },
+        { "kind": "room", "pts": [36, 66, 50, 66, 50, 80, 36, 80], "label": "Toilets" },
+
+        { "kind": "floor", "pts": [105, 58, 155, 58, 155, 66, 105, 66] },
+        { "kind": "lift", "pts": [107, 50, 115, 50, 115, 58, 107, 58], "label": "Lift" },
+        { "kind": "room", "pts": [115, 40, 133, 40, 133, 58, 115, 58], "label": "Store" },
+        { "kind": "room", "pts": [133, 40, 146, 40, 146, 58, 133, 58], "room": "exam" },
+        { "kind": "stairs", "pts": [146, 48, 154, 48, 154, 58, 146, 58] },
+        { "kind": "room", "pts": [105, 66, 135, 66, 135, 80, 105, 80], "room": "seminar" },
+        { "kind": "room", "pts": [135, 66, 155, 66, 155, 80, 135, 80], "label": "Toilets" },
+
+        { "kind": "floor", "pts": [60, 24, 88, 24, 88, 35, 60, 35] },
+        { "kind": "room", "pts": [60, 8, 78, 8, 78, 24, 60, 24], "room": "reading" },
+        { "kind": "room", "pts": [78, 8, 100, 8, 100, 24, 78, 24], "label": "Book stacks" },
+        { "kind": "stairs", "pts": [88, 24, 100, 24, 100, 35, 88, 35] }
+      ]
+    },
+    { "id": "A1", "name": "Floor 1", "ord": 1, "color": "amber", "building": "a",
+      "shapes": [
+        { "kind": "floor", "pts": [105, 40, 155, 40, 155, 80, 105, 80] },
+        { "kind": "lift", "pts": [107, 50, 115, 50, 115, 58, 107, 58], "label": "Lift" },
+        { "kind": "room", "pts": [115, 40, 133, 40, 133, 58, 115, 58], "room": "staffroom" },
+        { "kind": "room", "pts": [133, 40, 146, 40, 146, 58, 133, 58], "room": "chem" },
+        { "kind": "stairs", "pts": [146, 48, 154, 48, 154, 58, 146, 58] },
+        { "kind": "room", "pts": [105, 66, 135, 66, 135, 80, 105, 80], "room": "physics" },
+        { "kind": "room", "pts": [135, 66, 155, 66, 155, 80, 135, 80], "label": "Toilets" }
+      ]
+    },
+    { "id": "A2", "name": "Floor 2", "ord": 2, "color": "violet", "building": "a",
+      "shapes": [
+        { "kind": "floor", "pts": [105, 40, 155, 40, 155, 80, 105, 80] },
+        { "kind": "lift", "pts": [107, 50, 115, 50, 115, 58, 107, 58], "label": "Lift" },
+        { "kind": "room", "pts": [115, 40, 133, 40, 133, 58, 115, 58], "room": "a201" },
+        { "kind": "room", "pts": [133, 40, 146, 40, 146, 58, 133, 58], "room": "a202" },
+        { "kind": "stairs", "pts": [146, 48, 154, 48, 154, 58, 146, 58] },
+        { "kind": "room", "pts": [105, 66, 132, 66, 132, 80, 105, 80], "room": "hod" },
+        { "kind": "room", "pts": [132, 66, 155, 66, 155, 80, 132, 80], "room": "complab" }
+      ]
+    },
+    { "id": "L1", "name": "Floor 1", "ord": 1, "color": "blue", "building": "lib",
+      "shapes": [
+        { "kind": "floor", "pts": [60, 8, 100, 8, 100, 35, 60, 35] },
+        { "kind": "room", "pts": [60, 8, 86, 8, 86, 24, 60, 24], "room": "digital" },
+        { "kind": "stairs", "pts": [88, 24, 100, 24, 100, 35, 88, 35] }
+      ]
+    }
+  ],
+  "nodes": [
+    { "id": "G-GATE", "lvl": "G", "x": 80, "y": 106, "kind": "entrance", "landmark": "Main gate (security cabin)" },
+    { "id": "G-ROAD", "lvl": "G", "x": 80, "y": 84, "kind": "junction", "landmark": "College notice board, between the lawns" },
+    { "id": "G-J1", "lvl": "G", "x": 80, "y": 62, "kind": "junction", "landmark": "Fountain circle" },
+    { "id": "G-ADM-ENT", "lvl": "G", "x": 50, "y": 62, "kind": "entrance", "landmark": "Admin Block entrance" },
+    { "id": "G-A-ENT", "lvl": "G", "x": 105, "y": 62, "kind": "entrance", "landmark": "Block A main entrance (blue glass doors)" },
+    { "id": "G-LIB-ENT", "lvl": "G", "x": 80, "y": 35, "kind": "entrance", "landmark": "Library entrance (steps and ramp)" },
+
+    { "id": "G-ADM-LOB", "lvl": "G", "x": 44, "y": 62, "kind": "junction", "landmark": "Admin reception desk" },
+    { "id": "G-ADM-C1", "lvl": "G", "x": 36, "y": 62, "kind": "junction", "landmark": "Fees counter queue (yellow line)" },
+    { "id": "G-ADM-C2", "lvl": "G", "x": 24, "y": 62, "kind": "junction", "landmark": "Admin corridor end (water cooler)" },
+    { "id": "G-ADM-FEES", "lvl": "G", "x": 36, "y": 58, "kind": "door", "landmark": "Fees counter" },
+    { "id": "G-ADM-ADMS", "lvl": "G", "x": 24, "y": 58, "kind": "door", "landmark": "Admission office" },
+    { "id": "G-ADM-PRIN", "lvl": "G", "x": 24, "y": 66, "kind": "door", "landmark": "Principal's office" },
+
+    { "id": "G-A-LOB", "lvl": "G", "x": 111, "y": 62, "kind": "junction", "landmark": "Block A lobby (notice board), next to the lift" },
+    { "id": "G-A-LIFT", "lvl": "G", "x": 111, "y": 58, "kind": "lift-stop", "landmark": "Block A lift" },
+    { "id": "G-A-C1", "lvl": "G", "x": 125, "y": 62, "kind": "junction", "landmark": "Seminar hall doors" },
+    { "id": "G-A-C2", "lvl": "G", "x": 140, "y": 62, "kind": "junction", "landmark": "Exam cell window" },
+    { "id": "G-A-E", "lvl": "G", "x": 150, "y": 62, "kind": "junction", "landmark": "Block A east end (toilets)" },
+    { "id": "G-A-ST", "lvl": "G", "x": 150, "y": 58, "kind": "stairs-stop", "landmark": "Block A stairs" },
+    { "id": "G-A-SEM", "lvl": "G", "x": 125, "y": 66, "kind": "door", "landmark": "Seminar hall" },
+    { "id": "G-A-EXAM", "lvl": "G", "x": 140, "y": 58, "kind": "door", "landmark": "Exam cell" },
+
+    { "id": "G-LIB-DESK", "lvl": "G", "x": 80, "y": 29, "kind": "junction", "landmark": "Library issue desk" },
+    { "id": "G-LIB-W", "lvl": "G", "x": 68, "y": 29, "kind": "junction", "landmark": "Newspaper stand" },
+    { "id": "G-LIB-READ", "lvl": "G", "x": 68, "y": 24, "kind": "door", "landmark": "Reading hall" },
+    { "id": "G-LIB-ST", "lvl": "G", "x": 88, "y": 29, "kind": "stairs-stop", "landmark": "Library stairs" },
+
+    { "id": "A1-LIFT", "lvl": "A1", "x": 111, "y": 58, "kind": "lift-stop", "landmark": "Block A lift" },
+    { "id": "A1-LOB", "lvl": "A1", "x": 111, "y": 62, "kind": "junction", "landmark": "Lift lobby, Floor 1" },
+    { "id": "A1-C1", "lvl": "A1", "x": 125, "y": 62, "kind": "junction", "landmark": "Physics lab and Staff room" },
+    { "id": "A1-C2", "lvl": "A1", "x": 140, "y": 62, "kind": "junction", "landmark": "Chemistry lab (eye-wash sign)" },
+    { "id": "A1-E", "lvl": "A1", "x": 150, "y": 62, "kind": "junction", "landmark": "Floor 1 east end (toilets)" },
+    { "id": "A1-ST", "lvl": "A1", "x": 150, "y": 58, "kind": "stairs-stop", "landmark": "Block A stairs" },
+    { "id": "A1-PHY", "lvl": "A1", "x": 125, "y": 66, "kind": "door", "landmark": "Physics lab" },
+    { "id": "A1-STAFF", "lvl": "A1", "x": 125, "y": 58, "kind": "door", "landmark": "Staff room" },
+    { "id": "A1-CHEM", "lvl": "A1", "x": 140, "y": 58, "kind": "door", "landmark": "Chemistry lab" },
+
+    { "id": "A2-LIFT", "lvl": "A2", "x": 111, "y": 58, "kind": "lift-stop", "landmark": "Block A lift" },
+    { "id": "A2-LOB", "lvl": "A2", "x": 111, "y": 62, "kind": "junction", "landmark": "Lift lobby, Floor 2" },
+    { "id": "A2-C1", "lvl": "A2", "x": 125, "y": 62, "kind": "junction", "landmark": "Classroom 201 and HOD office" },
+    { "id": "A2-C2", "lvl": "A2", "x": 140, "y": 62, "kind": "junction", "landmark": "Computer lab (glass wall)" },
+    { "id": "A2-E", "lvl": "A2", "x": 150, "y": 62, "kind": "junction", "landmark": "Floor 2 east end (toilets)" },
+    { "id": "A2-ST", "lvl": "A2", "x": 150, "y": 58, "kind": "stairs-stop", "landmark": "Block A stairs" },
+    { "id": "A2-201", "lvl": "A2", "x": 125, "y": 58, "kind": "door", "landmark": "Classroom 201" },
+    { "id": "A2-HOD", "lvl": "A2", "x": 125, "y": 66, "kind": "door", "landmark": "HOD office" },
+    { "id": "A2-CLAB", "lvl": "A2", "x": 140, "y": 66, "kind": "door", "landmark": "Computer lab" },
+    { "id": "A2-202", "lvl": "A2", "x": 140, "y": 58, "kind": "door", "landmark": "Classroom 202" },
+
+    { "id": "L1-ST", "lvl": "L1", "x": 88, "y": 29, "kind": "stairs-stop", "landmark": "Library stairs" },
+    { "id": "L1-HALL", "lvl": "L1", "x": 74, "y": 29, "kind": "junction", "landmark": "Upstairs hall (study tables)" },
+    { "id": "L1-DIG", "lvl": "L1", "x": 74, "y": 24, "kind": "door", "landmark": "Digital library" }
+  ],
+  "edges": [
+    { "a": "G-GATE", "b": "G-ROAD", "kind": "outdoor" },
+    { "a": "G-ROAD", "b": "G-J1", "kind": "outdoor" },
+    { "a": "G-J1", "b": "G-ADM-ENT", "kind": "outdoor" },
+    { "a": "G-J1", "b": "G-A-ENT", "kind": "outdoor" },
+    { "a": "G-J1", "b": "G-LIB-ENT", "kind": "outdoor" },
+
+    { "a": "G-ADM-ENT", "b": "G-ADM-LOB" },
+    { "a": "G-ADM-LOB", "b": "G-ADM-C1" },
+    { "a": "G-ADM-C1", "b": "G-ADM-C2" },
+    { "a": "G-ADM-C1", "b": "G-ADM-FEES" },
+    { "a": "G-ADM-C2", "b": "G-ADM-ADMS" },
+    { "a": "G-ADM-C2", "b": "G-ADM-PRIN" },
+
+    { "a": "G-A-ENT", "b": "G-A-LOB" },
+    { "a": "G-A-LOB", "b": "G-A-LIFT" },
+    { "a": "G-A-LOB", "b": "G-A-C1" },
+    { "a": "G-A-C1", "b": "G-A-C2" },
+    { "a": "G-A-C2", "b": "G-A-E" },
+    { "a": "G-A-E", "b": "G-A-ST" },
+    { "a": "G-A-C1", "b": "G-A-SEM" },
+    { "a": "G-A-C2", "b": "G-A-EXAM" },
+
+    { "a": "G-LIB-ENT", "b": "G-LIB-DESK", "kind": "ramp" },
+    { "a": "G-LIB-DESK", "b": "G-LIB-W" },
+    { "a": "G-LIB-W", "b": "G-LIB-READ" },
+    { "a": "G-LIB-DESK", "b": "G-LIB-ST" },
+
+    { "a": "A1-LIFT", "b": "A1-LOB" },
+    { "a": "A1-LOB", "b": "A1-C1" },
+    { "a": "A1-C1", "b": "A1-C2" },
+    { "a": "A1-C2", "b": "A1-E" },
+    { "a": "A1-E", "b": "A1-ST" },
+    { "a": "A1-C1", "b": "A1-PHY" },
+    { "a": "A1-C1", "b": "A1-STAFF" },
+    { "a": "A1-C2", "b": "A1-CHEM" },
+
+    { "a": "A2-LIFT", "b": "A2-LOB" },
+    { "a": "A2-LOB", "b": "A2-C1" },
+    { "a": "A2-C1", "b": "A2-C2" },
+    { "a": "A2-C2", "b": "A2-E" },
+    { "a": "A2-E", "b": "A2-ST" },
+    { "a": "A2-C1", "b": "A2-201" },
+    { "a": "A2-C1", "b": "A2-HOD" },
+    { "a": "A2-C2", "b": "A2-CLAB" },
+    { "a": "A2-C2", "b": "A2-202" },
+
+    { "a": "L1-ST", "b": "L1-HALL" },
+    { "a": "L1-HALL", "b": "L1-DIG" }
+  ],
+  "connectors": [
+    { "id": "lift-a", "kind": "lift", "name": "Block A lift", "stops": { "G": "G-A-LIFT", "A1": "A1-LIFT", "A2": "A2-LIFT" } },
+    { "id": "stairs-a", "kind": "stairs", "name": "Block A stairs", "stops": { "G": "G-A-ST", "A1": "A1-ST", "A2": "A2-ST" } },
+    { "id": "stairs-lib", "kind": "stairs", "name": "Library stairs", "stops": { "G": "G-LIB-ST", "L1": "L1-ST" } }
+  ],
+  "rooms": [
+    { "id": "admission", "name": "Admission office", "number": "ADM-01", "category": "admin", "doors": ["G-ADM-ADMS"] },
+    { "id": "fees", "name": "Fees counter", "number": "ADM-02", "category": "billing", "doors": ["G-ADM-FEES"] },
+    { "id": "principal", "name": "Principal's office", "number": "ADM-03", "category": "office", "doors": ["G-ADM-PRIN"], "visibility": "locked" },
+    { "id": "seminar", "name": "Seminar hall", "number": "A-G01", "category": "classroom", "doors": ["G-A-SEM"] },
+    { "id": "exam", "name": "Exam cell", "number": "A-G02", "category": "admin", "doors": ["G-A-EXAM"] },
+    { "id": "physics", "name": "Physics lab", "number": "A-101", "category": "lab", "doors": ["A1-PHY"] },
+    { "id": "chem", "name": "Chemistry lab", "number": "A-102", "category": "lab", "doors": ["A1-CHEM"] },
+    { "id": "staffroom", "name": "Staff room", "number": "A-103", "category": "staff", "doors": ["A1-STAFF"], "visibility": "locked" },
+    { "id": "a201", "name": "Classroom 201", "number": "A-201", "category": "classroom", "doors": ["A2-201"] },
+    { "id": "a202", "name": "Classroom 202", "number": "A-202", "category": "classroom", "doors": ["A2-202"] },
+    { "id": "hod", "name": "HOD office", "number": "A-203", "category": "office", "doors": ["A2-HOD"] },
+    { "id": "complab", "name": "Computer lab", "number": "A-204", "category": "lab", "doors": ["A2-CLAB"] },
+    { "id": "reading", "name": "Reading hall", "number": "L-G01", "category": "other", "doors": ["G-LIB-READ"] },
+    { "id": "digital", "name": "Digital library", "number": "L-101", "category": "other", "doors": ["L1-DIG"] }
+  ],
+  "amenities": [
+    { "id": "gate-help", "kind": "help-desk", "node": "G-GATE", "name": "Security cabin" },
+    { "id": "circle-water", "kind": "water", "node": "G-J1" },
+    { "id": "circle-atm", "kind": "atm", "node": "G-J1" },
+    { "id": "adm-water", "kind": "water", "node": "G-ADM-C2" },
+    { "id": "adm-toilet", "kind": "toilet", "node": "G-ADM-LOB" },
+    { "id": "a-toilet", "kind": "toilet", "node": "G-A-E" },
+    { "id": "a-toilet-acc", "kind": "toilet-accessible", "node": "G-A-E" },
+    { "id": "a1-toilet", "kind": "toilet", "node": "A1-E" },
+    { "id": "a2-toilet", "kind": "toilet", "node": "A2-E" }
+  ],
+  "qr": [
+    { "code": "GATE", "node": "G-GATE", "facing": 0 },
+    { "code": "ADMIN", "node": "G-ADM-LOB", "facing": 270 },
+    { "code": "A-LOBBY", "node": "G-A-LOB", "facing": 90 },
+    { "code": "A1-LIFT", "node": "A1-LOB", "facing": 90 },
+    { "code": "A2-LIFT", "node": "A2-LOB", "facing": 90 },
+    { "code": "LIBRARY", "node": "G-LIB-DESK", "facing": 0 }
+  ]
+}

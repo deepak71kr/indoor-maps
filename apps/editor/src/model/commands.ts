@@ -40,6 +40,7 @@ export type LevelPatch = {
   readonly name?: string;
   readonly ord?: number;
   readonly color?: Level['color'];
+  readonly building?: string | null;
   readonly image?: string | null;
   readonly pxPerMeter?: number | null;
   readonly shapes?: Level['shapes'] | null;
@@ -102,9 +103,10 @@ export function removeLevel(doc: MapFile, id: string): Command {
   };
 }
 
-/** Swap floor order with the neighbour above (+1) or below (-1). */
+/** Swap floor order with the neighbour above (+1) or below (-1) in the same building. */
 export function moveLevel(doc: MapFile, id: string, direction: 1 | -1): Command | null {
-  const sorted = [...doc.levels].sort((a, b) => a.ord - b.ord);
+  const building = doc.levels.find((l) => l.id === id)?.building;
+  const sorted = doc.levels.filter((l) => l.building === building).sort((a, b) => a.ord - b.ord);
   const index = sorted.findIndex((l) => l.id === id);
   const self = sorted[index];
   const other = sorted[index + direction];

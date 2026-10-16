@@ -5,6 +5,7 @@
 export * from './constants';
 export type {
   Amenity,
+  Building,
   Connector,
   Edge,
   Level,

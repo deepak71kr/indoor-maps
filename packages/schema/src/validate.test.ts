@@ -105,6 +105,32 @@ describe('reference errors', () => {
     );
   });
 
+  it('lets two buildings use the same floor order, but not one building twice', () => {
+    const map = demoMap();
+    map.buildings = [
+      { id: 'a', name: 'Block A' },
+      { id: 'b', name: 'Block B' },
+    ];
+    // Floors 1 and 2 belong to Block A; Block B gets its own Floor 1 (order 1 again).
+    for (const level of map.levels.slice(1)) Object.assign(level, { building: 'a' });
+    map.levels.push({ id: 'B1', name: 'Floor 1', ord: 1, color: 'blue', building: 'b' });
+    expect(issuesOf(map).filter((i) => i.severity === 'error')).toEqual([]);
+
+    map.levels.push({ id: 'B1x', name: 'Floor 1 again', ord: 1, color: 'blue', building: 'b' });
+    map.levels.push({ id: 'B0', name: 'Ground again', ord: 0, color: 'blue', building: 'b' });
+    expect(issuesOf(map).map((i) => i.path)).toEqual(
+      expect.arrayContaining(['levels[4].ord', 'levels[5].ord']),
+    );
+  });
+
+  it('flags links to unknown buildings', () => {
+    const map = demoMap();
+    Object.assign(map.levels[1] as object, { building: 'nope' });
+    map.levels[0]?.shapes?.push({ kind: 'building', building: 'nope', pts: [0, 0, 1, 0, 1, 1] });
+    const codes = issuesOf(map).filter((i) => i.code === 'unknown-building');
+    expect(codes).toHaveLength(2);
+  });
+
   it('flags a lift with a single stop', () => {
     const map = demoMap();
     map.connectors.push({ id: 'lift-c', kind: 'lift', name: 'Lift C', stops: { G: 'G-W' } });

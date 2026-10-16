@@ -35,6 +35,8 @@ export interface GraphLevel {
   readonly color: string;
   /** Position when levels are sorted by `ord` (0 = lowest). */
   readonly rank: number;
+  /** Building this floor belongs to; absent on shared levels (ground / campus). */
+  readonly building?: string;
 }
 
 export interface Graph {

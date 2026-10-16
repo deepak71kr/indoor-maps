@@ -5,6 +5,7 @@
  */
 import { doorGaps, labelPoint, shapePoints } from '@innermap/core';
 import type { Level, MapFile, MapNode } from '@innermap/schema';
+import { OUTDOOR_SHAPE_KINDS } from '@innermap/schema';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { LoadedImage } from '../infra/images';
 import { loadImage } from '../infra/images';
@@ -571,8 +572,25 @@ export function Canvas() {
     shapes,
     levelNodes.filter((n) => n.kind !== 'junction' && n.kind !== 'corner'),
   );
+  // On a building's own floor: the campus around it, faded, to line the floor up with it.
+  const campusAround =
+    level?.building === undefined
+      ? []
+      : doc.levels
+          .filter((l) => l.building === undefined)
+          .flatMap((l) => l.shapes ?? [])
+          .filter((shape) => OUTDOOR_SHAPE_KINDS.has(shape.kind));
   const planShapes = (
     <g class="plan-shapes">
+      {campusAround.map((shape, i) => (
+        <polygon
+          key={`ghost${i}`}
+          class={`shape ghost ${shape.kind}`}
+          points={shapePoints(shape)
+            .map((q) => `${q.x},${q.y}`)
+            .join(' ')}
+        />
+      ))}
       {shapes.map((shape, i) => {
         const points = shapePoints(shape)
           .map((q) => `${q.x},${q.y}`)
@@ -596,7 +614,10 @@ export function Canvas() {
       {view.scale >= 6 &&
         shapes.map((shape, i) => {
           const room = shape.room ? roomsById.get(shape.room) : undefined;
-          const text = room ? (room.number ?? room.name) : shape.label;
+          const building = shape.building
+            ? doc.buildings?.find((b) => b.id === shape.building)
+            : undefined;
+          const text = room ? (room.number ?? room.name) : (building?.name ?? shape.label);
           if (!text || shape.kind === 'wall') return null;
           const c = labelPoint(shape);
           return (

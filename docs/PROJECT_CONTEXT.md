@@ -186,11 +186,13 @@ What makes apps heavy is images, fonts and libraries, not good design.
 The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design reference: the mockups in `images/`.
 - **Inside a building** (Phase 9): grey walls, white corridors, pastel rooms with numbers, doors, stairs, lifts, emoji amenities. On top of that: the blue route line, a "You are here" dot and a floor picker.
 - **Campus** (Phase 10): building blocks, roads, green grounds and entrance arrows. Routes go between buildings.
+  - **Model (decided 2026-10-16):** one **shared Ground level** holds the outdoors *and* every building's ground floor (like Google Maps), so walking in through a door is an ordinary line — routing didn't change. Upper floors and basements **belong to one building** (`level.building`); floor order is unique per building. Floors are counted per building, so another building's Floor 1 never slows a lift ride.
+  - **Zoom decides the view:** zoomed out the phone shows building blocks with their names; zoomed in it shows rooms. Tapping a building zooms into it and the floor picker lists its floors ("Block A · Floor 2"). On a building's upper floor the campus around it is drawn faded.
 - **Bottom panel:** shows "You are at", a "Where to?" search and quick chips (Restroom · Cafe · Water). While walking, it shows a blue step card with a big arrow, "Next: …", ✕ End route and ✓ I'm here.
 - **Light by design:**
   - our own SVG viewer (~4 KB brotli), not Leaflet or MapLibre;
   - map shapes are optional `shapes` on each floor of the map file (the 3-floor demo is 1.8 KB); v0 publishing can split floors into separate files for huge campuses;
-  - the first visit is 19.9 KB (target ≤ 30 KB).
+  - the first visit is 22.3 KB with the campus demo (target ≤ 30 KB).
 - **Text stays the hero.** The map adds confidence; it isn't required. A floor without shapes shows a corridor sketch drawn from the walking lines.
 - **Facing-up:** after a QR scan the map rotates so "up" is straight ahead, using the sticker's known facing. Google Maps can't do this indoors.
 

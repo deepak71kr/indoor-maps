@@ -19,7 +19,7 @@ export interface Bounds {
 export type Segment = readonly [number, number, number, number];
 
 /** Shapes drawn as closed outlines whose edges are walls with possible door gaps. */
-const WALLED = new Set<Shape['kind']>(['floor', 'room', 'lift', 'stairs']);
+const WALLED = new Set<Shape['kind']>(['floor', 'room', 'lift', 'stairs', 'building']);
 
 /** How far (m) a door dot may sit from a wall and still open a gap in it. */
 const DOOR_SNAP_METERS = 0.4;

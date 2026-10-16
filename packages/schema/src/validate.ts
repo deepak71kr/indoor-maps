@@ -32,7 +32,8 @@ export type IssueCode =
   | 'door-kind'
   | 'image-without-scale'
   | 'shape-points'
-  | 'unknown-room';
+  | 'unknown-room'
+  | 'unknown-building';
 
 export interface Issue {
   severity: Severity;
@@ -97,6 +98,11 @@ function checkReferences(map: MapFile): Issue[] {
     });
   };
   checkUnique(
+    'buildings',
+    (map.buildings ?? []).map((b) => b.id),
+    'building',
+  );
+  checkUnique(
     'levels',
     map.levels.map((l) => l.id),
     'level',
@@ -131,15 +137,29 @@ function checkReferences(map: MapFile): Issue[] {
 
   // --- levels ---
   const levelIds = new Set(map.levels.map((l) => l.id));
-  const orders = new Set<number>();
+  const buildingIds = new Set((map.buildings ?? []).map((b) => b.id));
+  // Order is unique per building, counting the shared levels every building stands on.
+  const ordersOf = new Map<string, Set<number>>();
+  const shared = new Set<number>();
   map.levels.forEach((level, index) => {
-    if (orders.has(level.ord))
+    if (level.building !== undefined && !buildingIds.has(level.building))
+      error(
+        'unknown-building',
+        `levels[${index}].building`,
+        `unknown building "${level.building}"`,
+      );
+    const own = level.building === undefined ? null : (ordersOf.get(level.building) ?? new Set());
+    if (own) ordersOf.set(level.building ?? '', own);
+    const clash =
+      shared.has(level.ord) ||
+      (own ? own.has(level.ord) : [...ordersOf.values()].some((s) => s.has(level.ord)));
+    if (clash)
       error(
         'duplicate-level-order',
         `levels[${index}].ord`,
         `another level already uses order ${level.ord}`,
       );
-    orders.add(level.ord);
+    (own ?? shared).add(level.ord);
     if (level.image && level.pxPerMeter === undefined)
       warn(
         'image-without-scale',
@@ -253,6 +273,8 @@ function checkReferences(map: MapFile): Issue[] {
         );
       if (shape.room !== undefined && !roomIds.has(shape.room))
         error('unknown-room', `${path}.room`, `unknown room "${shape.room}"`);
+      if (shape.building !== undefined && !buildingIds.has(shape.building))
+        error('unknown-building', `${path}.building`, `unknown building "${shape.building}"`);
     });
   });
 

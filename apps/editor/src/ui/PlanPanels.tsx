@@ -32,6 +32,15 @@ export const SHAPE_KINDS_UI: ReadonlyArray<{
     label: 'Wall line',
     hint: 'An extra wall that is not part of an outline',
   },
+  {
+    kind: 'building',
+    icon: '🏢',
+    label: 'Building',
+    hint: 'Campus: a building footprint on the Ground floor; joins the first building not drawn yet',
+  },
+  { kind: 'road', icon: '🛣️', label: 'Road / path', hint: 'Campus: roads and paved paths' },
+  { kind: 'green', icon: '🌳', label: 'Lawn / garden', hint: 'Campus: lawns, gardens, grounds' },
+  { kind: 'parking', icon: '🅿️', label: 'Parking', hint: 'Campus: a parking area' },
 ];
 
 export function OutlinePanel() {
@@ -122,7 +131,26 @@ export function ShapeProps({
           </select>
         </label>
       )}
-      {!shape.room && shape.kind !== 'floor' && (
+      {shape.kind === 'building' && (
+        <label>
+          Building
+          <select
+            aria-label="Linked building"
+            value={shape.building ?? ''}
+            onChange={(e) =>
+              edit('Link footprint', { building: (e.target as HTMLSelectElement).value || null })
+            }
+          >
+            <option value="">— not linked (use a label) —</option>
+            {(doc.buildings ?? []).map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!shape.room && !shape.building && shape.kind !== 'floor' && (
         <label>
           Label on the map
           <input

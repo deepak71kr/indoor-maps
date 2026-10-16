@@ -36,14 +36,29 @@ export const ShapeSchema = z.strictObject({
   pts: z.array(meters).min(4).max(4000),
   /** `rooms[].id` this outline belongs to (color by category, label by number/name). */
   room: id.optional(),
+  /** `buildings[].id` of a `building` footprint (name label, tap to open its floors). */
+  building: id.optional(),
   /** Text shown when not linked to a room, e.g. "Store" or "Courtyard". */
   label: z.string().trim().min(1).max(40).optional(),
+});
+
+/**
+ * A building on a campus (Phase 10). Sites without buildings are a single building.
+ * Levels with no `building` are shared by the whole site — usually one "Ground" level holding
+ * the outdoors AND every building's ground floor, so walking in through a door is a normal
+ * edge. Upper floors and basements belong to one building.
+ */
+export const BuildingSchema = z.strictObject({
+  id,
+  name: text,
 });
 
 export const LevelSchema = z.strictObject({
   id,
   name: text,
-  /** Sort order: -1 basement, 0 ground, 1.5 mezzanine… */
+  /** `buildings[].id` this floor belongs to; omitted for shared levels (ground / campus). */
+  building: id.optional(),
+  /** Sort order: -1 basement, 0 ground, 1.5 mezzanine… Unique within one building. */
   ord: z.number().finite(),
   color: z.enum(LEVEL_COLORS),
   image: z.string().min(1).optional(),
@@ -111,6 +126,7 @@ export const QrAnchorSchema = z.strictObject({
 export const MapFileSchema = z.strictObject({
   fmt: z.literal(FORMAT_VERSION),
   site: z.strictObject({ id, name: text }),
+  buildings: z.array(BuildingSchema).optional(),
   levels: z.array(LevelSchema).min(1),
   nodes: z.array(NodeSchema),
   edges: z.array(EdgeSchema),
@@ -121,6 +137,7 @@ export const MapFileSchema = z.strictObject({
 });
 
 export type Shape = z.infer<typeof ShapeSchema>;
+export type Building = z.infer<typeof BuildingSchema>;
 export type Level = z.infer<typeof LevelSchema>;
 export type MapNode = z.infer<typeof NodeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;

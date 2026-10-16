@@ -6,6 +6,7 @@
 import type { Point } from '@innermap/core';
 import { containsPoint, projectOnSegment, shapePoints, shapeSides } from '@innermap/core';
 import type { Level, MapFile, Shape } from '@innermap/schema';
+import { buildingForFootprint } from './campus';
 
 export type ShapeKind = Shape['kind'];
 
@@ -111,6 +112,19 @@ export function roomForOutline(
   )?.id;
 }
 
+/**
+ * Drawing order, bottom to top: the ground (roads, lawns, parking), building footprints, the
+ * walkable floor, then rooms and everything else on top.
+ */
+const LAYER: Partial<Record<ShapeKind, number>> = {
+  road: 0,
+  green: 0,
+  parking: 0,
+  building: 1,
+  floor: 2,
+};
+const layerOf = (kind: ShapeKind) => LAYER[kind] ?? 3;
+
 export function addShape(
   doc: MapFile,
   levelId: string,
@@ -118,17 +132,25 @@ export function addShape(
   pts: readonly number[],
 ): { doc: MapFile; index: number } {
   const room = kind === 'room' ? roomForOutline(doc, levelId, pts) : undefined;
-  const shape: Shape = room ? { kind, pts: pts.map(round), room } : { kind, pts: pts.map(round) };
-  const shapes = [...levelShapes(doc, levelId), shape];
-  // The walkable floor goes first so it is drawn underneath the rooms.
-  if (kind === 'floor') shapes.unshift(...shapes.splice(shapes.length - 1, 1));
-  return { doc: withShapes(doc, levelId, shapes), index: kind === 'floor' ? 0 : shapes.length - 1 };
+  const building = kind === 'building' ? buildingForFootprint(doc) : undefined;
+  const shape: Shape = {
+    kind,
+    pts: pts.map(round),
+    ...(room !== undefined && { room }),
+    ...(building !== undefined && { building }),
+  };
+  const shapes = [...levelShapes(doc, levelId)];
+  const above = shapes.findIndex((s) => layerOf(s.kind) > layerOf(kind));
+  const index = above === -1 ? shapes.length : above;
+  shapes.splice(index, 0, shape);
+  return { doc: withShapes(doc, levelId, shapes), index };
 }
 
 /** `null` removes the room link or label. */
 export interface ShapePatch {
   readonly kind?: ShapeKind;
   readonly room?: string | null;
+  readonly building?: string | null;
   readonly label?: string | null;
 }
 
@@ -143,6 +165,7 @@ export function updateShape(
   if (!shape) return doc;
   const merged: Record<string, unknown> = { ...shape, ...patch };
   if (merged['kind'] !== 'room') merged['room'] = null;
+  if (merged['kind'] !== 'building') merged['building'] = null;
   shapes[index] = Object.fromEntries(
     Object.entries(merged).filter(([, v]) => v !== null && v !== undefined && v !== ''),
   ) as Shape;

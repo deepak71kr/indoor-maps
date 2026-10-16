@@ -148,3 +148,33 @@ test('map first: bottom sheet on a phone, side panel on a laptop', async ({ page
   expect(wide?.height).toBeGreaterThan(700);
   await expect(page.getByRole('button', { name: 'Show more' })).toBeHidden();
 });
+
+test('campus: gate → a lab on another building’s Floor 2, with the campus map', async ({
+  page,
+}) => {
+  await page.goto('/?site=demo-campus&at=GATE');
+  const map = page.getByRole('img', { name: /^Map of / });
+  await expect(map).toHaveAccessibleName('Map of Ground');
+  // Zoomed out: buildings with their names, not their rooms.
+  await expect(map.getByText('Block A', { exact: true })).toBeVisible();
+  await expect(map.getByText('Library', { exact: true })).toBeVisible();
+  await expect(map.getByText('A-G01 · Seminar hall')).toBeHidden();
+
+  // Tap Block A: the map zooms in and the floor picker lists its floors.
+  const label = await map.getByText('Block A', { exact: true }).boundingBox();
+  if (!label) throw new Error('no Block A label');
+  await page.mouse.click(label.x + label.width / 2, label.y + label.height + 12);
+  const floors = page.getByRole('combobox', { name: 'Floor' }).locator('option');
+  await expect(floors).toHaveText(['Block A · Floor 2', 'Block A · Floor 1', 'Ground · you']);
+  await expect(map.getByText('Block A', { exact: true })).toBeHidden(); // rooms show instead
+
+  // Search by building, then walk: road → entrance → lift → Floor 2.
+  await page.getByRole('searchbox').fill('block a');
+  await page.getByRole('button', { name: /Computer lab/ }).click();
+  await expect(page.getByText('Fountain circle').first()).toBeVisible();
+  for (let i = 0; i < 4; i++) await iAmHere(page).click();
+  await expect(map).toHaveAccessibleName('Map of Block A · Floor 2');
+  await expect(page.locator('.floor', { hasText: 'Block A · Floor 2' })).toBeVisible();
+  await walkToTheEnd(page);
+  await expect(page.getByRole('heading', { name: /Computer lab is on your RIGHT/ })).toBeVisible();
+});
