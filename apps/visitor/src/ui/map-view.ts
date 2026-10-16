@@ -13,6 +13,7 @@ import {
   boundsOf,
   containsPoint,
   doorGaps,
+  edgeKey,
   labelPoint,
   projectOnSegment,
   routeLines,
@@ -41,10 +42,8 @@ interface Pin {
   readonly fit?: { readonly texts: readonly string[]; readonly box: readonly Point[] };
   /** Degrees on the plan (0 = up): the icon turns with the map, e.g. an entrance arrow. */
   readonly angle?: number;
-  /** Campus maps: building names show zoomed out, room names zoomed in. */
-  readonly zoom?: 'far' | 'near';
-  /** Only shown from this many pixels per meter (small corridor names). */
-  readonly minScale?: number;
+  /** Zoom level this label belongs to (it fades in and out with the zoom). */
+  readonly tier?: Tier;
   /**
    * Text that must not overlap other text: its box (px, centred on x, offset dy) and rank —
    * lower ranks win; from rank 3 on a label hides when it would cover a more important one.
@@ -68,8 +67,44 @@ const MIN_EXTENT = 34;
 /** Pixels per meter when framing: big screens show more of the building, not bigger rooms. */
 const FIT_MAX_SCALE = 16;
 const CHAR_PX = 6.6;
-/** Below this many pixels per meter a campus shows buildings, not their insides. */
-const FAR_SCALE = 4.5;
+/**
+ * Zoom levels, Google-style, faded smoothly (pixels per meter):
+ *   campus   (< ~2)   roads, lawns, water, building blocks with big names
+ *   area     (2–5)    + entrance tags, parking, amenity icons
+ *   inside   (5–7)    corridors and rooms fade in, building names fade out, room names appear
+ *   detail   (> 7.5)  + corridor landmark names and small details
+ * Each label belongs to a tier; its opacity follows the zoom (see tierOpacity).
+ */
+type Tier = 'bname' | 'room' | 'entrance' | 'amen' | 'detail';
+
+/** Where a building's insides are fully drawn (a tap below this zooms into the building). */
+const INSIDE_SCALE = 5;
+
+const ramp = (v: number, from: number, to: number) =>
+  Math.min(1, Math.max(0, (v - from) / (to - from)));
+
+/** How visible each kind of detail is at this zoom (0 hidden … 1 fully shown). */
+export function tierOpacity(scale: number, campus: boolean): Record<Tier | 'in', number> {
+  if (!campus) {
+    // One building: rooms always; only small details wait for zooming in.
+    return {
+      in: 1,
+      bname: 0,
+      room: 1,
+      entrance: 1,
+      amen: ramp(scale, 2.5, 4),
+      detail: ramp(scale, 6.5, 8.5),
+    };
+  }
+  return {
+    in: ramp(scale, 3.2, INSIDE_SCALE),
+    bname: 1 - ramp(scale, 4.5, 6.5),
+    room: ramp(scale, 4.8, 6.8),
+    entrance: ramp(scale, 2.2, 3.6),
+    amen: ramp(scale, 3, 4.5),
+    detail: ramp(scale, 7, 9.5),
+  };
+}
 /** A tap moves the finger less than this (pixels); more is a drag. */
 const TAP_PX = 8;
 /** A two-finger twist must pass this many degrees before the map rotates (pinch stays steady). */
@@ -78,9 +113,6 @@ const TWIST_DEG = 12;
 const CHEVRON_EVERY = 7;
 /** Room labels get their category icon above the name when the room is this tall (px). */
 const ICON_ROOM_PX = 48;
-
-/** Corridor landmark names show from this zoom (px per meter) so the plan doesn't get busy. */
-const SPOT_SCALE = 7;
 
 /** "Reception desk (blue board), Lift A lobby" → "Reception desk": short enough for a map tag. */
 export function shortPlace(name: string): string {
@@ -250,7 +282,20 @@ export class MapView {
     });
     this.overview.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>';
-    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview);
+    // + / − (laptops; phones pinch). Each press is one smooth zoom level.
+    const zoomButton = (label: string, text: string, factor: number) =>
+      h(
+        'button',
+        { type: 'button', 'aria-label': label, title: label, onClick: () => this.zoomBy(factor) },
+        text,
+      );
+    const zoom = h(
+      'div',
+      { class: 'zoom', role: 'group', 'aria-label': tr('map.zoom') },
+      zoomButton(tr('map.zoom-in'), '+', 2),
+      zoomButton(tr('map.zoom-out'), '−', 0.5),
+    );
+    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview, zoom);
     this.el = h('div', { class: 'map' });
     this.el.append(this.svg);
     this.listen();
@@ -391,7 +436,7 @@ export class MapView {
       if (building) {
         // Long names get a short form when the block is small: "Girls Hostel 1" → "GH1".
         const texts = [building.name, shortPlace(building.name), initials(building.name)];
-        this.addLabel(labelPoint(shape), texts, shapePoints(shape), 'label big', 'far');
+        this.addLabel(labelPoint(shape), texts, shapePoints(shape), 'label big', 'bname');
         continue;
       }
       const room = shape.room ? rooms.get(shape.room) : undefined;
@@ -407,7 +452,7 @@ export class MapView {
         texts.filter(Boolean).map((t) => lock + t),
         shapePoints(shape),
         cls,
-        OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'near',
+        OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'room',
         room ? CATEGORY[room.category].emoji : shapeIcon(shape),
       );
     }
@@ -424,8 +469,7 @@ export class MapView {
         p: node,
         el: g,
         id: node.id,
-        minScale: SPOT_SCALE,
-        zoom: 'near',
+        tier: 'detail',
         rank: RANK.spot,
         box: { w: text.length * 5.6, h: 12, dy: -9 },
       });
@@ -442,7 +486,7 @@ export class MapView {
         id: node.id,
         rank: RANK.entrance,
         box: { w, h: 20, dy: 24 },
-        zoom: 'near', // a zoomed-out campus shows building names instead
+        tier: 'entrance', // a zoomed-out campus shows building names instead
       });
     }
     for (const room of site.map.rooms) {
@@ -463,7 +507,7 @@ export class MapView {
         g.append(s('circle', { cx: dx, cy: -14, r: 11 }));
         g.append(s('text', { x: dx, y: -9.5 }, AMENITY_EMOJI[a.kind]));
         this.overlay.append(g);
-        this.pins.push({ p: node, el: g, zoom: 'near' });
+        this.pins.push({ p: node, el: g, tier: 'amen' });
       });
     }
   }
@@ -473,6 +517,19 @@ export class MapView {
     // "in": a building's inside, hidden on a zoomed-out campus.
     const inside = OUTDOOR_SHAPE_KINDS.has(shape.kind) ? '' : ' in';
     if (shape.kind === 'wall') return s('polyline', { class: `wall${inside}`, points });
+    if (shape.kind === 'tree') {
+      // Trees are drawn round, whatever outline they were traced with.
+      const box = boundsOf(shapePoints(shape));
+      if (box) {
+        const r = Math.max(0.5, (box.maxX - box.minX + box.maxY - box.minY) / 4);
+        return s('circle', {
+          class: 'tree',
+          cx: (box.minX + box.maxX) / 2,
+          cy: (box.minY + box.maxY) / 2,
+          r,
+        });
+      }
+    }
     const room = shape.room ? rooms.get(shape.room) : undefined;
     const cls = room
       ? `room cat-${room.category}${room.visibility === 'locked' ? ' locked' : ''}`
@@ -485,7 +542,7 @@ export class MapView {
     texts: string[],
     box?: readonly Point[],
     cls = 'label',
-    zoom?: 'far' | 'near',
+    tier?: Tier,
     emoji?: string,
   ): void {
     const g = s('g', { class: cls });
@@ -501,7 +558,7 @@ export class MapView {
       p,
       el: g,
       ...(box && { fit: { texts, box } }),
-      ...(zoom && { zoom }),
+      ...(tier && { tier }),
       ...(cls.includes('cat-') && { rank: RANK.room }),
     });
   }
@@ -656,6 +713,25 @@ export class MapView {
       });
     };
     this.routeIds = new Set(path);
+
+    // Closed (map authors) and blocked (this visitor) lines: red dashes and a 🚧.
+    const blocked = new Set(scene.blocked);
+    for (const e of site.map.edges) {
+      const a = site.graph.nodes.get(e.a);
+      const b = site.graph.nodes.get(e.b);
+      if (a?.level !== levelId || b?.level !== levelId) continue;
+      if (!e.tags?.includes('closed') && !blocked.has(edgeKey(e.a, e.b))) continue;
+      this.routeLayer.append(s('line', { class: 'closed', x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
+      marker(
+        null,
+        'works',
+        (g) => {
+          g.append(s('circle', { r: 10 }), s('text', { y: 4 }, '🚧'));
+        },
+        undefined,
+        { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      );
+    }
 
     // Arrows along the way still to walk, pointing where to go.
     for (const line of [...leg, ...later]) {
@@ -937,8 +1013,13 @@ export class MapView {
     const you = this.markers.find((m) => m.el.classList.contains('you'));
     const youAt = you ? this.project(you.p) : null;
     const placedAt = new Map<Pin, Point>();
-    const far = this.campus && scale < FAR_SCALE;
-    this.svg.classList.toggle('far', far);
+    // Smooth zoom levels: one CSS variable per tier (cheap), labels follow below.
+    const o = tierOpacity(scale, this.campus);
+    const inside = o.in.toFixed(2);
+    if (this.svg.style.getPropertyValue('--o-in') !== inside) {
+      this.svg.style.setProperty('--o-in', inside);
+    }
+    this.svg.classList.toggle('no-in', o.in < 0.02);
     for (const pin of [...this.pins, ...this.markers]) {
       const at = this.project(pin.p);
       // Off screen: skip it (big campuses have thousands of labels; only a few are in view).
@@ -949,11 +1030,13 @@ export class MapView {
       const angle = pin.live && this.liveHeading !== null ? this.liveHeading : pin.angle;
       const turn = angle === undefined ? '' : ` rotate(${(angle - rot).toFixed(1)})`;
       pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
-      if (this.campus && pin.zoom && (pin.zoom === 'far') !== far) {
+      const fade = pin.tier ? o[pin.tier] : 1;
+      const opacity = fade > 0.98 ? '' : fade.toFixed(2);
+      if (pin.el.style.opacity !== opacity) pin.el.style.opacity = opacity;
+      if (fade < 0.02) {
         pin.el.style.display = 'none';
-      } else if (pin.minScale !== undefined) {
-        const named = pin.id !== undefined && this.routeIds.has(pin.id);
-        pin.el.style.display = scale >= pin.minScale && !named ? '' : 'none';
+      } else if (pin.tier === 'detail' && pin.id !== undefined && this.routeIds.has(pin.id)) {
+        pin.el.style.display = 'none'; // the route already names this spot
       } else if (pin.fit) {
         // Room names give way to the "You are here" label just below the blue dot.
         const underYou =
@@ -1037,7 +1120,7 @@ export class MapView {
   // ---------- gestures: drag to pan, pinch / wheel to zoom ----------
 
   private listen(): void {
-    const local = (e: PointerEvent | WheelEvent): Point => {
+    const local = (e: MouseEvent): Point => {
       const r = this.svg.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
@@ -1089,6 +1172,11 @@ export class MapView {
       if (single && this.travel < TAP_PX) this.tap(local(e));
     });
     this.svg.addEventListener('pointercancel', up);
+    // Double-click zooms in there (Google Maps does the same).
+    this.svg.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      this.zoomBy(2, local(e));
+    });
     this.svg.addEventListener(
       'wheel',
       (e) => {
@@ -1111,7 +1199,7 @@ export class MapView {
   private tap(at: Point): void {
     if (!this.scene) return;
     const p = this.unproject(at);
-    const far = this.campus && this.view.s < FAR_SCALE;
+    const far = this.campus && this.view.s < INSIDE_SCALE;
     if (!far && this.onPick) {
       const room = [...this.roomShapes].reverse().find((shape) => containsPoint(shape, p));
       if (room?.room) {
@@ -1217,6 +1305,20 @@ export class MapView {
     this.view.cy -= (dx * Math.sin(a) + dy * Math.cos(a)) / scale;
     this.moved = true;
     this.requestDraw();
+  }
+
+  /** Animated zoom by `factor` around a screen point (default: the middle of the map). */
+  private zoomBy(factor: number, at: Point = { x: this.width / 2, y: this.height / 2 }): void {
+    const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.view.s * factor));
+    const world = this.unproject(at);
+    const k = this.view.s / s;
+    this.moved = true;
+    this.animateTo({
+      cx: world.x + (this.view.cx - world.x) * k,
+      cy: world.y + (this.view.cy - world.y) * k,
+      s,
+      rot: this.view.rot,
+    });
   }
 
   private zoomAt(at: Point, factor: number): void {

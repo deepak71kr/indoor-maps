@@ -45,7 +45,8 @@ export function findRoute(site: Site, request: RouteRequest): Result<Route, Rout
   const targets = resolveTargets(site, request.to);
   if (!targets || targets.size === 0) return err({ code: 'unknown-destination' });
 
-  const path = site.router.shortestPath(request.from, new Set(targets.keys()), {
+  const router = site.routerFor(request.profile?.preference);
+  const path = router.shortestPath(request.from, new Set(targets.keys()), {
     profile: request.profile ?? {},
   });
   if (!path) return err({ code: 'no-route' });

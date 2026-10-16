@@ -180,6 +180,37 @@ describe('visitor state machine', () => {
     expect(s.target?.label).toBe('Main Entrance');
   });
 
+  it('"Path blocked?" avoids the line ahead and routes around it from here', () => {
+    const s = loaded(
+      { type: 'set-position', position: atMain },
+      { type: 'choose', target: radiology },
+      { type: 'start' },
+      { type: 'confirm' }, // at the Reception desk, about to turn right to Lift A
+    );
+    expect(s.path).toContain('G-LA');
+    const around = reducer(s, { type: 'block-ahead' });
+    expect(around.blocked).toHaveLength(1);
+    expect(around.notice).toBe('blocked');
+    expect(around.screen).toEqual({ name: 'navigate', step: 0 });
+    expect(around.path[0]).toBe('G-LOB');
+    expect(around.path[1]).not.toBe('G-LA'); // another way up (Lift B or the stairs)
+    expect(around.path.at(-1)).toMatch(/^2-/);
+  });
+
+  it('shortest vs fastest re-plans the preview', () => {
+    const s = loaded(
+      { type: 'set-position', position: { node: 'G-E' } },
+      {
+        type: 'choose',
+        target: { destination: { type: 'node', nodeId: '1-E' }, label: 'Landing' },
+      },
+      { type: 'set-preference', preference: 'shortest' },
+    );
+    expect(s.preference).toBe('shortest');
+    expect(s.screen.name).toBe('preview');
+    expect(s.steps.some((step) => step.icon === 'stairs')).toBe(true);
+  });
+
   it('resume restores the saved step (clamped to the route)', () => {
     const s = loaded({
       type: 'resume',

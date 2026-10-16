@@ -3,6 +3,18 @@ import type { GraphEdge } from '../graph/types';
 /** Who is travelling, and how. Grows over time (e.g. stretcher, avoid crowds). */
 export interface RouteProfile {
   readonly stepFree?: boolean;
+  /**
+   * 'fastest' (default): time — lifts cost their wait, stairs are slow.
+   * 'shortest': distance walked, whatever the way up.
+   */
+  readonly preference?: 'fastest' | 'shortest';
+  /** Lines the visitor found blocked ("Path blocked?"), as `edgeKey`s: never used. */
+  readonly blocked?: readonly string[];
+}
+
+/** One key per line, the same both ways: "a|b" with ids sorted. */
+export function edgeKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
 export interface RouteContext {
@@ -45,6 +57,15 @@ export const DEFAULT_COST_SETTINGS: CostSettings = {
   liftPerFloor: 8,
 };
 
+/** Distance only, for 'shortest': a floor up or down counts as the ~4 m you climb. */
+export class DistanceCostModel implements EdgeCostModel {
+  cost(edge: GraphEdge): number {
+    return edge.kind === 'lift' || edge.kind === 'stairs'
+      ? edge.length + edge.floors * 4
+      : edge.length;
+  }
+}
+
 export class DefaultCostModel implements EdgeCostModel {
   constructor(private readonly settings: CostSettings = DEFAULT_COST_SETTINGS) {}
 
@@ -74,6 +95,19 @@ export const stepFreeRule: RouteCostRule = {
     ctx.profile.stepFree && (edge.kind === 'stairs' || edge.tags.includes('steps'))
       ? Number.POSITIVE_INFINITY
       : cost,
+};
+
+/** Map authors close a corridor or road for works by tagging its lines `closed`. */
+export const closedRule: RouteCostRule = {
+  id: 'closed',
+  adjust: (edge, cost) => (edge.tags.includes('closed') ? Number.POSITIVE_INFINITY : cost),
+};
+
+/** Lines the visitor reported blocked on this trip. */
+export const blockedRule: RouteCostRule = {
+  id: 'blocked',
+  adjust: (edge, cost, ctx) =>
+    ctx.profile.blocked?.includes(edgeKey(edge.from, edge.to)) ? Number.POSITIVE_INFINITY : cost,
 };
 
 /** Forbid edges carrying any of these tags (e.g. `hazard`, `forklift-lane`). */

@@ -3,7 +3,7 @@
  * the reducer is unit-tested and the UI only renders `State` and dispatches `Action`s.
  */
 import type { Destination, RouteError, Site, Step } from '@innermap/core';
-import { buildDirections, findRoute } from '@innermap/core';
+import { buildDirections, edgeKey, findRoute } from '@innermap/core';
 
 export interface Position {
   readonly node: string;
@@ -43,8 +43,12 @@ export interface State {
   /** The route as node ids (for the map); empty without a route. */
   readonly path: readonly string[];
   readonly stepFree: boolean;
+  /** Fastest (time, default) or shortest (distance). */
+  readonly preference: 'fastest' | 'shortest';
+  /** Lines the visitor reported blocked on this visit (`edgeKey`s); routes avoid them. */
+  readonly blocked: readonly string[];
   /** One-off message, e.g. after re-routing. */
-  readonly notice: 'rerouted' | null;
+  readonly notice: 'rerouted' | 'blocked' | null;
   /** Rooms chosen recently, newest first (saved on the phone by main.ts). */
   readonly recent: readonly Target[];
 }
@@ -75,6 +79,9 @@ export type Action =
   | { readonly type: 'lost' }
   | { readonly type: 'found-way' }
   | { readonly type: 'toggle-step-free' }
+  | { readonly type: 'set-preference'; readonly preference: 'fastest' | 'shortest' }
+  /** "Path blocked?": the way ahead is closed — avoid it and route around from here. */
+  | { readonly type: 'block-ahead' }
   | { readonly type: 'new-destination' }
   | { readonly type: 'ask-position' };
 
@@ -86,6 +93,8 @@ export const initialState: State = {
   steps: [],
   path: [],
   stepFree: false,
+  preference: 'fastest',
+  blocked: [],
   notice: null,
   recent: [],
 };
@@ -136,7 +145,7 @@ export function reducer(state: State, action: Action): State {
 
     case 'show-place':
       return s.site?.map.rooms.some((r) => r.id === action.roomId) &&
-        (s.screen.name === 'choose' || s.screen.name === 'place')
+        ['choose', 'place', 'preview', 'arrived'].includes(s.screen.name)
         ? { ...s, screen: { name: 'place', roomId: action.roomId } }
         : state;
 
@@ -208,6 +217,27 @@ export function reducer(state: State, action: Action): State {
       return node ? plan(toggled, { node }, s.target, 'navigate') : toggled;
     }
 
+    case 'set-preference': {
+      const set = { ...s, preference: action.preference };
+      if (!s.target) return set;
+      if (s.screen.name === 'preview' && s.position)
+        return plan(set, s.position, s.target, 'preview');
+      if (s.screen.name !== 'navigate') return set;
+      const node = currentNode(s);
+      return node ? plan(set, { node }, s.target, 'navigate') : set;
+    }
+
+    case 'block-ahead': {
+      if (s.screen.name !== 'navigate' || !s.target) return state;
+      const here = currentNode(s);
+      const at = here ? s.path.indexOf(here) : -1;
+      const next = s.path[at + 1];
+      if (!here || at < 0 || !next) return state;
+      const blocked = [...new Set([...s.blocked, edgeKey(here, next)])];
+      const replanned = plan({ ...s, blocked }, { node: here }, s.target, 'navigate');
+      return { ...replanned, notice: replanned.screen.name === 'navigate' ? 'blocked' : null };
+    }
+
     case 'new-destination': {
       const node = currentNode(s);
       return {
@@ -244,7 +274,7 @@ function plan(
   const result = findRoute(site, {
     from: position.node,
     to: target.destination,
-    profile: { stepFree: state.stepFree },
+    profile: { stepFree: state.stepFree, preference: state.preference, blocked: state.blocked },
   });
   if (!result.ok) {
     return {

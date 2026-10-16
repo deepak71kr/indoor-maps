@@ -342,3 +342,33 @@ test('compass: the beam turns with the phone, calibrated at the QR sticker', asy
   });
   expect(Number(turned)).toBeCloseTo(0, 0);
 });
+
+test('route options and "Path blocked?": shortest / fastest, detour around a blockage', async ({
+  page,
+}) => {
+  await page.goto('/?at=G-MAIN');
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Radiology/ })
+    .click();
+  await page.getByRole('button', { name: 'Directions' }).click();
+  const options = page.getByRole('group', { name: 'Route options' });
+  await expect(options.getByRole('button', { name: '⚡ Fastest' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await options.getByRole('button', { name: '📏 Shortest' }).click();
+  await expect(options.getByRole('button', { name: '📏 Shortest' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  // Walk one step, then the way to the lift is blocked: a new way round, the blockage in red.
+  await page.getByRole('button', { name: 'Start' }).click();
+  await iAmHere(page).click();
+  await page.getByRole('button', { name: 'Path blocked?' }).click();
+  await expect(page.getByText('New way around the blocked path')).toBeVisible();
+  await expect(page.locator('.map .closed')).not.toHaveCount(0);
+  await walkToTheEnd(page);
+  await expect(page.getByRole('heading', { name: /Radiology/ })).toBeVisible();
+});

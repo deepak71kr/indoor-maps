@@ -3,6 +3,7 @@ import { buildGraph } from '../graph/build-graph';
 import { containsPoint } from '../plan/plan';
 import type { Graph } from '../graph/types';
 import type { RouterOptions } from '../routing/router';
+import { DistanceCostModel } from '../routing/cost';
 import { Router } from '../routing/router';
 
 /** A loaded map, ready to answer questions: the graph, a router, and lookups. */
@@ -10,6 +11,8 @@ export interface Site {
   readonly map: MapFile;
   readonly graph: Graph;
   readonly router: Router;
+  /** The router for a preference: 'fastest' is `router`; 'shortest' counts meters only. */
+  routerFor(preference: 'fastest' | 'shortest' | undefined): Router;
   /** QR short code (case-insensitive) → node id. */
   nodeForQr(code: string): string | undefined;
   /** QR short code (case-insensitive) → the full anchor, including which way the reader faces. */
@@ -29,6 +32,12 @@ export interface Site {
 export function loadSite(map: MapFile, options: RouterOptions = {}): Site {
   const graph = buildGraph(map);
   const router = new Router(graph, options);
+  let shortest: Router | null = null;
+  const routerFor = (preference: 'fastest' | 'shortest' | undefined): Router => {
+    if (preference !== 'shortest') return router;
+    shortest ??= new Router(graph, { ...options, costModel: new DistanceCostModel() });
+    return shortest;
+  };
 
   const qr = new Map(map.qr.map((q) => [q.code.toUpperCase(), q]));
   const rooms = new Map<string, Room>();
@@ -61,6 +70,7 @@ export function loadSite(map: MapFile, options: RouterOptions = {}): Site {
     map,
     graph,
     router,
+    routerFor,
     nodeForQr: (code) => qr.get(code.trim().toUpperCase())?.node,
     findQr: (code) => qr.get(code.trim().toUpperCase()),
     findRoom: (query) => rooms.get(query.trim().toLowerCase()),

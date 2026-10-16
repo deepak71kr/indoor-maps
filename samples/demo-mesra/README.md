@@ -24,6 +24,17 @@ node samples/demo-mesra/generate.mjs
 
 **Size:** 33 buildings, 32 floors, ~1,800 dots, 808 rooms; 31 KB brotli in **one file**. That is over the 15 KB per-map budget on purpose. Real sites this big are published per building (v0 on-demand loading). `tools/size-check.mjs` gives this file its own 40 KB stress budget and leaves it out of the first-visit total.
 
+## Test cases built in
+
+| Case                       | Where                                                                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Several doors per building | Main Building, Lecture Hall Complex, Library, Central Mess, Shopping Complex, Guest House and all four departments have a front door plus **west and east doors**; routes use whichever is nearer (stickers `<CODE>-W` / `<CODE>-E`) |
+| Two staircases             | Every long multi-floor building has stairs at both ends ("… east stairs")                                                                                                                                                            |
+| Two lifts                  | Main Building: Lift (west) and Lift B (east)                                                                                                                                                                                         |
+| Road closed for works      | West Road between Sports Junction and the Water Pump House path (red dashes); every route goes around it, e.g. `SPC-ENT` → Water Pump House                                                                                          |
+| Visitor reports a blockage | While walking, tap **🚧 Path blocked?** → a new way round from where you stand                                                                                                                                                       |
+| Fastest vs shortest        | Route preview: ⚡ Fastest (lift waits, slow stairs) or 📏 Shortest (meters only), plus step-free                                                                                                                                     |
+
 ## Try it
 
 - Phone: `http://localhost:5173/?site=demo-mesra&at=MAIN-GATE`. Other stickers: `BACK-GATE`, `<CODE>-ENT` at every entrance (e.g. `CSE-ENT`, `H3-ENT`, `MED-ENT`), and `<CODE>-<floor>` at every lift lobby (e.g. `MB-2`).

@@ -1,6 +1,6 @@
 import type { Graph, GraphEdge, GraphNode } from '../graph/types';
 import type { EdgeCostModel, RouteContext, RouteCostRule } from './cost';
-import { DefaultCostModel, stepFreeRule } from './cost';
+import { blockedRule, closedRule, DefaultCostModel, stepFreeRule } from './cost';
 import { PriorityQueue } from './priority-queue';
 
 export interface Path {
@@ -16,7 +16,7 @@ export interface Path {
 
 export interface RouterOptions {
   readonly costModel?: EdgeCostModel;
-  /** Applied in order to every edge. Defaults to [stepFreeRule]. */
+  /** Applied in order to every edge. Defaults to step-free, closed lines, blocked lines. */
   readonly rules?: readonly RouteCostRule[];
 }
 
@@ -37,7 +37,7 @@ export class Router {
     options: RouterOptions = {},
   ) {
     this.costModel = options.costModel ?? new DefaultCostModel();
-    this.rules = options.rules ?? [stepFreeRule];
+    this.rules = options.rules ?? [stepFreeRule, closedRule, blockedRule];
     this.heuristicScale = this.lowestCostPerMeter();
   }
 

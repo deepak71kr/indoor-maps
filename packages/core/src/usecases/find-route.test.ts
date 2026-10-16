@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avoidTagsRule, penalizeTagsRule, stepFreeRule } from '../routing/cost';
+import { avoidTagsRule, edgeKey, penalizeTagsRule, stepFreeRule } from '../routing/cost';
 import type { Site } from '../site/site';
 import { loadSite } from '../site/site';
 import { demoMap } from '../test-support';
@@ -191,5 +191,41 @@ describe('performance', () => {
       expect(result.ok).toBe(true);
     }
     expect(Date.now() - started).toBeLessThan(1000);
+  });
+});
+
+describe('fastest, shortest, closed and blocked lines', () => {
+  const ride = (r: Route) => r.edges.find((e) => e.kind === 'lift' || e.kind === 'stairs')?.kind;
+
+  it('a corridor closed for works (tag "closed") is never used', () => {
+    const map = demoMap();
+    for (const e of map.edges) if ([e.a, e.b].includes('G-C30')) e.tags = ['closed'];
+    const r = route({ from: 'G-C18', to: { type: 'node', nodeId: 'G-C42' } }, loadSite(map));
+    expect(ids(r)).not.toContain('G-C30');
+  });
+
+  it('a line the visitor reports blocked is avoided on the new route', () => {
+    const open = route({ from: 'G-ENT', to: room('pharmacy') });
+    expect(ids(open)).toContain('G-C30');
+    const detour = findRoute(site, {
+      from: 'G-ENT',
+      to: room('pharmacy'),
+      profile: { blocked: [edgeKey('G-LOB', 'G-C30')] },
+    });
+    if (!detour.ok) throw new Error(detour.error.code);
+    const path = detour.value.nodes.map((n) => n.id);
+    expect(path.slice(0, 2)).toEqual(['G-ENT', 'G-LOB']);
+    expect(path[2]).not.toBe('G-C30');
+  });
+
+  it('shortest counts meters; fastest counts the lift wait and slow stairs', () => {
+    const fastest = route({ from: 'G-E', to: { type: 'node', nodeId: '1-E' } });
+    const shortest = route({
+      from: 'G-E',
+      to: { type: 'node', nodeId: '1-E' },
+      profile: { preference: 'shortest' },
+    });
+    expect(ride(shortest)).toBe('stairs'); // the stairs are right there
+    expect(shortest.walkingMeters).toBeLessThanOrEqual(fastest.walkingMeters);
   });
 });

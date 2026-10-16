@@ -12,6 +12,8 @@ export interface MapScene {
   readonly youLevel: string;
   /** A room to highlight (its card is open). */
   readonly selected?: string;
+  /** Lines reported blocked (`edgeKey`s), drawn red. */
+  readonly blocked: readonly string[];
   readonly here: string | null;
   /** Degrees clockwise from up (a QR sticker or the way they walked); null = unknown. */
   readonly facing: number | null;
@@ -48,6 +50,7 @@ export function sceneFor(state: State): MapScene | null {
     at,
     checkpoints,
     done: 0,
+    blocked: state.blocked,
   };
 
   switch (screen.name) {

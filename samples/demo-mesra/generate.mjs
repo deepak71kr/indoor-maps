@@ -137,7 +137,7 @@ const CORE = 14; // lift + stairs at the start of side A
  * `rooms(floor, slots)` names the rooms of each floor.
  */
 function corridorBuilding(b) {
-  const { id, name, code, x, y, w, h, floors, entrance, road, rooms: roomsFor } = b;
+  const { id, name, code, x, y, w, h, floors, entrance, road, rooms: roomsFor, sideDoors } = b;
   const horizontal = w >= h;
   const L = horizontal ? w : h;
   const Wd = horizontal ? h : w;
@@ -160,11 +160,15 @@ function corridorBuilding(b) {
   // Room slots along both sides.
   // One-floor buildings need no lift or stairs: their rooms start right at the end wall.
   const core = floors > 1 ? CORE : 0;
+  // Long buildings get a second staircase at the far end; very long ones a second lift too.
+  const coreEnd = floors > 1 && L >= 100 ? CORE : 0;
+  const secondLift = floors > 1 && L >= 200;
+  const span = L - core - coreEnd;
   const slotsA = [];
-  const nA = Math.max(1, Math.floor((L - core) / ROOM_W));
+  const nA = Math.max(1, Math.floor(span / ROOM_W));
   for (let i = 0; i < nA; i++) {
-    const u0 = core + ((L - core) * i) / nA;
-    slotsA.push({ side: 'A', u0, u1: core + ((L - core) * (i + 1)) / nA });
+    const u0 = core + (span * i) / nA;
+    slotsA.push({ side: 'A', u0, u1: core + (span * (i + 1)) / nA });
   }
   const slotsB = [];
   const nB = Math.max(2, Math.floor(L / ROOM_W));
@@ -178,6 +182,8 @@ function corridorBuilding(b) {
 
   const lift = { id: `${id}-lift`, kind: 'lift', name: `${name} lift`, stops: {} };
   const stairs = { id: `${id}-stairs`, kind: 'stairs', name: `${name} stairs`, stops: {} };
+  const stairsB = { id: `${id}-stairs-b`, kind: 'stairs', name: `${name} east stairs`, stops: {} };
+  const liftB = { id: `${id}-lift-b`, kind: 'lift', name: `${name} lift B`, stops: {} };
 
   // `floors` counts the ground floor: f = 0 is on the shared Ground level, the rest are
   // the building's own levels.
@@ -215,6 +221,10 @@ function corridorBuilding(b) {
     if (core > 0) {
       shape(level, 'lift', box(1, cv0 - 6, 6, cv0), { label: 'Lift' });
       shape(level, 'stairs', box(7, cv0 - 8, 13, cv0));
+    }
+    if (coreEnd > 0) {
+      shape(level, 'stairs', box(L - 13, cv0 - 8, L - 7, cv0));
+      if (secondLift) shape(level, 'lift', box(L - 6, cv0 - 6, L - 1, cv0), { label: 'Lift B' });
     }
     const usable = [...slotsA, ...slotsB].filter(
       (s) => !(f === 0 && s === lobbySlot) && s !== toiletSlot,
@@ -290,6 +300,36 @@ function corridorBuilding(b) {
       lift.stops[lvlId] = liftStop.id;
       stairs.stops[lvlId] = stairStop.id;
     }
+    if (coreEnd > 0) {
+      const sp = world(L - 10, cv0);
+      const stop = node(
+        `${id}-${tag}-stairs-b`.toLowerCase(),
+        lvlId,
+        sp.x,
+        sp.y,
+        'stairs-stop',
+        `${name} east stairs`,
+      );
+      const landing = at(L - 10);
+      landing.landmark = `${name} east stairs, ${floorName}`;
+      edge(stop, landing);
+      stairsB.stops[lvlId] = stop.id;
+      if (secondLift) {
+        const lp = world(L - 3.5, cv0);
+        const liftStopB = node(
+          `${id}-${tag}-lift-b`.toLowerCase(),
+          lvlId,
+          lp.x,
+          lp.y,
+          'lift-stop',
+          `${name} lift B`,
+        );
+        const lobbyB = at(L - 3.5);
+        lobbyB.landmark = `${name} lift B lobby, ${floorName}`;
+        edge(liftStopB, lobbyB);
+        liftB.stops[lvlId] = liftStopB.id;
+      }
+    }
     for (const d of doors) {
       const c = at(d.u);
       c.near.push(d.name);
@@ -319,6 +359,37 @@ function corridorBuilding(b) {
       const facing = { N: 180, S: 0, E: 270, W: 90 }[entrance];
       qr.push({ code: `${code}-ENT`, node: entranceNode.id, facing });
       joinRoad(road, entranceNode, name);
+
+      // Side doors at both ends (west and east) for big buildings: a short path out, then
+      // along the end wall to the same road. Routes pick whichever door is nearer.
+      if (sideDoors && horizontal && (side === 'A' || side === 'B')) {
+        for (const [u, out, label] of [
+          [0, -3, 'west'],
+          [L, L + 3, 'east'],
+        ]) {
+          const dp = world(u, Wd / 2);
+          const door = node(`${id}-${label}`, 'G', dp.x, dp.y, 'entrance', `${name} ${label} door`);
+          const inner = at(u === 0 ? 0.5 : L - 0.5);
+          if (!inner.landmark) inner.landmark = `${name} ${label} end`;
+          edge(door, inner);
+          const op = world(out, Wd / 2);
+          const outside = node(
+            `${id}-${label}-out`,
+            'G',
+            op.x,
+            op.y,
+            'junction',
+            `Outside ${name} ${label} door`,
+          );
+          edge(door, outside, 'outdoor');
+          joinRoad(road, outside, `${name} ${label} door`);
+          qr.push({
+            code: `${code}-${label === 'west' ? 'W' : 'E'}`,
+            node: door.id,
+            facing: label === 'west' ? 90 : 270,
+          });
+        }
+      }
     }
     if (f > 0 && liftLobby)
       qr.push({ code: `${code}-${f}`, node: liftLobby.id, facing: horizontal ? 90 : 180 });
@@ -340,6 +411,8 @@ function corridorBuilding(b) {
     }
   }
   if (floorCount > 1) connectors.push(lift, stairs);
+  if (floorCount > 1 && coreEnd > 0) connectors.push(stairsB);
+  if (floorCount > 1 && secondLift) connectors.push(liftB);
 }
 
 /** A one-room building (temple, kiosk, substation): the room's door is the entrance. */
@@ -437,6 +510,7 @@ const DEPARTMENTS = [
 for (const d of DEPARTMENTS) {
   corridorBuilding({
     ...d,
+    sideDoors: true,
     w: 120,
     h: 50,
     floors: d.floors ?? 3,
@@ -447,6 +521,7 @@ for (const d of DEPARTMENTS) {
 }
 corridorBuilding({
   id: 'mb',
+  sideDoors: true,
   name: 'Main Building',
   code: 'MB',
   x: 190,
@@ -518,6 +593,7 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'lhc',
+  sideDoors: true,
   name: 'Lecture Hall Complex',
   code: 'LH',
   x: 175,
@@ -535,6 +611,7 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'lib',
+  sideDoors: true,
   name: 'Central Library',
   code: 'LIB',
   x: 480,
@@ -610,6 +687,7 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'mess',
+  sideDoors: true,
   name: 'Central Mess',
   code: 'MESS',
   x: 470,
@@ -798,6 +876,7 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'shop',
+  sideDoors: true,
   name: 'Shopping Complex',
   code: 'SC',
   x: 220,
@@ -845,6 +924,7 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'guest',
+  sideDoors: true,
   name: 'Guest House',
   code: 'GHS',
   x: 620,
@@ -975,6 +1055,18 @@ for (const [roadId, list2] of stops) {
     h ? a.x - b.x : a.y - b.y,
   );
   for (let i = 1; i < sorted.length; i++) edge(sorted[i - 1], sorted[i], 'outdoor');
+}
+
+// A road closed for works (to test detours): West Road from Sports Junction south to the
+// Water Pump House path. Drawn red on the map; every route goes around it.
+{
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  for (const e of edges) {
+    const a = byId.get(e.a);
+    const b = byId.get(e.b);
+    if (!a || !b || a.x !== 150 || b.x !== 150) continue;
+    if (Math.min(a.y, b.y) >= 380 && Math.max(a.y, b.y) <= 480) e.tags = ['closed'];
+  }
 }
 
 // ---------------------------------------------------------------- green, water, parking, trees

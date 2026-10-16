@@ -509,6 +509,28 @@ function chooseView(ctx: ViewContext): HTMLElement {
   return screen;
 }
 
+/** Route options under Start: fastest / shortest (Google's "Options"), and step-free. */
+function routeOptions(ctx: ViewContext): HTMLElement {
+  const option = (value: 'fastest' | 'shortest', text: string) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: `chip option${ctx.state.preference === value ? ' on' : ''}`,
+        'aria-pressed': String(ctx.state.preference === value),
+        onClick: () => ctx.dispatch({ type: 'set-preference', preference: value }),
+      },
+      text,
+    );
+  return h(
+    'div',
+    { class: 'options', role: 'group', 'aria-label': tr('route.options') },
+    option('fastest', tr('route.fastest')),
+    option('shortest', tr('route.shortest')),
+    stepFreeToggle(ctx),
+  );
+}
+
 function stepFreeToggle(ctx: ViewContext): HTMLElement {
   return h(
     'label',
@@ -539,6 +561,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
         index === 0 && ctx.state.position?.facing !== undefined,
       ),
       notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
+      notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
     ],
     sheet: [
       h(
@@ -590,6 +613,16 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
         'div',
         { class: 'links' },
         button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'link', 'back'),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'link blocked-btn',
+            onClick: () => ctx.dispatch({ type: 'block-ahead' }),
+          },
+          '🚧 ',
+          tr('blocked.button'),
+        ),
         h(
           'button',
           {
@@ -973,7 +1006,7 @@ function previewView(ctx: ViewContext): HTMLElement {
         'btn primary big',
         'straight',
       ),
-      stepFreeToggle(ctx),
+      routeOptions(ctx),
       h('h2', {}, tr('preview.steps')),
       h(
         'ol',
@@ -1075,6 +1108,7 @@ function noRouteView(
     { class: 'screen center' },
     title(tr('no-route.title'), '🚧'),
     h('p', { class: 'muted' }, tr(`no-route.${reason}`)),
+    ctx.state.blocked.length > 0 && h('p', { class: 'hint' }, tr('blocked.none')),
     ctx.state.stepFree && stepFreeToggle(ctx),
     button(tr('no-route.choose'), () => ctx.dispatch({ type: 'new-destination' }), 'btn primary'),
   );

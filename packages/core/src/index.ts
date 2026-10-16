@@ -22,8 +22,12 @@ export type {
 } from './routing/cost';
 export {
   avoidTagsRule,
+  blockedRule,
+  closedRule,
   DEFAULT_COST_SETTINGS,
   DefaultCostModel,
+  DistanceCostModel,
+  edgeKey,
   penalizeTagsRule,
   stepFreeRule,
 } from './routing/cost';

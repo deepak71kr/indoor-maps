@@ -413,6 +413,12 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-16): colourful and easy for children and older visitors.** Colour carries meaning: the direction banner is green for straight on, purple for left, orange for right, blue for lifts and stairs, red for turn around; "I am here" is a big green button; chips and place rows take their category colour; the map is livelier (stronger room tints, greener grass, bluer water, bolder route); arrival shows a pink check with a small burst of colour. A large-text switch (A A+) is remembered on the phone. White text only on shades with at least 4.5:1 contrast. The compass allow-button now shows only on touch phones that stay silent (not on laptops).
 
+**Follow-up (2026-10-16): smooth zoom levels, routing options, blockages, more doors.**
+- Zoom levels fade like Google Maps: campus (blocks + names) → area (entrances, amenities) → inside (rooms fade in, building names fade out) → detail (corridor landmarks). + / − buttons on laptops, double-click to zoom, trees drawn round.
+- Routing: ⚡ fastest (time: lift waits, slow stairs) or 📏 shortest (distance) in the preview; lines tagged `closed` by map authors are never used; **🚧 Path blocked?** while walking blocks the line ahead and re-routes from where the visitor stands (a blocked lift works the same way). Closed and blocked lines are drawn as red dashes with 🚧.
+- Rooms can be tapped for their card on the home, card, preview and arrival screens.
+- Big demo campus: west and east doors on 7 big buildings, second stairs in long buildings, Lift B in the Main Building, part of West Road closed for works.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
