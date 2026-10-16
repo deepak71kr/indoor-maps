@@ -5,7 +5,7 @@ import type { RoomResult } from '../app/search';
 import { amenityChips, nearbyLandmarks, resolvePosition, searchRooms } from '../app/search';
 import { sceneFor } from '../app/map-scene';
 import type { Action, Position, State } from '../app/state';
-import { currentNode } from '../app/state';
+import { currentNode, tripStats, walkMinutes } from '../app/state';
 import type { Child } from './dom';
 import { h, replace } from './dom';
 import type { IconName } from './icons';
@@ -85,12 +85,33 @@ function mapPanel(ctx: ViewContext): MapView | null {
   return mapView;
 }
 
-/** Minutes and meters still to go from step `from` (~1 m/s indoors, ~45 s per lift ride). */
-function tripStats(steps: readonly Step[], from: number): { minutes: number; meters: number } {
-  const left = steps.slice(from);
-  const meters = left.reduce((sum, s) => sum + s.meters, 0);
-  const rides = left.filter((s) => s.kind === 'ride').length;
-  return { minutes: Math.max(1, Math.round(meters / 60 + rides * 0.75)), meters };
+/** "10:42": when the visitor arrives if they leave now. */
+function arrivalTime(minutes: number): string {
+  return new Date(Date.now() + minutes * 60_000).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * While walking, Google shows sound on/off and Report (⚠️ = our "Path blocked?") just above
+ * the bottom bar on the right; the Re-center pill sits on the left (CSS).
+ */
+function tripTools(ctx: ViewContext): HTMLElement | null {
+  if (ctx.state.screen.name !== 'navigate') return null;
+  const voice = voiceButton(ctx, 'map-btn trip-tool');
+  const report = h(
+    'button',
+    {
+      type: 'button',
+      class: 'map-btn trip-tool report',
+      'aria-label': tr('blocked.button'),
+      title: tr('blocked.button'),
+      onClick: () => ctx.dispatch({ type: 'block-ahead' }),
+    },
+    icon('warn'),
+  );
+  return h('div', { class: 'trip-tools' }, voice, report);
 }
 
 const nodes = (children: readonly Child[]): Node[] =>
@@ -126,7 +147,13 @@ function mapScreen(ctx: ViewContext, cls: string, layout: MapLayout): HTMLElemen
       'div',
       { class: 'side' },
       h('div', { class: 'top covers-map' }, ...top, map.tools),
-      h('div', { class: 'bottom covers-map' }, shortScreen() ? null : map.locate, sheet),
+      h(
+        'div',
+        { class: 'bottom covers-map' },
+        shortScreen() ? null : map.locate,
+        tripTools(ctx),
+        sheet,
+      ),
     ),
     ...nodes(layout.extra ?? []),
   );
@@ -486,31 +513,85 @@ function chooseView(ctx: ViewContext): HTMLElement {
     ],
     sheet: [
       h(
-        'p',
-        { class: 'here' },
-        h('span', { class: 'you-dot', 'aria-hidden': 'true' }),
-        h(
-          'span',
-          { class: 'grow' },
-          tr('choose.you-are-at', { place: '' }),
-          h('strong', {}, hereName),
-        ),
-        button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
-      ),
-      h(
         'div',
-        { class: 'sheet-title' },
-        title(tr('choose.title')),
-        stepFreeToggle(ctx),
-        bigTextToggle(),
+        { class: 'tab-explore' },
+        h(
+          'p',
+          { class: 'here' },
+          h('span', { class: 'you-dot', 'aria-hidden': 'true' }),
+          h(
+            'span',
+            { class: 'grow' },
+            tr('choose.you-are-at', { place: '' }),
+            h('strong', {}, hereName),
+          ),
+          button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
+        ),
+        h(
+          'div',
+          { class: 'sheet-title' },
+          title(tr('choose.title')),
+          stepFreeToggle(ctx),
+          bigTextToggle(),
+        ),
+        h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
+        recentList(ctx),
+        places,
       ),
-      h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
-      recentList(ctx),
-      places,
+      savedPanel(ctx),
+      tabBar(),
     ],
     extra: [h('div', { class: 'search-page' }, h('h2', {}, tr('choose.all')), results)],
   });
   return screen;
+}
+
+/** Saved places (⭐ Save on a room card), Google's "You" tab for a building. */
+function savedPanel(ctx: ViewContext): HTMLElement {
+  const { site, saved } = ctx.state;
+  const label = (c: keyof typeof CATEGORY) => CATEGORY[c].label;
+  const rows = site ? searchRooms(site, '', label).filter((r) => saved.includes(r.room.id)) : [];
+  return h(
+    'div',
+    { class: 'tab-saved' },
+    h('h2', {}, tr('tab.saved')),
+    rows.length > 0
+      ? h('ul', { class: 'list' }, ...rows.map((r) => placeItem(ctx, r)))
+      : h('p', { class: 'muted' }, tr('saved.empty')),
+  );
+}
+
+/** Google's bottom bar (Explore · You · Contribute), here Explore · Saved. */
+function tabBar(): HTMLElement {
+  const tab = (name: 'explore' | 'saved', iconName: IconName) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        role: 'tab',
+        class: name === 'explore' ? 'on' : '',
+        'aria-selected': String(name === 'explore'),
+        onClick: (e: Event) => {
+          const bar = (e.currentTarget as HTMLElement).parentElement;
+          const sheet = bar?.closest<HTMLElement>('.sheet');
+          sheet?.classList.toggle('show-saved', name === 'saved');
+          for (const b of bar?.children ?? []) {
+            const on = b === e.currentTarget;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', String(on));
+          }
+          if (name === 'saved' && sheet) setSheetOpen(sheet, true);
+        },
+      },
+      h('span', { class: 'pill' }, icon(iconName)),
+      tr(`tab.${name}`),
+    );
+  return h(
+    'nav',
+    { class: 'tabbar', role: 'tablist', 'aria-label': tr('tab.explore') },
+    tab('explore', 'arrive'),
+    tab('saved', 'bookmark'),
+  );
 }
 
 /** Route options under Start: fastest / shortest (Google's "Options"), and step-free. */
@@ -531,7 +612,6 @@ function routeOptions(ctx: ViewContext): HTMLElement {
     { class: 'options', role: 'group', 'aria-label': tr('route.options') },
     option('fastest', tr('route.fastest')),
     option('shortest', tr('route.shortest')),
-    stepFreeToggle(ctx),
   );
 }
 
@@ -568,34 +648,34 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
       notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
     ],
     sheet: [
+      // Google's 2026 bottom bar: a button left, the time in the middle, a red Exit pill right.
       h(
         'div',
-        { class: 'trip-bar' },
-        roundButton(
-          'close',
-          tr('step.end'),
-          () => ctx.dispatch({ type: 'new-destination' }),
-          'end',
-        ),
+        { class: 'trip-bar nav-bar' },
+        roundButton('help', tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'lost'),
         h(
           'div',
           { class: 'grow trip-info' },
-          h(
-            'p',
-            { class: 'eta' },
-            h('strong', {}, tr('step.min', { min: minutes })),
-            ` · ${tr('step.m', { m: meters })}`,
-          ),
-          h(
-            'p',
-            { class: 'trip-head' },
-            tr('step.to', { place: '' }),
-            h('strong', {}, target?.label ?? ''),
-            ` · ${tr('step.of', { n: index + 1, total })}`,
-          ),
+          h('p', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
+          h('p', { class: 'trip-sub' }, `${tr('step.m', { m: meters })} · ${arrivalTime(minutes)}`),
         ),
-        voiceButton(ctx),
-        roundButton('help', tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'lost'),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'exit-pill',
+            'aria-label': tr('step.end'),
+            onClick: () => ctx.dispatch({ type: 'new-destination' }),
+          },
+          tr('step.exit'),
+        ),
+      ),
+      h(
+        'p',
+        { class: 'trip-head' },
+        tr('step.to', { place: '' }),
+        h('strong', {}, target?.label ?? ''),
+        ` · ${tr('step.of', { n: index + 1, total })}`,
       ),
       h(
         'div',
@@ -617,16 +697,6 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
         'div',
         { class: 'links' },
         button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'link', 'back'),
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'link blocked-btn',
-            onClick: () => ctx.dispatch({ type: 'block-ahead' }),
-          },
-          '🚧 ',
-          tr('blocked.button'),
-        ),
         h(
           'button',
           {
@@ -704,7 +774,7 @@ function speak(text: string): void {
 }
 
 /** 🔊 toggle in the trip bar; while on, each new step is read aloud once. */
-function voiceButton(ctx: ViewContext): HTMLButtonElement | null {
+function voiceButton(ctx: ViewContext, cls = 'round'): HTMLButtonElement | null {
   if (!('speechSynthesis' in window)) return null;
   const { screen, steps } = ctx.state;
   const step = screen.name === 'navigate' ? steps[screen.step] : undefined;
@@ -716,7 +786,7 @@ function voiceButton(ctx: ViewContext): HTMLButtonElement | null {
     'button',
     {
       type: 'button',
-      class: `round voice${on ? ' on' : ''}`,
+      class: `${cls} voice${on ? ' on' : ''}`,
       'aria-label': tr(on ? 'step.voice-off' : 'step.voice-on'),
       'aria-pressed': String(on),
       title: tr(on ? 'step.voice-off' : 'step.voice-on'),
@@ -788,14 +858,12 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
   const away =
     route?.ok === true
       ? tr('place.from-you', {
-          min: Math.max(
-            1,
-            Math.round(route.value.walkingMeters / 60 + route.value.floorChanges * 0.75),
-          ),
+          min: walkMinutes(route.value.walkingMeters, route.value.floorChanges),
           m: Math.round(route.value.walkingMeters),
         })
       : tr('place.no-route');
   const close = () => ctx.dispatch({ type: 'close-place' });
+  const saved = ctx.state.saved.includes(roomId);
 
   const share = async (el: HTMLElement) => {
     const url = `${location.origin}${location.pathname}?site=${encodeURIComponent(site.map.site.id)}&to=${encodeURIComponent(roomId)}`;
@@ -803,7 +871,8 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
       if (navigator.share) await navigator.share({ title: room.name, url });
       else {
         await navigator.clipboard.writeText(url);
-        if (el.lastChild) el.lastChild.textContent = tr('place.copied');
+        el.setAttribute('title', tr('place.copied'));
+        el.setAttribute('aria-label', tr('place.copied'));
       }
     } catch {
       // Cancelled or blocked: nothing to do.
@@ -835,6 +904,18 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
           title(room.name),
           h('p', { class: 'muted' }, [room.number, cat.label].filter(Boolean).join(' · ')),
         ),
+        // Google-style: Share and ✕ as round grey buttons in the card's corner.
+        h(
+          'div',
+          { class: 'head-btns' },
+          roundButton(
+            'share',
+            tr('place.share'),
+            () => void share(document.activeElement as HTMLElement),
+            'grey',
+          ),
+          roundButton('close', tr('place.close'), close, 'grey'),
+        ),
       ),
       h(
         'div',
@@ -861,15 +942,11 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
           'btn outline',
           'straight',
         ),
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'btn outline',
-            onClick: (e: Event) => void share(e.currentTarget as HTMLElement),
-          },
-          icon('share'),
-          h('span', {}, tr('place.share')),
+        button(
+          saved ? tr('place.saved') : tr('place.save'),
+          () => ctx.dispatch({ type: 'toggle-save', roomId }),
+          `btn outline save${saved ? ' on' : ''}`,
+          'bookmark',
         ),
       ),
     ],
@@ -946,6 +1023,37 @@ function previewView(ctx: ViewContext): HTMLElement {
     return list;
   }, []);
   const via = steps.find((s) => s.kind === 'ride');
+  // The other mode's time, for the tabs (Google shows car · transit · walk with their times).
+  const other =
+    position && target
+      ? findRoute(site, {
+          from: position.node,
+          to: target.destination,
+          profile: {
+            stepFree: !ctx.state.stepFree,
+            preference: ctx.state.preference,
+            blocked: ctx.state.blocked,
+          },
+        })
+      : null;
+  const otherMinutes =
+    other?.ok === true ? walkMinutes(other.value.walkingMeters, other.value.floorChanges) : null;
+  const modeTab = (stepFreeTab: boolean, label: string) => {
+    const on = ctx.state.stepFree === stepFreeTab;
+    const time = on ? minutes : otherMinutes;
+    return h(
+      'button',
+      {
+        type: 'button',
+        role: 'tab',
+        class: `mode${on ? ' on' : ''}`,
+        'aria-selected': String(on),
+        onClick: () => !on && ctx.dispatch({ type: 'toggle-step-free' }),
+      },
+      label,
+      h('b', {}, time === null ? '—' : tr('step.min', { min: time })),
+    );
+  };
 
   const field = (cls: string, label: string, text: string, onClick: () => void) =>
     h(
@@ -977,6 +1085,12 @@ function previewView(ctx: ViewContext): HTMLElement {
     sheet: [
       h(
         'div',
+        { class: 'modes', role: 'tablist', 'aria-label': tr('route.modes') },
+        modeTab(false, tr('route.walk')),
+        modeTab(true, tr('route.step-free')),
+      ),
+      h(
+        'div',
         { class: 'trip-bar' },
         h(
           'div',
@@ -986,6 +1100,12 @@ function previewView(ctx: ViewContext): HTMLElement {
             { class: 'eta' },
             h('strong', {}, tr('step.min', { min: minutes })),
             ` (${tr('step.m', { m: meters })})`,
+          ),
+          h(
+            'p',
+            { class: 'trip-sub' },
+            tr(ctx.state.preference === 'shortest' ? 'route.why-shortest' : 'route.why-fastest'),
+            ctx.state.stepFree ? ` · ${tr('route.why-step-free')}` : '',
           ),
           h(
             'p',

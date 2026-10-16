@@ -2030,3 +2030,227 @@ html.big-text .map text {
 .map .ico text {
   font-size: 13px;
 }
+
+/* ================================================================================
+ * Google Maps Android details (2026 screenshots): card buttons, Exit pill, Re-center,
+ * time bubble, Walk / Step-free tabs, Explore · Saved bar, calmer map colours.
+ * ================================================================================ */
+.place-head .head-btns {
+  display: flex;
+  gap: 8px;
+  align-self: flex-start;
+}
+.round.grey {
+  width: 40px;
+  height: 40px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.actions .btn.outline {
+  color: var(--blue);
+  border: 1.5px solid var(--line);
+}
+.actions .btn.save.on {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+}
+.actions .btn.save.on .icon {
+  fill: currentColor;
+}
+
+/* Walking: ? left, time in the middle, red Exit pill right. */
+.nav-bar .trip-info {
+  text-align: center;
+}
+.nav-bar .eta strong {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.trip-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.exit-pill {
+  flex: none;
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--red) 14%, var(--surface));
+  color: var(--red);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.trip .trip-head {
+  text-align: center;
+  margin-top: -6px;
+}
+.map-btn.report {
+  color: #e37400;
+}
+
+/* Re-center pill (text) once the visitor moves the map while walking. */
+.locate .re {
+  display: none;
+}
+.trip .locate[aria-pressed='false'] {
+  width: auto;
+  padding: 0 16px 0 12px;
+  gap: 6px;
+  border-radius: 26px;
+  display: inline-flex;
+  align-items: center;
+  font: 600 0.95rem/1 inherit;
+}
+.trip .locate[aria-pressed='false'] .re {
+  display: inline;
+}
+
+/* Route time bubble on the map. */
+.map .eta-bubble rect {
+  fill: var(--m-route);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.map .eta-bubble text {
+  fill: #fff;
+  font-size: 12px;
+}
+
+/* Walk / Step-free tabs with their times (Google's travel-mode tabs). */
+.modes {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  margin: 0 -16px;
+  padding: 0 16px;
+  gap: 4px;
+}
+.modes .mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 8px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.modes .mode b {
+  font-size: 1rem;
+}
+.modes .mode.on {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+/* Explore · Saved bar at the bottom of the home sheet. */
+.tab-saved {
+  display: none;
+}
+.sheet.show-saved .tab-explore {
+  display: none;
+}
+.sheet.show-saved .tab-saved {
+  display: block;
+}
+.tab-explore {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tabbar {
+  position: sticky;
+  bottom: calc(-14px - env(safe-area-inset-bottom));
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 4px -16px calc(-14px - env(safe-area-inset-bottom));
+  padding: 6px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+.tabbar button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tabbar .pill {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 28px;
+  border-radius: 14px;
+}
+.tabbar .on {
+  color: var(--text);
+  font-weight: 700;
+}
+.tabbar .on .pill {
+  background: color-mix(in srgb, var(--blue) 22%, var(--surface));
+}
+.tabbar .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Calmer Google base map: near-white ground, sky-blue water, blue-grey road edges. */
+.map {
+  --m-out: #f8f9fa;
+  --m-road: #ffffff;
+  --m-road-edge: #b4c0d3;
+  --m-water: #9fd3f7;
+  --m-green: #c8e8c0;
+  --m-building: #e9ecf0;
+}
+@media (prefers-color-scheme: dark) {
+  .map {
+    --m-out: #1b1e22;
+    --m-road: #353b43;
+    --m-road-edge: #46505c;
+    --m-water: #2a4a63;
+    --m-green: #1e3626;
+    --m-building: #30363e;
+  }
+}
+
+/* Walking: sound + Report above the bottom bar on the right, Re-center on the left. */
+.trip-tools {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trip .bottom > .locate {
+  right: auto;
+  left: 12px;
+}
+.trip .map-tools .zoom {
+  display: none;
+}
+@media (min-width: 900px) {
+  .trip-tools {
+    position: fixed;
+    right: 16px;
+    bottom: 88px;
+    pointer-events: auto;
+  }
+  .trip .bottom > .locate {
+    left: auto;
+    right: 16px;
+  }
+}

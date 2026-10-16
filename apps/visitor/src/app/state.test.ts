@@ -211,6 +211,14 @@ describe('visitor state machine', () => {
     expect(s.steps.some((step) => step.icon === 'stairs')).toBe(true);
   });
 
+  it('saves and unsaves rooms (newest first)', () => {
+    let s = loaded({ type: 'toggle-save', roomId: 'pharmacy' });
+    s = reducer(s, { type: 'toggle-save', roomId: 'radiology' });
+    expect(s.saved).toEqual(['radiology', 'pharmacy']);
+    s = reducer(s, { type: 'toggle-save', roomId: 'pharmacy' });
+    expect(s.saved).toEqual(['radiology']);
+  });
+
   it('resume restores the saved step (clamped to the route)', () => {
     const s = loaded({
       type: 'resume',

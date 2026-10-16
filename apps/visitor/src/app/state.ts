@@ -51,6 +51,23 @@ export interface State {
   readonly notice: 'rerouted' | 'blocked' | null;
   /** Rooms chosen recently, newest first (saved on the phone by main.ts). */
   readonly recent: readonly Target[];
+  /** Rooms the visitor saved (⭐ Save on a room card), newest first. */
+  readonly saved: readonly string[];
+}
+
+/** Walking time indoors: ~1 m/s with people around, plus ~45 s per lift or stairs ride. */
+export function walkMinutes(meters: number, rides: number): number {
+  return Math.max(1, Math.round(meters / 60 + rides * 0.75));
+}
+
+/** Minutes and meters still to go from step `from`. */
+export function tripStats(
+  steps: readonly Step[],
+  from: number,
+): { minutes: number; meters: number } {
+  const left = steps.slice(from);
+  const meters = left.reduce((sum, s) => sum + s.meters, 0);
+  return { minutes: walkMinutes(meters, left.filter((s) => s.kind === 'ride').length), meters };
 }
 
 /** How many recent destinations to remember. */
@@ -74,6 +91,8 @@ export type Action =
   /** Preview: walk the other way (destination becomes the start). */
   | { readonly type: 'swap' }
   | { readonly type: 'recent-loaded'; readonly recent: readonly Target[] }
+  | { readonly type: 'toggle-save'; readonly roomId: string }
+  | { readonly type: 'saved-loaded'; readonly saved: readonly string[] }
   | { readonly type: 'confirm' }
   | { readonly type: 'back' }
   | { readonly type: 'lost' }
@@ -97,6 +116,7 @@ export const initialState: State = {
   blocked: [],
   notice: null,
   recent: [],
+  saved: [],
 };
 
 /** The node the visitor is standing at right now. */
@@ -165,6 +185,17 @@ export function reducer(state: State, action: Action): State {
         'preview',
       );
     }
+
+    case 'toggle-save':
+      return {
+        ...s,
+        saved: s.saved.includes(action.roomId)
+          ? s.saved.filter((id) => id !== action.roomId)
+          : [action.roomId, ...s.saved],
+      };
+
+    case 'saved-loaded':
+      return { ...s, saved: [...action.saved] };
 
     case 'recent-loaded':
       return { ...s, recent: action.recent.slice(0, RECENT_MAX) };

@@ -2,7 +2,7 @@
 import type { Site } from '@innermap/core';
 import { facingAt } from '@innermap/core';
 import type { State } from './state';
-import { currentNode } from './state';
+import { currentNode, tripStats } from './state';
 
 export interface MapScene {
   readonly site: Site;
@@ -14,6 +14,8 @@ export interface MapScene {
   readonly selected?: string;
   /** Lines reported blocked (`edgeKey`s), drawn red. */
   readonly blocked: readonly string[];
+  /** Route preview: the time bubble on the route ("4 min"), like Google's route callouts. */
+  readonly bubble?: string;
   readonly here: string | null;
   /** Degrees clockwise from up (a QR sticker or the way they walked); null = unknown. */
   readonly facing: number | null;
@@ -74,7 +76,12 @@ export function sceneFor(state: State): MapScene | null {
     }
     case 'preview':
       // The whole route, start to destination (the map shows the visitor's floor of it).
-      return { ...base, next: null, focus: path };
+      return {
+        ...base,
+        next: null,
+        focus: path,
+        bubble: `${tripStats(steps, 0).minutes} min`,
+      };
     case 'navigate': {
       // Frame this step and the one after, so the next turn is already in view.
       const next = steps[screen.step]?.target ?? null;

@@ -274,6 +274,8 @@ export class MapView {
       '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/>' +
       '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" stroke-width="2"/></svg>';
+    // While walking, a moved map shows Google's "Re-center" pill with text (CSS).
+    this.locate.append(h('span', { class: 're' }, tr('map.recenter-short')));
     this.overview = h('button', {
       type: 'button',
       class: 'map-btn overview',
@@ -844,6 +846,23 @@ export class MapView {
       undefined,
       RANK.dest,
     );
+    // Route preview: the time in a blue bubble halfway along the route (Google's callout).
+    if (scene.bubble) {
+      const onFloor = path.filter((id) => site.graph.nodes.get(id)?.level === levelId);
+      const middle = onFloor[Math.floor(onFloor.length / 2)];
+      const text = scene.bubble;
+      if (middle) {
+        marker(
+          middle,
+          'tag eta-bubble',
+          (g) => ({ w: this.tag(g, text, 0, -22), h: 20, dy: -22 }),
+          undefined,
+          undefined,
+          RANK.next,
+        );
+      }
+    }
+
     // An open room card: a red pin on the room, with its name.
     if (scene.selected) {
       const room = site.map.rooms.find((r) => r.id === scene.selected);

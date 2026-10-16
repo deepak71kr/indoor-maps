@@ -265,9 +265,10 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   const box = await map.boundingBox();
   if (!box) throw new Error('map not laid out');
   await page.keyboard.down('Shift');
-  await page.mouse.move(box.x + 80, box.y + box.height / 2);
+  // A clear part of the map (the Re-center pill sits lower left once the map moves).
+  await page.mouse.move(box.x + 140, box.y + box.height * 0.4);
   await page.mouse.down();
-  await page.mouse.move(box.x + 200, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.move(box.x + 260, box.y + box.height * 0.4, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up('Shift');
   await expect.poll(turned).not.toBeCloseTo(0, 0);
@@ -371,4 +372,34 @@ test('route options and "Path blocked?": shortest / fastest, detour around a blo
   await expect(page.locator('.map .closed')).not.toHaveCount(0);
   await walkToTheEnd(page);
   await expect(page.getByRole('heading', { name: /Radiology/ })).toBeVisible();
+});
+
+test('Google-style details: Save + Saved tab, Walk / Step-free tabs, Exit and arrival time', async ({
+  page,
+}) => {
+  await page.goto('/?at=G-MAIN');
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Radiology/ })
+    .click();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Directions' }).click();
+  const modes = page.getByRole('tablist', { name: 'How to go' });
+  await expect(modes.getByRole('tab', { name: /Walk/ })).toHaveAttribute('aria-selected', 'true');
+  await modes.getByRole('tab', { name: /Step-free/ }).click();
+  await expect(modes.getByRole('tab', { name: /Step-free/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.locator('.map .eta-bubble')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'End route' })).toHaveText('Exit');
+  await expect(page.locator('.trip-sub')).toHaveText(/\d+ m · \d{1,2}:\d{2}/);
+  await page.getByRole('button', { name: 'End route' }).click();
+
+  await page.getByRole('tab', { name: /Saved/ }).click();
+  await expect(page.locator('.tab-saved')).toContainText('Radiology');
 });
