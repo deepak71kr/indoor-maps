@@ -14,7 +14,9 @@ import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
 import { registerServiceWorker, saveMap } from './infra/offline';
 import { installIcons } from './ui/icons';
-import { view } from './ui/views';
+import { offerCompass, setLiveHeading, view } from './ui/views';
+import { CALIBRATE_WINDOW_MS, northOffset, toMapHeading } from './app/heading';
+import { startCompass } from './infra/compass';
 import './styles.css';
 
 const DEFAULT_SITE = 'demo-hospital';
@@ -70,13 +72,49 @@ const scanner: (() => void) | null =
           .then((content) => {
             const site = store.getState().site;
             const position = content && site ? resolvePosition(site, codeFromQr(content)) : null;
-            if (position)
+            if (position) {
+              noteScan(position.facing);
               store.dispatch({ type: 'set-position', position: { ...position, source: 'qr' } });
+            }
           })
           .catch(() => undefined)
           .finally(() => overlay.remove());
       }
     : null;
+
+// ---------- compass: which way the phone points (Google-style beam) ----------
+// Maps don't know where north is, so the difference is learned at QR stickers: while
+// scanning, the phone points the way the sticker faces (see app/heading.ts).
+const NORTH_KEY = `im.north.${siteId}`;
+/** How long after a scan (or after the compass starts) readings refine the calibration. */
+const SETTLE_MS = 2000;
+let offset: number | null = (() => {
+  const saved = Number(storage?.getItem(NORTH_KEY) ?? NaN);
+  return Number.isFinite(saved) ? saved : null;
+})();
+let scan: { facing: number; at: number; firstReading: number | null } | null = null;
+
+/** Call right after a QR scan (URL or in-app scanner) with the sticker's facing. */
+function noteScan(facing: number | undefined): void {
+  if (facing !== undefined) scan = { facing, at: Date.now(), firstReading: null };
+}
+
+const compass = startCompass((heading) => {
+  const now = Date.now();
+  if (scan && now - scan.at < CALIBRATE_WINDOW_MS) {
+    scan.firstReading ??= now;
+    if (now - scan.firstReading < SETTLE_MS) {
+      offset = northOffset(scan.facing, heading);
+      try {
+        storage?.setItem(NORTH_KEY, String(Math.round(offset)));
+      } catch {
+        // Not saved: the next scan calibrates again.
+      }
+    }
+  }
+  setLiveHeading(offset === null ? null : toMapHeading(heading, offset));
+});
+if (compass?.needsPermission) offerCompass(() => compass.enable());
 
 // ---------- boot ----------
 async function boot(): Promise<void> {
@@ -125,8 +163,10 @@ async function boot(): Promise<void> {
       stepFree: trip.stepFree,
     });
     store.dispatch({ type: 'lost' });
+    noteScan(scanned.facing);
     store.dispatch({ type: 'set-position', position: { ...scanned, source: 'qr' } });
   } else if (scanned) {
+    noteScan(scanned.facing);
     store.dispatch({ type: 'set-position', position: { ...scanned, source: 'qr' } });
   } else if (trip) {
     store.dispatch({

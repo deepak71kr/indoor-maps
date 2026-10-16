@@ -309,3 +309,36 @@ test('big campus (stress test): opens fast, finds a lab, walks through floors', 
   await walkToTheEnd(page);
   await expect(page.getByRole('heading', { name: /Digital library is/ })).toBeVisible();
 });
+
+test('compass: the beam turns with the phone, calibrated at the QR sticker', async ({ page }) => {
+  await page.goto('/?at=G-MAIN'); // this sticker faces "up" on the map (0°)
+  await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
+  /** Pretend the phone points `heading` degrees from north (Android's absolute alpha). */
+  const point = (heading: number) =>
+    page.evaluate((h) => {
+      const type =
+        'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+      window.dispatchEvent(
+        new DeviceOrientationEvent(type, { alpha: (360 - h) % 360, absolute: true }),
+      );
+    }, heading);
+  const beam = () =>
+    page.evaluate(() => {
+      const t = document.querySelector('.map .beam')?.getAttribute('transform') ?? '';
+      return Number(/rotate\(([-\d.]+)\)/.exec(t)?.[1] ?? NaN);
+    });
+
+  // Just after the scan the phone points where the sticker faces: compass 40° = map "up".
+  await point(40);
+  await expect.poll(beam).toBeCloseTo(0, 0);
+  await page.waitForTimeout(2100); // calibration settles
+  // Turn the phone 90° right: the beam turns 90° right on the (north-up) map.
+  for (let i = 0; i < 40; i++) await point(130);
+  await expect.poll(beam).toBeCloseTo(90, 0);
+  // The map itself did not turn.
+  const turned = await page.evaluate(() => {
+    const g = document.querySelector('.map-svg > g:not(.overlay):not(.scale)');
+    return /rotate\(([-\d.e]+)\)/.exec(g?.getAttribute('transform') ?? '')?.[1];
+  });
+  expect(Number(turned)).toBeCloseTo(0, 0);
+});

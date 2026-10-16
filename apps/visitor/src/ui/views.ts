@@ -49,11 +49,30 @@ export function view(ctx: ViewContext): HTMLElement {
 
 /** One map for the whole visit, so pan, zoom and the chosen floor survive re-renders. */
 let mapView: MapView | null = null;
+/** Compass state that may arrive before the first map is shown. */
+let liveHeading: number | null = null;
+let compassOffer: (() => Promise<boolean>) | null = null;
+
+/** The phone's heading on the map (from main.ts's compass); the beam follows it. */
+export function setLiveHeading(heading: number | null): void {
+  liveHeading = heading;
+  mapView?.setLiveHeading(heading);
+}
+
+/** iPhone: show a button that asks to use the compass. */
+export function offerCompass(enable: () => Promise<boolean>): void {
+  compassOffer = enable;
+  mapView?.offerCompass(enable);
+}
 
 function mapPanel(ctx: ViewContext): MapView | null {
   const scene = sceneFor(ctx.state);
   if (!scene) return null;
-  mapView ??= new MapView();
+  if (!mapView) {
+    mapView = new MapView();
+    if (liveHeading !== null) mapView.setLiveHeading(liveHeading);
+    if (compassOffer) mapView.offerCompass(compassOffer);
+  }
   // On the home screen a tap on a room on the map picks it as the destination.
   const site = ctx.state.site;
   // On the home screen (and an open card) a tap on a room opens its card, like Google Maps.

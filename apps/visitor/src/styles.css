@@ -1238,7 +1238,7 @@ span.floor {
 .map .you .halo {
   fill: color-mix(in srgb, var(--m-route) 20%, transparent);
 }
-.map .you .cone {
+.map .beam .cone {
   fill: url(#im-beam);
 }
 .map .you text {

@@ -46,6 +46,7 @@ export const ui = {
   'step.voice-off': 'Stop reading directions aloud',
   'choose.recent': 'Recent',
   'map.overview': 'Show the whole route',
+  'map.heading': 'Show which way I am facing',
   'step.from': 'from {place}',
   'step.via': 'passing {place}',
   'step.sign': 'Stand with the QR sign in front of you',

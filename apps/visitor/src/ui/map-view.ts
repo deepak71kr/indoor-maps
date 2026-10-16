@@ -53,6 +53,8 @@ interface Pin {
   readonly rank?: number;
   /** The dot this pin belongs to (corridor names hide where the route already names it). */
   readonly id?: string;
+  /** The "you" beam: turns with the phone's compass when there is a live heading. */
+  readonly live?: boolean;
 }
 
 /** Collision ranks: you, next checkpoint, destination, checkpoint names, entrances, rooms, corridors. */
@@ -174,6 +176,10 @@ export class MapView {
   private rotating = false;
   /** Rooms drawn on the shown floor, for "tap a room to go there". */
   private roomShapes: Shape[] = [];
+  /** Which way the phone points on the map (degrees), from the compass; null = unknown. */
+  private liveHeading: number | null = null;
+  private compassOffer: HTMLButtonElement | null = null;
+
   /** Called when the visitor taps a room on the map (set by the screen; null = ignore). */
   onPick: ((roomId: string) => void) | null = null;
   /** Shown level has building footprints: switch between campus and inside views by zoom. */
@@ -264,7 +270,9 @@ export class MapView {
     for (const [id, el] of this.roomEls) el.classList.toggle('selected', id === scene.selected);
     this.overview.hidden = scene.path.length < 2;
 
-    const rot = this.northUp || scene.facing === null ? (this.userRot ?? 0) : scene.facing;
+    const rot = this.northUp
+      ? (this.userRot ?? 0)
+      : (this.liveHeading ?? scene.facing ?? this.userRot ?? 0);
     const key = `${levelId}|${scene.focus.join(',')}|${rot}`;
     if (key !== this.framed && this.width > 0) {
       this.framed = key;
@@ -784,12 +792,19 @@ export class MapView {
         );
       }
     }
+    // The beam: which way the visitor faces — the phone's compass when known, else the way
+    // the route / QR sticker says. Its own pin, so it turns while the label stays upright.
+    const here = scene.here ? site.graph.nodes.get(scene.here) : undefined;
+    if (here?.level === levelId && (scene.facing !== null || this.liveHeading !== null)) {
+      const beam = s('g', { class: 'beam' });
+      beam.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
+      this.overlay.append(beam);
+      this.markers.push({ p: here, el: beam, angle: scene.facing ?? 0, live: true });
+    }
     marker(
       scene.here,
       'you',
       (g) => {
-        if (scene.facing !== null)
-          g.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
         g.append(s('circle', { class: 'halo', r: 16 }), s('circle', { class: 'dot', r: 8 }));
         g.append(s('text', { y: 30 }, tr('map.you')));
         return { w: 84, h: 52, dy: 8 };
@@ -931,7 +946,8 @@ export class MapView {
         if (pin.el.style.display !== 'none') pin.el.style.display = 'none';
         continue;
       }
-      const turn = pin.angle === undefined ? '' : ` rotate(${(pin.angle - rot).toFixed(1)})`;
+      const angle = pin.live && this.liveHeading !== null ? this.liveHeading : pin.angle;
+      const turn = angle === undefined ? '' : ` rotate(${(angle - rot).toFixed(1)})`;
       pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
       if (this.campus && pin.zoom && (pin.zoom === 'far') !== far) {
         pin.el.style.display = 'none';
@@ -953,7 +969,8 @@ export class MapView {
     const arrow = this.compass.firstElementChild as SVGElement | null;
     arrow?.setAttribute('style', `transform:rotate(${-rot}deg)`);
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
-    this.compass.hidden = this.scene?.facing === null && Math.abs(rot) < 1;
+    this.compass.hidden =
+      this.scene?.facing === null && this.liveHeading === null && Math.abs(rot) < 1;
     // Filled blue while the map follows the route; outlined once the visitor moved it away.
     this.locate.setAttribute('aria-pressed', String(!this.moved));
   }
@@ -1109,6 +1126,43 @@ export class MapView {
     this.fillPicker(this.scene, this.shownLevel);
     this.moved = true;
     this.animateTo(this.fitPoints(shapePoints(shape), this.view.rot));
+  }
+
+  /**
+   * The phone's heading on the map, live from the compass (null = none). The beam follows it;
+   * in "turn with me" mode the whole map turns with the phone, like Google Maps.
+   */
+  setLiveHeading(heading: number | null): void {
+    this.liveHeading = heading;
+    if (heading !== null) this.compassOffer?.remove();
+    if (heading !== null && !this.northUp && !this.moved) {
+      cancelAnimationFrame(this.animation);
+      this.view.rot = heading;
+    }
+    if (this.scene && this.markers.every((m) => !m.live) && heading !== null) {
+      this.drawRoute(this.scene, this.shownLevel); // first reading: the beam appears
+    }
+    this.requestDraw();
+  }
+
+  /** iPhone: a button to allow the compass (permission must come from a tap). */
+  offerCompass(enable: () => Promise<boolean>): void {
+    if (this.compassOffer || this.liveHeading !== null) return;
+    const button = h('button', {
+      type: 'button',
+      class: 'map-btn heading',
+      'aria-label': tr('map.heading'),
+      title: tr('map.heading'),
+      onClick: () => {
+        void enable().then((ok) => {
+          if (ok) button.remove();
+        });
+      },
+    });
+    button.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 7 21l5-4 5 4Z" fill="currentColor"/></svg>';
+    this.compassOffer = button;
+    this.tools.append(button);
   }
 
   /** Route overview: frame the whole route on the floor being shown. */
