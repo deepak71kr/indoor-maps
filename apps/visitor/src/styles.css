@@ -2569,3 +2569,102 @@ html.big-text .map text {
 .map .room {
   fill: color-mix(in srgb, var(--c, var(--m-wall)) 11%, #fff);
 }
+
+/* ================================================================================
+ * Map first (2026-10-16): a one-line home sheet, fewer buttons, walls by importance,
+ * door swings, stair treads, raised buildings, road names.
+ * ================================================================================ */
+/* Home: thinner search bar and chips; the sheet rests as one line above the tab bar. */
+.searchbar {
+  height: 46px;
+}
+.top {
+  gap: 8px;
+}
+.top .chip {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+.choose .sheet {
+  max-height: 150px;
+}
+/* At rest the sheet shows where you are; the rest fades out under it: pull up for more. */
+.choose .sheet:not(.open) {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 34px), transparent);
+}
+.choose .sheet.open {
+  max-height: 82dvh;
+}
+.choose .sheet .here {
+  padding: 8px 12px;
+}
+
+/* Fewer buttons: compass only once the map is turned (always while walking);
+   the scale bar only while zooming. */
+.mapped:not(.trip) .compass[data-north='true'] {
+  display: none;
+}
+.map .scale {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.map-svg.zooming .scale {
+  opacity: 1;
+}
+.floors button {
+  width: 44px;
+  height: 40px;
+}
+
+/* Walls by importance: the building's outer wall strong (floor colour), room walls thin,
+   corridors white, rooms almost white with a hint of their category. */
+.map-svg .floor {
+  fill: #fff;
+  stroke: var(--wall);
+  stroke-width: 3.5;
+}
+.map-svg .room {
+  fill: color-mix(in srgb, var(--c, #9aa3ad) 8%, #f7f8fa);
+  stroke: color-mix(in srgb, var(--lvl) 30%, #cfd5dd);
+  stroke-width: 1;
+}
+.map-svg .lift,
+.map-svg .stairs {
+  fill: #eef0f3;
+  stroke: color-mix(in srgb, var(--lvl) 35%, #bfc6cf);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+.map .swing,
+.map .tread {
+  fill: none;
+  stroke: #9aa3ad;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: var(--o-detail, 1);
+}
+.map .tread {
+  stroke: #b7bec7;
+}
+
+/* Raised buildings and calm campus ground. */
+.map-svg .building {
+  fill: #eef0f4;
+  stroke: color-mix(in srgb, var(--lvl) 40%, #b9c0ca);
+  stroke-width: 1.5;
+}
+.map .shade.tall {
+  fill: rgb(60 64 67 / 0.16);
+}
+.map .road {
+  stroke: #cdd4de;
+  stroke-width: 1.5;
+}
+.map .k-road > text {
+  fill: #5f6b7a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

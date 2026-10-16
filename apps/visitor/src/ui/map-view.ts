@@ -55,6 +55,8 @@ interface Pin {
   readonly id?: string;
   /** The "you" beam: turns with the phone's compass when there is a live heading. */
   readonly live?: boolean;
+  /** A label that runs along a north–south road: fitted to the road's length, turned. */
+  vertical?: boolean;
 }
 
 /** Collision ranks: you, next checkpoint, destination, checkpoint names, entrances, rooms, corridors. */
@@ -225,6 +227,7 @@ export class MapView {
   private queued = false;
   private animation = 0;
   private framing = 0;
+  private scaleTimer = 0;
   /** The part of the map covered by panels, as measured at the last framing. */
   private pad = { top: 0, right: 0, bottom: 0, left: 0 };
   private readonly scaleBar: SVGGElement;
@@ -406,10 +409,12 @@ export class MapView {
       // A soft shadow under buildings and floors lifts them off the ground (no filters: cheap).
       for (const shape of shapes) {
         if (shape.kind !== 'floor' && shape.kind !== 'building') continue;
+        // Buildings stand up from the ground (Google's "raised buildings"): a deeper shadow.
+        const raised = shape.kind === 'building';
         const shade = s('polygon', {
-          class: `shade${shape.kind === 'floor' ? ' in' : ''}`,
+          class: raised ? 'shade tall' : 'shade in',
           points: flat(shapePoints(shape)),
-          transform: 'translate(0.5 0.7)',
+          transform: raised ? 'translate(1.1 1.5)' : 'translate(0.5 0.7)',
         });
         this.plan.append(shade);
       }
@@ -422,6 +427,7 @@ export class MapView {
         this.plan.append(el);
       }
       const doors = nodes.filter((n) => DOOR_KINDS.has(n.kind));
+      this.drawDetails(shapes, nodes);
       // Gaps in building footprints stay on a zoomed-out campus; gaps inside buildings don't.
       const outside = shapes.filter((x) => OUTDOOR_SHAPE_KINDS.has(x.kind));
       const inside = shapes.filter((x) => !OUTDOOR_SHAPE_KINDS.has(x.kind));
@@ -466,6 +472,9 @@ export class MapView {
       if (shape.kind === 'floor' || shape.kind === 'wall' || !texts[0]) continue;
       const lock = room?.visibility === 'locked' ? '🔒 ' : '';
       const cls = room ? `label cat-${room.category}` : `label k-${shape.kind}`;
+      const bounds = boundsOf(shapePoints(shape));
+      const upright =
+        shape.kind === 'road' && !!bounds && bounds.maxY - bounds.minY > bounds.maxX - bounds.minX;
       this.addLabel(
         labelPoint(shape),
         texts.filter(Boolean).map((t) => lock + t),
@@ -474,6 +483,13 @@ export class MapView {
         OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'room',
         room ? roomIcon(room, CATEGORY[room.category].emoji) : shapeIcon(shape),
       );
+      if (upright) {
+        const pin = this.pins[this.pins.length - 1];
+        if (pin) {
+          pin.vertical = true;
+          (pin as { angle?: number }).angle = -90;
+        }
+      }
     }
     this.addEntranceArrows(nodes);
 
@@ -590,6 +606,63 @@ export class MapView {
       s('text', { x, y: y + 4 }, text),
     );
     return width;
+  }
+
+  /**
+   * Small drawing details that make a plan read as a building: a door's swing (a quarter
+   * circle into the room) and the treads of each staircase. Shown from close-up zoom.
+   */
+  private drawDetails(
+    shapes: readonly Shape[],
+    nodes: ReadonlyArray<Point & { kind: string }>,
+  ): void {
+    const DOOR = 0.9;
+    for (const door of nodes) {
+      if (door.kind !== 'door') continue;
+      for (const shape of shapes) {
+        if (shape.kind !== 'room') continue;
+        for (const [a, b] of shapeSides(shape)) {
+          const { point } = projectOnSegment(door, a, b);
+          if (Math.hypot(point.x - door.x, point.y - door.y) > 0.4) continue;
+          const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+          const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+          let n = { x: -u.y, y: u.x };
+          if (!containsPoint(shape, { x: point.x + n.x * 0.3, y: point.y + n.y * 0.3 })) {
+            n = { x: -n.x, y: -n.y };
+          }
+          const hinge = { x: point.x - (u.x * DOOR) / 2, y: point.y - (u.y * DOOR) / 2 };
+          const leaf = { x: hinge.x + n.x * DOOR, y: hinge.y + n.y * DOOR };
+          const end = { x: hinge.x + u.x * DOOR, y: hinge.y + u.y * DOOR };
+          const sweep = u.x * n.y - u.y * n.x > 0 ? 0 : 1;
+          const d = `M${hinge.x} ${hinge.y}L${leaf.x} ${leaf.y}A${DOOR} ${DOOR} 0 0 ${sweep} ${end.x} ${end.y}`;
+          this.plan.append(s('path', { class: 'swing in', d }));
+        }
+      }
+    }
+    for (const shape of shapes) {
+      if (shape.kind !== 'stairs') continue;
+      const box = boundsOf(shapePoints(shape));
+      if (!box) continue;
+      const wide = box.maxX - box.minX >= box.maxY - box.minY;
+      const steps = 7;
+      for (let i = 1; i < steps; i++) {
+        const k = i / steps;
+        const line = wide
+          ? {
+              x1: box.minX + (box.maxX - box.minX) * k,
+              y1: box.minY,
+              x2: box.minX + (box.maxX - box.minX) * k,
+              y2: box.maxY,
+            }
+          : {
+              x1: box.minX,
+              y1: box.minY + (box.maxY - box.minY) * k,
+              x2: box.maxX,
+              y2: box.minY + (box.maxY - box.minY) * k,
+            };
+        this.plan.append(s('line', { class: 'tread in', ...line }));
+      }
+    }
   }
 
   /** An arrow just outside every building entrance, pointing in. */
@@ -1073,6 +1146,10 @@ export class MapView {
     if (this.svg.style.getPropertyValue('--o-in') !== inside) {
       this.svg.style.setProperty('--o-in', inside);
     }
+    const detail = o.detail.toFixed(2);
+    if (this.svg.style.getPropertyValue('--o-detail') !== detail) {
+      this.svg.style.setProperty('--o-detail', detail);
+    }
     this.svg.classList.toggle('no-in', o.in < 0.02);
     for (const pin of [...this.pins, ...this.markers]) {
       const at = this.project(pin.p);
@@ -1108,6 +1185,8 @@ export class MapView {
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
     this.compass.hidden =
       this.scene?.facing === null && this.liveHeading === null && Math.abs(rot) < 1;
+    // Google shows the compass only once the map is turned (CSS hides it at north on browse screens).
+    this.compass.dataset['north'] = String(Math.abs(rot) < 1 || Math.abs(rot - 360) < 1);
     // Filled blue while the map follows the route; outlined once the visitor moved it away.
     this.locate.setAttribute('aria-pressed', String(!this.moved));
   }
@@ -1157,8 +1236,10 @@ export class MapView {
   private fitLabel(pin: Pin, hidden: boolean): void {
     if (!pin.fit) return;
     const box = boundsOf(pin.fit.box.map((p) => this.project(p)));
-    const width = box ? box.maxX - box.minX - 6 : 0;
-    const height = box ? box.maxY - box.minY : 0;
+    const across = box ? box.maxX - box.minX : 0;
+    const along = box ? box.maxY - box.minY : 0;
+    const width = (pin.vertical ? along : across) - 6;
+    const height = pin.vertical ? across : along;
     // The room's icon: above the name in a tall room, beside it in a low one, hidden if tiny.
     const ico = pin.el.querySelector<SVGGElement>('.ico');
     const roomy = !!ico && height >= ICON_ROOM_PX;
@@ -1169,7 +1250,9 @@ export class MapView {
       !!ico && !roomy && text !== undefined && text.length * CHAR_PX + 24 <= width && height >= 22;
     const label = pin.el.firstElementChild as SVGTextElement;
     if (label.textContent !== (text ?? '')) label.textContent = text ?? '';
-    pin.el.style.display = text && height >= 16 && !hidden ? '' : 'none';
+    // Road names sit on the road itself, so a thin road is enough room.
+    const minHeight = pin.el.classList.contains('k-road') ? 7 : 16;
+    pin.el.style.display = text && height >= minHeight && !hidden ? '' : 'none';
     if (ico) {
       const half = ((text?.length ?? 0) * CHAR_PX) / 2;
       ico.style.display = roomy || beside ? '' : 'none';
@@ -1414,6 +1497,7 @@ export class MapView {
 
   /** Animated zoom by `factor` around a screen point (default: the middle of the map). */
   private zoomBy(factor: number, at: Point = { x: this.width / 2, y: this.height / 2 }): void {
+    this.flashScale();
     const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.view.s * factor));
     const world = this.unproject(at);
     const k = this.view.s / s;
@@ -1426,7 +1510,15 @@ export class MapView {
     });
   }
 
+  /** The scale bar shows while the visitor zooms, then fades (Google does the same). */
+  private flashScale(): void {
+    this.svg.classList.add('zooming');
+    clearTimeout(this.scaleTimer);
+    this.scaleTimer = window.setTimeout(() => this.svg.classList.remove('zooming'), 1500);
+  }
+
   private zoomAt(at: Point, factor: number): void {
+    this.flashScale();
     cancelAnimationFrame(this.animation);
     const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.view.s * factor));
     // Keep the spot under the fingers still: zoom, then pan it back under them.

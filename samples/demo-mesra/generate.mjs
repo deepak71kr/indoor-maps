@@ -77,8 +77,10 @@ const CROSSING_NAMES = {
   'C:E': 'Dispensary Junction (red cross sign)',
   'D:E': 'Girls Hostel Gate',
 };
-for (const r of H) shape(ground, 'road', rect(r.x0, r.y - r.w / 2, r.x1 - r.x0, r.w));
-for (const r of V) shape(ground, 'road', rect(r.x - r.w / 2, r.y0, r.w, r.y1 - r.y0));
+for (const r of H)
+  shape(ground, 'road', rect(r.x0, r.y - r.w / 2, r.x1 - r.x0, r.w), { label: r.name });
+for (const r of V)
+  shape(ground, 'road', rect(r.x - r.w / 2, r.y0, r.w, r.y1 - r.y0), { label: r.name });
 
 /** Stops along each road: crossings, ends, and where building paths join. */
 const stops = new Map([...H, ...V].map((r) => [r.id, []]));
