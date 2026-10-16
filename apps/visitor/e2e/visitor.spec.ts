@@ -94,7 +94,7 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   const map = page.getByRole('img', { name: /^Map of / });
   await expect(map).toHaveAccessibleName('Map of Ground');
   await expect(map.getByText('You are here')).toBeVisible();
-  await expect(map.getByText('Pharmacy')).toBeVisible(); // room names drawn from the plan
+  await expect(map.getByText('Pharmacy', { exact: true })).toBeVisible(); // room names from the plan
 
   await page.getByRole('button', { name: /Radiology/ }).click();
   await page.getByRole('button', { name: 'Start' }).click();
@@ -196,7 +196,7 @@ test('campus: gate → a lab on another building’s Floor 2, with the campus ma
   await page.getByRole('searchbox').fill('block a');
   await page.getByRole('button', { name: /Computer lab/ }).click();
   await page.getByRole('button', { name: 'Start' }).click();
-  await expect(page.getByText('Fountain circle').first()).toBeVisible();
+  await expect(page.locator('.banner')).toContainText('Fountain circle');
   for (let i = 0; i < 4; i++) await iAmHere(page).click();
   await expect(map).toHaveAccessibleName('Map of Block A · Floor 2');
   await expect(page.locator('.floor', { hasText: 'Block A · Floor 2' })).toBeVisible();
@@ -234,6 +234,9 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   await expect(page.locator('.map .route .walked')).not.toHaveCount(0);
   await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
   await expect(map.locator('.next')).toHaveCount(1);
+  // Checkpoints are named: the banner says from where to where, the map tags the next one.
+  await expect(page.locator('.banner .route-line').first()).toContainText('from Reception desk');
+  await expect(map.locator('.next .tag, .next text').first()).toBeVisible();
 
   // Rotate (Shift + drag on a laptop), then the compass turns it back to north.
   const turned = () =>
@@ -241,8 +244,9 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
       const g = document.querySelector('.map-svg > g:not(.overlay):not(defs)');
       return Number(/rotate\(([-\d.e]+)\)/.exec(g?.getAttribute('transform') ?? '')?.[1] ?? 0);
     });
-  await page.getByRole('button', { name: 'Turn the map north-up' }).click();
+  // The map stays north-up while walking: it never turns by itself.
   await expect.poll(turned).toBeCloseTo(0, 0);
+  await expect(page.getByRole('button', { name: 'Turn the map the way I face' })).toBeVisible();
   const box = await map.boundingBox();
   if (!box) throw new Error('map not laid out');
   await page.keyboard.down('Shift');

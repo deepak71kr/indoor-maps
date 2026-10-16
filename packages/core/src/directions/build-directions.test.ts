@@ -173,6 +173,35 @@ describe('rules', () => {
     );
   });
 
+  it('an unnamed corner next to a room door is named after the room', () => {
+    const map = demoMap();
+    const corner = map.nodes.find((n) => n.id === 'G-C30');
+    if (corner) delete corner.landmark;
+    const steps = directions('G-C18', node('G-N30'), { on: loadSite(map), startFacing: 90 });
+    expect(steps[0]?.text).toContain('the corner by Pharmacy (G03)');
+  });
+
+  it('every step has a short title and names its checkpoints (from → to)', () => {
+    const steps = directions('G-MAIN', room('radiology'), { startFacing: 0 });
+    expect(steps[0]).toMatchObject({
+      title: 'Go straight',
+      from: 'Main Entrance',
+      to: 'Reception desk (blue board), Lift A lobby',
+    });
+    expect(steps[1]).toMatchObject({
+      title: 'Turn RIGHT',
+      from: 'Reception desk (blue board), Lift A lobby',
+      to: 'Lift A',
+    });
+    expect(steps.find((s) => s.kind === 'ride')).toMatchObject({
+      title: 'Take Lift A up to Floor 2',
+      to: 'Floor 2',
+    });
+    // Leaving the lift: the short title still says so.
+    const after = steps[steps.findIndex((s) => s.kind === 'ride') + 1];
+    expect(after?.title).toMatch(/^Exit Lift A, then /);
+  });
+
   it('a long straight corridor gets a reassurance step at a landmark', () => {
     const steps = directions('G-W', node('G-E'));
     expect(steps.map((s) => s.target)).toEqual(['G-C42', 'G-E', 'G-E']);

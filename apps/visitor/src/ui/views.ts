@@ -447,7 +447,12 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
 
   return mapScreen(ctx, `trip lvl-${step.levelColor}`, {
     top: [
-      banner(step, index, steps[index + 1]),
+      banner(
+        step,
+        index,
+        steps[index + 1],
+        index === 0 && ctx.state.position?.facing !== undefined,
+      ),
       notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
     ],
     sheet: [
@@ -501,19 +506,41 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
 }
 
 /** The green direction banner of Google Maps navigation, with "Then …" underneath. */
-function banner(step: Step, index: number, next: Step | undefined): HTMLElement {
+/**
+ * The green direction banner of Google Maps navigation, named by checkpoints:
+ *   ↱  Turn RIGHT                       4 m
+ *      from Reception desk → Lift A
+ * and "Then …" underneath. The full sentence is read out to screen readers.
+ */
+function banner(step: Step, index: number, next: Step | undefined, sign: boolean): HTMLElement {
   return h(
     'article',
     { class: 'banner step', 'data-step': index },
+    h('p', { class: 'step-text sr-only', 'aria-live': 'polite' }, step.text),
     h(
       'div',
-      { class: 'banner-main' },
+      { class: 'banner-main', 'aria-hidden': 'true' },
       h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
       h(
         'div',
         { class: 'grow' },
-        step.meters > 0 && h('p', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
-        h('p', { class: 'step-text', 'aria-live': 'polite' }, step.text),
+        h(
+          'p',
+          { class: 'step-title' },
+          h('span', { class: 'grow' }, step.title),
+          step.meters > 0 && h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
+        ),
+        sign && h('p', { class: 'route-line' }, tr('step.sign')),
+        (step.from || step.to) &&
+          h(
+            'p',
+            { class: 'route-line' },
+            step.from ? tr('step.from', { place: '' }) : null,
+            step.from ? h('b', {}, step.from) : null,
+            step.to ? h('span', { class: 'arrow' }, ' → ') : null,
+            step.to ? h('b', {}, step.to) : null,
+          ),
+        step.via && h('p', { class: 'route-line via' }, tr('step.via', { place: step.via })),
       ),
     ),
     next &&
@@ -522,7 +549,11 @@ function banner(step: Step, index: number, next: Step | undefined): HTMLElement 
         { class: 'then' },
         h('span', {}, tr('step.then')),
         icon(next.icon),
-        h('span', { class: 'grow' }, next.text),
+        h(
+          'span',
+          { class: 'grow' },
+          next.kind === 'walk' && next.to ? `${next.title} → ${next.to}` : next.title,
+        ),
       ),
   );
 }
@@ -625,7 +656,13 @@ function previewView(ctx: ViewContext): HTMLElement {
               s.kind === 'arrive' ? '' : String(i + 1),
             ),
             icon(s.icon),
-            h('span', { class: 'grow' }, s.text),
+            h(
+              'span',
+              { class: 'grow' },
+              h('b', {}, s.title),
+              s.kind === 'walk' && s.to ? h('small', {}, ` → ${s.to}`) : null,
+              s.via ? h('small', { class: 'via' }, tr('step.via', { place: s.via })) : null,
+            ),
             s.meters > 0 ? h('small', {}, tr('step.m', { m: s.meters })) : null,
           ),
         ),

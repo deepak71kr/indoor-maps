@@ -403,6 +403,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-16): Google-style navigation** — pick a place by search, from the list or by **tapping a room on the map** → **route preview** (From / To, the whole route with numbered checkpoints, time, floors crossed, every step, **Start**) → walking with three route colours (walked grey with ✓ checkpoints, this leg Google blue, the rest lighter blue with direction arrows) and the blue dot. The map **rotates** with two fingers (Shift + drag on a laptop); the compass turns it back to north. Soft shadows under buildings. First visit 25.5 KB.
 
+**Follow-up (2026-10-16): checkpoint-named directions, north-up map, more map info.** Every step now has a short title and names its checkpoints ("Turn RIGHT — from Reception desk → Lift A", "passing Pharmacy"); a corner without a landmark is named after the room door next to it ("the corner by Pharmacy (G03)"). The map no longer turns by itself (north-up; the compass offers "turn with me", a hand rotation is kept). The map shows corridor landmark names, the next checkpoint and destination as name tags, entrance tags, stair icons and a scale bar; less important labels hide when they would overlap (ranked: you › next › destination › checkpoints › entrances › rooms › corridors). First visit 27.2 KB.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

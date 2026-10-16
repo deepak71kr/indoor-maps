@@ -43,7 +43,20 @@ interface Pin {
   readonly angle?: number;
   /** Campus maps: building names show zoomed out, room names zoomed in. */
   readonly zoom?: 'far' | 'near';
+  /** Only shown from this many pixels per meter (small corridor names). */
+  readonly minScale?: number;
+  /**
+   * Text that must not overlap other text: its box (px, centred on x, offset dy) and rank —
+   * lower ranks win; from rank 3 on a label hides when it would cover a more important one.
+   */
+  box?: { w: number; h: number; dy: number };
+  readonly rank?: number;
+  /** The dot this pin belongs to (corridor names hide where the route already names it). */
+  readonly id?: string;
 }
+
+/** Collision ranks: you, next checkpoint, destination, checkpoint names, entrances, rooms, corridors. */
+const RANK = { you: 0, next: 1, dest: 2, cp: 3, entrance: 4, room: 5, spot: 6 } as const;
 
 const NS = 'http://www.w3.org/2000/svg';
 const MIN_SCALE = 0.5;
@@ -63,6 +76,14 @@ const TWIST_DEG = 12;
 const CHEVRON_EVERY = 7;
 /** Room labels get their category icon above the name when the room is this tall (px). */
 const ICON_ROOM_PX = 48;
+
+/** Corridor landmark names show from this zoom (px per meter) so the plan doesn't get busy. */
+const SPOT_SCALE = 7;
+
+/** "Reception desk (blue board), Lift A lobby" → "Reception desk": short enough for a map tag. */
+export function shortPlace(name: string): string {
+  return name.split(/ \(|, /)[0]?.trim() || name;
+}
 
 /** "G", "1", "B1" for the floor buttons (Google-style switcher); full names stay in labels. */
 function shortName(name: string): string {
@@ -121,7 +142,10 @@ export class MapView {
   private shownLevel = '';
   /** A floor the visitor picked to look at; cleared when their own floor changes. */
   private browsing: string | null = null;
-  private northUp = false;
+  /** The map stays north-up unless the visitor asks it to turn with them (compass button). */
+  private northUp = true;
+  /** A rotation the visitor made by hand; kept while north-up, cleared by the compass. */
+  private userRot: number | null = null;
   private view: View = { cx: 0, cy: 0, s: 8, rot: 0 };
   private framed = '';
   private moved = false;
@@ -147,6 +171,11 @@ export class MapView {
   private queued = false;
   private animation = 0;
   private framing = 0;
+  /** The part of the map covered by panels, as measured at the last framing. */
+  private pad = { top: 0, right: 0, bottom: 0, left: 0 };
+  private readonly scaleBar: SVGGElement;
+  /** Dots on the current route (their corridor names give way to the route's own tags). */
+  private routeIds = new Set<string>();
 
   constructor() {
     this.plan = s('g', { class: 'plan' });
@@ -161,7 +190,9 @@ export class MapView {
       '<radialGradient id="im-beam" cx="0" cy="0" r="40" gradientUnits="userSpaceOnUse">' +
       '<stop offset="0" stop-color="#1a73e8" stop-opacity=".45"/>' +
       '<stop offset="1" stop-color="#1a73e8" stop-opacity="0"/></radialGradient>';
-    this.svg.append(defs, world, this.overlay);
+    this.scaleBar = s('g', { class: 'scale' });
+    this.scaleBar.append(s('path'), s('text', { x: 4, y: -9 }));
+    this.svg.append(defs, world, this.overlay, this.scaleBar);
 
     this.floors = h('div', { class: 'floors', role: 'group', 'aria-label': tr('map.floor') });
     this.compass = h('button', {
@@ -170,9 +201,11 @@ export class MapView {
       onClick: () => {
         // Rotated by hand while north-up: just turn back to north. Otherwise switch modes.
         if (this.northUp && Math.abs(this.view.rot) > 1) {
+          this.userRot = null;
           this.animateTo({ ...this.view, rot: 0 });
           return;
         }
+        this.userRot = null;
         this.northUp = !this.northUp;
         this.reframe();
       },
@@ -207,7 +240,7 @@ export class MapView {
     this.fillPicker(scene, levelId);
     this.drawRoute(scene, levelId);
 
-    const rot = this.northUp || scene.facing === null ? 0 : scene.facing;
+    const rot = this.northUp || scene.facing === null ? (this.userRot ?? 0) : scene.facing;
     const key = `${levelId}|${scene.focus.join(',')}|${rot}`;
     if (key !== this.framed && this.width > 0) {
       this.framed = key;
@@ -328,6 +361,38 @@ export class MapView {
       );
     }
     this.addEntranceArrows(nodes);
+
+    // Named spots in the corridors — the checkpoints directions talk about ("Reception desk").
+    for (const node of nodes) {
+      if (!node.landmark || (node.kind !== 'junction' && node.kind !== 'corner')) continue;
+      const g = s('g', { class: 'spot' });
+      const text = shortPlace(node.landmark);
+      g.append(s('circle', { r: 2.5 }), s('text', { y: -6 }, text));
+      this.overlay.append(g);
+      this.pins.push({
+        p: node,
+        el: g,
+        id: node.id,
+        minScale: SPOT_SCALE,
+        zoom: 'near',
+        rank: RANK.spot,
+        box: { w: text.length * 5.6, h: 12, dy: -9 },
+      });
+    }
+    // Entrances get a green tag with their name.
+    for (const node of nodes) {
+      if (node.kind !== 'entrance' || !node.landmark) continue;
+      const g = s('g', { class: 'tag entrance' });
+      const w = this.tag(g, `🚪 ${shortPlace(node.landmark)}`, 0, 24);
+      this.overlay.append(g);
+      this.pins.push({
+        p: node,
+        el: g,
+        id: node.id,
+        rank: RANK.entrance,
+        box: { w, h: 20, dy: 24 },
+      });
+    }
     for (const room of site.map.rooms) {
       const door = site.graph.nodes.get(room.doors[0] ?? '');
       if (outlined.has(room.id) || door?.level !== levelId) continue;
@@ -380,7 +445,23 @@ export class MapView {
       g.append(ico);
     }
     this.overlay.append(g);
-    this.pins.push({ p, el: g, ...(box && { fit: { texts, box } }), ...(zoom && { zoom }) });
+    this.pins.push({
+      p,
+      el: g,
+      ...(box && { fit: { texts, box } }),
+      ...(zoom && { zoom }),
+      ...(cls.includes('cat-') && { rank: RANK.room }),
+    });
+  }
+
+  /** A rounded name tag (white pill with text), centred at (x, y) relative to its pin. */
+  private tag(g: SVGGElement, text: string, x = 0, y = 0): number {
+    const width = text.length * 6.4 + 14;
+    g.append(
+      s('rect', { x: x - width / 2, y: y - 10, width, height: 20, rx: 10 }),
+      s('text', { x, y: y + 4 }, text),
+    );
+    return width;
   }
 
   /** An arrow just outside every building entrance, pointing in. */
@@ -503,18 +584,26 @@ export class MapView {
     const marker = (
       nodeId: string | null,
       cls: string,
-      build: (g: SVGGElement) => void,
+      build: (g: SVGGElement) => Pin['box'],
       angle?: number,
       p?: Point,
+      rank?: number,
     ) => {
       const node = nodeId ? site.graph.nodes.get(nodeId) : undefined;
       if (!p && node?.level !== levelId) return;
       const g = s('g', { class: cls });
-      build(g);
+      const box = build(g) ?? undefined;
       this.overlay.append(g);
       const at = p ?? (node as Point);
-      this.markers.push(angle === undefined ? { p: at, el: g } : { p: at, el: g, angle });
+      this.markers.push({
+        p: at,
+        el: g,
+        ...(angle !== undefined && { angle }),
+        ...(box && { box }),
+        ...(rank !== undefined && { rank }),
+      });
     };
+    this.routeIds = new Set(path);
 
     // Arrows along the way still to walk, pointing where to go.
     for (const line of [...leg, ...later]) {
@@ -526,7 +615,15 @@ export class MapView {
         const angle = (Math.atan2(b.x - a.x, -(b.y - a.y)) * 180) / Math.PI;
         for (let d = carry; d < length; d += CHEVRON_EVERY) {
           const p = { x: a.x + ((b.x - a.x) * d) / length, y: a.y + ((b.y - a.y) * d) / length };
-          marker(null, 'chev', (g) => g.append(s('path', { d: 'M-4 2.5 0-1.5 4 2.5' })), angle, p);
+          marker(
+            null,
+            'chev',
+            (g) => {
+              g.append(s('path', { d: 'M-4 2.5 0-1.5 4 2.5' }));
+            },
+            angle,
+            p,
+          );
         }
         carry = (((carry - length) % CHEVRON_EVERY) + CHEVRON_EVERY) % CHEVRON_EVERY;
       }
@@ -536,7 +633,9 @@ export class MapView {
     // Where the trip started (once the visitor has left it).
     const first = path[0] ?? null;
     if (path.length > 1 && first !== scene.here) {
-      marker(first, 'start', (g) => g.append(s('circle', { r: 6 })));
+      marker(first, 'start', (g) => {
+        g.append(s('circle', { r: 6 }));
+      });
     }
 
     // Checkpoints: ✓ when passed, numbered when still to come; the next one pulses.
@@ -564,21 +663,72 @@ export class MapView {
       });
     });
 
-    marker(next !== last ? next : null, 'next', (g) => {
-      g.append(s('circle', { class: 'pulse', r: 15 }), s('circle', { r: 7 }));
-    });
-    marker(last !== scene.here ? last : null, 'dest', (g) => {
-      g.append(
-        s('path', { d: 'M0 0c-2-6-9-10-9-17a9 9 0 0 1 18 0c0 7-7 11-9 17Z' }),
-        s('circle', { cx: 0, cy: -17, r: 3.5 }),
-      );
-    });
-    marker(scene.here, 'you', (g) => {
-      if (scene.facing !== null)
-        g.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
-      g.append(s('circle', { class: 'halo', r: 16 }), s('circle', { class: 'dot', r: 8 }));
-      g.append(s('text', { y: 30 }, tr('map.you')));
-    });
+    // Name tags: the next checkpoint (blue), the destination (red), and in the preview every
+    // checkpoint, so the visitor can match the map with what they see in the corridor.
+    const nameOf = (id: string) => {
+      const node = site.graph.nodes.get(id);
+      return node?.landmark ? shortPlace(node.landmark) : undefined;
+    };
+    if (next === null) {
+      scene.checkpoints.forEach((id) => {
+        const text = id !== last && id !== scene.here ? nameOf(id) : undefined;
+        if (text)
+          marker(
+            id,
+            'tag cp-name',
+            (g) => ({ w: this.tag(g, text, 0, -20), h: 20, dy: -20 }),
+            undefined,
+            undefined,
+            RANK.cp,
+          );
+      });
+    }
+    marker(
+      next !== last ? next : null,
+      'next',
+      (g) => {
+        g.append(s('circle', { class: 'pulse', r: 15 }), s('circle', { r: 7 }));
+        const text = next ? nameOf(next) : undefined;
+        return text ? { w: this.tag(g, text, 0, -26), h: 20, dy: -26 } : undefined;
+      },
+      undefined,
+      undefined,
+      RANK.next,
+    );
+    marker(
+      last !== scene.here ? last : null,
+      'dest',
+      (g) => {
+        g.append(
+          s('path', { d: 'M0 0c-2-6-9-10-9-17a9 9 0 0 1 18 0c0 7-7 11-9 17Z' }),
+          s('circle', { cx: 0, cy: -17, r: 3.5 }),
+        );
+        const room = site.map.rooms.find((r) => r.doors.includes(last ?? ''));
+        const text = room?.name ?? (last ? nameOf(last) : undefined);
+        if (!text) return undefined;
+        const name = s('g', { class: 'tag dest-name' });
+        const w = this.tag(name, text, 0, -44);
+        g.append(name);
+        return { w, h: 46, dy: -24 };
+      },
+      undefined,
+      undefined,
+      RANK.dest,
+    );
+    marker(
+      scene.here,
+      'you',
+      (g) => {
+        if (scene.facing !== null)
+          g.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
+        g.append(s('circle', { class: 'halo', r: 16 }), s('circle', { class: 'dot', r: 8 }));
+        g.append(s('text', { y: 30 }, tr('map.you')));
+        return { w: 84, h: 52, dy: 8 };
+      },
+      undefined,
+      undefined,
+      RANK.you,
+    );
   }
 
   // ---------- framing ----------
@@ -606,6 +756,7 @@ export class MapView {
     const w = Math.max(box.maxX - box.minX, MIN_EXTENT);
     const hgt = Math.max(box.maxY - box.minY, MIN_EXTENT * 0.6);
     const pad = this.insets();
+    this.pad = pad;
     const freeW = this.width - pad.left - pad.right;
     const freeH = this.height - pad.top - pad.bottom;
     const scale = Math.min(
@@ -701,6 +852,7 @@ export class MapView {
     );
     const you = this.markers.find((m) => m.el.classList.contains('you'));
     const youAt = you ? this.project(you.p) : null;
+    const placedAt = new Map<Pin, Point>();
     const far = this.campus && scale < FAR_SCALE;
     this.svg.classList.toggle('far', far);
     for (const pin of [...this.pins, ...this.markers]) {
@@ -709,19 +861,68 @@ export class MapView {
       pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
       if (this.campus && pin.zoom && (pin.zoom === 'far') !== far) {
         pin.el.style.display = 'none';
+      } else if (pin.minScale !== undefined) {
+        const named = pin.id !== undefined && this.routeIds.has(pin.id);
+        pin.el.style.display = scale >= pin.minScale && !named ? '' : 'none';
       } else if (pin.fit) {
         // Room names give way to the "You are here" label just below the blue dot.
         const underYou =
           !!youAt && Math.abs(at.x - youAt.x) < 70 && Math.abs(at.y - youAt.y - 26) < 24;
         this.fitLabel(pin, underYou);
+      } else if (pin.box) {
+        pin.el.style.display = pin.id === this.scene?.here ? 'none' : '';
       }
+      placedAt.set(pin, at);
     }
+    this.declutter(placedAt);
+    this.drawScaleBar(scale);
     const arrow = this.compass.firstElementChild as SVGElement | null;
     arrow?.setAttribute('style', `transform:rotate(${-rot}deg)`);
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
     this.compass.hidden = this.scene?.facing === null && Math.abs(rot) < 1;
     // Filled blue while the map follows the route; outlined once the visitor moved it away.
     this.locate.setAttribute('aria-pressed', String(!this.moved));
+  }
+
+  /** Hide less important labels that would cover more important ones (greedy, by rank). */
+  private declutter(placedAt: ReadonlyMap<Pin, Point>): void {
+    const taken: Array<[number, number, number, number]> = [];
+    const candidates = [...placedAt.keys()]
+      .filter((pin) => pin.rank !== undefined && pin.el.style.display !== 'none')
+      .sort((a, b) => (a.rank ?? 9) - (b.rank ?? 9));
+    for (const pin of candidates) {
+      const at = placedAt.get(pin);
+      if (!at) continue;
+      let box = pin.box;
+      if (pin.fit) {
+        const label = pin.el.firstElementChild as SVGTextElement;
+        const y = Number(label.getAttribute('y') ?? 4);
+        box = { w: (label.textContent ?? '').length * CHAR_PX, h: 14, dy: y - 4 };
+      }
+      if (!box) continue;
+      const r: [number, number, number, number] = [
+        at.x - box.w / 2,
+        at.y + box.dy - box.h / 2,
+        at.x + box.w / 2,
+        at.y + box.dy + box.h / 2,
+      ];
+      const hit = taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1]);
+      if (hit && (pin.rank ?? 9) >= RANK.cp) pin.el.style.display = 'none';
+      else taken.push(r);
+    }
+  }
+
+  /** "10 m" bar, top-left of the free part of the map, like Google's scale. */
+  private drawScaleBar(scale: number): void {
+    const target = 80 / scale; // meters in ~80 px
+    const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500].find((m) => m >= target) ?? 1000;
+    const px = nice * scale;
+    const y = this.pad.top + 22;
+    const x = this.pad.left + 14;
+    this.scaleBar.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    const [line, label] = [this.scaleBar.firstElementChild, this.scaleBar.lastElementChild];
+    line?.setAttribute('d', `M0-5V0H${px.toFixed(1)}V-5`);
+    if (label && label.textContent !== `${nice} m`) label.textContent = `${nice} m`;
   }
 
   /** Longest text that fits inside the room as drawn right now; none if the room is tiny. */
@@ -841,6 +1042,7 @@ export class MapView {
     cancelAnimationFrame(this.animation);
     const world = this.unproject(at);
     this.view.rot = (((this.view.rot - deg) % 360) + 360) % 360;
+    if (this.northUp) this.userRot = this.view.rot;
     const moved = this.project(world);
     this.moved = true;
     this.panBy(at.x - moved.x, at.y - moved.y);
@@ -905,6 +1107,8 @@ function shapeIcon(shape: Shape): string | undefined {
       return '🅿️';
     case 'lift':
       return '🛗';
+    case 'stairs':
+      return '🪜';
     default:
       return undefined;
   }

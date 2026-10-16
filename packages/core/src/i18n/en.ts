@@ -20,6 +20,8 @@ export const en = {
   'walk.turn': '{turn} and walk to {target}',
   'walk.turn.via': '{turn} and walk past {via} to {target}',
   'target.unnamed': 'the corner about {meters} m ahead',
+  'target.near': 'the corner by {place}',
+  'turn.walk': 'walk',
 
   'prefix.start': 'with the sign in front of you, {sentence}',
   'prefix.exit.lift': 'exit {connector}, then {sentence}',

@@ -1,7 +1,7 @@
 import type { GraphEdge, GraphNode } from '../graph/types';
 import type { MessageKey } from '../i18n/en';
 import type { Translator } from '../i18n/translator';
-import { createTranslator, finishSentence } from '../i18n/translator';
+import { capitalize, createTranslator, finishSentence } from '../i18n/translator';
 import type { Site } from '../site/site';
 import type { Route } from '../usecases/find-route';
 import type { Turn } from './geometry';
@@ -15,7 +15,16 @@ export type StepIcon = Turn | 'walk' | 'lift' | 'stairs' | 'arrive';
  */
 export interface Step {
   readonly kind: 'walk' | 'ride' | 'arrive';
+  /** The full sentence, e.g. "Turn RIGHT and walk past Pharmacy to Lift A." */
   readonly text: string;
+  /** Short, for the big banner line: "Turn RIGHT", "Take Lift A up to Floor 2". */
+  readonly title: string;
+  /** Checkpoint where this step starts ("from Reception desk"); absent if unknown. */
+  readonly from?: string;
+  /** Where this step ends ("to Lift A"). */
+  readonly to?: string;
+  /** A landmark passed on the way. */
+  readonly via?: string;
   readonly icon: StepIcon;
   /** Node the visitor confirms at the end of this step. */
   readonly target: string;
@@ -37,6 +46,31 @@ export interface DirectionsOptions {
 const REASSURE_AFTER_METERS = 30;
 /** A final hop shorter than this into a door becomes "Radiology is on your LEFT". */
 const DOOR_SPUR_MAX_METERS = 6;
+/** A dot without a landmark is named after a room whose door is this close (m). */
+const NEAR_ROOM_METERS = 4;
+
+/** What to call a dot: its landmark, else "Pharmacy (G03)" for a room door right next to it. */
+type Namer = (node: GraphNode) => string | undefined;
+
+function namer(site: Site): Namer {
+  const doors = site.map.rooms.flatMap((room) =>
+    room.doors.flatMap((id) => {
+      const door = site.graph.nodes.get(id);
+      const label = room.number ? `${room.name} (${room.number})` : room.name;
+      return door ? [{ door, label }] : [];
+    }),
+  );
+  return (node) => {
+    if (node.landmark) return node.landmark;
+    let best: { label: string; d: number } | null = null;
+    for (const { door, label } of doors) {
+      if (door.level !== node.level) continue;
+      const d = Math.hypot(door.x - node.x, door.y - node.y);
+      if (d <= NEAR_ROOM_METERS && (!best || d < best.d)) best = { label, d };
+    }
+    return best?.label;
+  };
+}
 
 type Translate = Translator['t'];
 
@@ -59,6 +93,8 @@ interface Entry {
   readonly heading: number | null;
   /** Wraps the segment's first sentence, e.g. "exit Lift A, then {sentence}". */
   readonly prefix: ((sentence: string) => string) | null;
+  /** Same for the short title, only after a lift or stairs (the QR start needs no title prefix). */
+  readonly exit?: (title: string) => string;
 }
 
 /**
@@ -74,11 +110,13 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
   const connectorNames = new Map(site.map.connectors.map((c) => [c.id, c.name]));
   const steps: Step[] = [];
 
-  const step = (s: Omit<Step, 'levelName' | 'levelColor' | 'text'> & { text: string }): void => {
+  const name = namer(site);
+  const step = (s: Omit<Step, 'levelName' | 'levelColor'>): void => {
     const level = levels.get(s.levelId);
     steps.push({
       ...s,
       text: finishSentence(s.text),
+      title: capitalize(s.title),
       levelName: level?.name ?? s.levelId,
       levelColor: level?.color ?? 'slate',
     });
@@ -92,6 +130,8 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
     step({
       kind: 'arrive',
       text: t('arrive.already', { place }),
+      title: t('arrive.already', { place }),
+      to: place,
       icon: 'arrive',
       target: end.id,
       levelId: end.level,
@@ -115,9 +155,13 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
         (levels.get(segment.to.level)?.ord ?? 0) > (levels.get(segment.from.level)?.ord ?? 0);
       const key: MessageKey = `ride.${segment.kind}.${up ? 'up' : 'down'}`;
       const level = levels.get(segment.to.level)?.name ?? segment.to.level;
+      const from = segment.from.landmark ?? name;
       step({
         kind: 'ride',
         text: t(key, { connector: name, level }),
+        title: t(key, { connector: name, level }),
+        from,
+        to: level,
         icon: segment.kind,
         target: segment.to.id,
         levelId: segment.to.level,
@@ -131,12 +175,15 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
           segment.kind === 'lift'
             ? (sentence) => t('prefix.exit.lift', { sentence, connector: name })
             : (sentence) => t('prefix.exit.stairs', { sentence, level }),
+        ...(segment.kind === 'lift' && {
+          exit: (title: string) => t('prefix.exit.lift', { sentence: title, connector: name }),
+        }),
       };
       return;
     }
 
     const isLast = index === segments.length - 1;
-    const result = walkSteps(segment, entry, isLast, t);
+    const result = walkSteps(segment, entry, isLast, t, name);
     for (const s of result.steps) step(s);
     if (isLast) arrivalSide = result.arrivalSide;
     entry = { heading: result.exitHeading, prefix: null };
@@ -155,6 +202,8 @@ export function buildDirections(site: Site, route: Route, options: DirectionsOpt
   step({
     kind: 'arrive',
     text: locked ? `${finishSentence(arriveText)} ${t('arrive.locked')}` : arriveText,
+    title: arriveText,
+    to: place,
     icon: 'arrive',
     target: end.id,
     levelId: end.level,
@@ -191,7 +240,13 @@ interface WalkResult {
   readonly arrivalSide: Turn | null | undefined;
 }
 
-function walkSteps(segment: WalkSegment, entry: Entry, isLast: boolean, t: Translate): WalkResult {
+function walkSteps(
+  segment: WalkSegment,
+  entry: Entry,
+  isLast: boolean,
+  t: Translate,
+  name: Namer,
+): WalkResult {
   const { nodes, edges } = segment;
   const last = nodes.length - 1;
   const headings = edges.map((_edge, j) => {
@@ -251,7 +306,14 @@ function walkSteps(segment: WalkSegment, entry: Entry, isLast: boolean, t: Trans
     const meters = edges.slice(a, b).reduce((sum, e) => sum + e.length, 0);
     const via = nodes.slice(a + 1, b).find((n) => n.landmark !== undefined)?.landmark;
     const turn = turnAt(a);
-    const targetLabel = target.landmark ?? t('target.unnamed', { meters: Math.round(meters) });
+    const near = name(target);
+    const targetLabel =
+      target.landmark ??
+      (near
+        ? t('target.near', { place: near })
+        : t('target.unnamed', { meters: Math.round(meters) }));
+    const start = nodes[a];
+    const from = start ? name(start) : undefined;
 
     const base: MessageKey =
       turn === null ? 'walk.towards' : turn === 'straight' ? 'walk.straight' : 'walk.turn';
@@ -262,9 +324,16 @@ function walkSteps(segment: WalkSegment, entry: Entry, isLast: boolean, t: Trans
       ...(turn ? { turn: t(`turn.${turn}`) } : {}),
     });
     if (d === 0 && entry.prefix) text = entry.prefix(text);
+    // The banner's short line: just the move ("Turn RIGHT"); after a lift, "Exit Lift A, then …".
+    let title = turn === null ? t('turn.walk') : t(`turn.${turn}`);
+    if (d === 0 && entry.exit) title = entry.exit(title);
     steps.push({
       kind: 'walk',
       text,
+      title,
+      ...(from !== undefined && { from }),
+      to: targetLabel,
+      ...(via !== undefined && { via }),
       icon: turn ?? 'walk',
       target: target.id,
       levelId: target.level,
