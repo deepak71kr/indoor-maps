@@ -371,6 +371,13 @@ A phase is done only when **all** of these are true:
 - Floor colors stay: the step card takes the floor color instead of the mockups' fixed blue (it tells you which floor you are on).
 - "Set scale" in the editor rescales outlines together with dots; deleting a room unlinks its outline instead of breaking the file.
 
+**Follow-up (2026-10-16): map-first layout** (founder: "prime users are on phone… main is map", inspired by `images/image copy.png`).
+- Phone: top bar with the site name, the map fills the screen, controls in a white **bottom sheet** (handle to make it taller; it also grows while typing a search). Nearest-amenity chips are one swipeable row; category chips hide while searching.
+- Step sheet: "Route to **X** · 2 min · 80 m", the floor-colored step card with **✕ End route** inside it, "Next: …", ✓ I'm here, then smaller Lost / Back. On short phones (≤ 720 px tall) the tip and step dots are hidden so the map keeps about half the screen.
+- Laptop/tablet (≥ 900 px wide): panel on the left (400 px), map fills the rest — Google Maps desktop style. Framing is capped at 16 px per meter so big screens show more of the building, not giant rooms.
+- Screens without a map (Where am I?, I'm lost, errors) keep the simple page layout.
+- First visit 20.9 KB (was 19.9 KB). New browser test for the phone sheet + laptop panel.
+
 ---
 
 ## Phase 10 — 2D map: campus view

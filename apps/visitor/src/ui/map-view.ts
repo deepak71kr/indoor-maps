@@ -35,7 +35,9 @@ const NS = 'http://www.w3.org/2000/svg';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 40;
 /** Never zoom in so far that less than this many meters show. */
-const MIN_EXTENT = 26;
+const MIN_EXTENT = 34;
+/** Pixels per meter when framing: big screens show more of the building, not bigger rooms. */
+const FIT_MAX_SCALE = 16;
 const CHAR_PX = 6.6;
 
 const AMENITY_EMOJI: Readonly<Record<Amenity['kind'], string>> = {
@@ -353,7 +355,7 @@ export class MapView {
     return {
       cx: mx * Math.cos(b) - my * Math.sin(b),
       cy: mx * Math.sin(b) + my * Math.cos(b),
-      s: Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale)),
+      s: Math.min(FIT_MAX_SCALE, Math.max(MIN_SCALE, scale)),
       rot,
     };
   }

@@ -674,3 +674,260 @@ h1:focus-visible {
 .arrived .map {
   align-self: stretch;
 }
+
+/* ---------- Map screens: map first (phone: bottom sheet, wide: side panel) ---------- */
+.mapped {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg);
+  animation: none;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 52px;
+  padding: 0 var(--gap);
+  padding-top: env(safe-area-inset-top);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  z-index: 2;
+}
+.topbar .icon {
+  color: var(--brand);
+}
+.mapped .map {
+  margin: 0;
+  height: auto;
+  min-height: 150px;
+  flex: 1 1 auto;
+}
+.mapped .map .recenter {
+  bottom: 28px;
+}
+.sheet {
+  position: relative;
+  z-index: 1;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  max-height: 58dvh;
+  margin-top: -18px;
+  padding: 0 var(--gap) calc(var(--gap) + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -2px 12px rgb(0 0 0 / 0.14);
+  transition: max-height 0.2s ease;
+}
+.sheet.open {
+  max-height: 82dvh;
+}
+.handle {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  height: 22px;
+  margin: 0 calc(-1 * var(--gap));
+  border: none;
+  background: var(--surface);
+  cursor: pointer;
+}
+.handle::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: 3px;
+  background: var(--line);
+}
+.sheet h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+.sheet h2 {
+  margin: 0.6em 0 0;
+}
+.sheet .here {
+  color: var(--text);
+}
+.sheet .here .icon {
+  color: var(--m-route, #1a73e8);
+}
+.sheet .here .link {
+  min-height: 40px;
+}
+.sheet .search input {
+  border-radius: 999px;
+  background: var(--bg);
+}
+.chips.scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--gap));
+  padding: 0 var(--gap) 2px;
+}
+.chips.scroll .chip {
+  flex: none;
+  min-height: 42px;
+}
+.sheet .toggle {
+  min-height: 44px;
+}
+.trip-head {
+  display: block;
+  margin: 0;
+  font-weight: 400;
+}
+.sheet > * {
+  flex-shrink: 0;
+}
+.trip-head strong {
+  font-weight: 700;
+}
+.trip .card.step {
+  position: relative;
+}
+.step-main .end {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: -0.3em -0.4em 0 0;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 4px;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.step-main .end .icon {
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border-radius: 50%;
+  background: #fff;
+  color: #d93025;
+  stroke-width: 3;
+}
+.btn.small {
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+.sheet .tip {
+  margin: 0;
+}
+.arrived .sheet {
+  align-items: center;
+  text-align: center;
+}
+.arrived .sheet .step-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0;
+}
+.arrived .sheet .step-icon .icon.huge {
+  width: 44px;
+  height: 44px;
+}
+.arrived .sheet h1 {
+  font-size: 1.2rem;
+}
+.arrived .sheet .btn.big {
+  align-self: stretch;
+}
+
+/* Laptops and tablets in landscape: panel on the left, map fills the rest. */
+@media (min-width: 900px) {
+  .mapped {
+    display: grid;
+    grid-template: 'bar map' auto 'sheet map' 1fr / 400px 1fr;
+  }
+  .topbar {
+    grid-area: bar;
+    border-right: 1px solid var(--line);
+  }
+  .mapped .map {
+    grid-area: map;
+    height: 100%;
+  }
+  .mapped .map .recenter {
+    bottom: 16px;
+  }
+  .sheet,
+  .sheet.open {
+    grid-area: sheet;
+    max-height: none;
+    margin: 0;
+    padding-top: var(--gap);
+    border-radius: 0;
+    border-right: 1px solid var(--line);
+    box-shadow: 2px 0 10px rgb(0 0 0 / 0.08);
+  }
+  .handle {
+    display: none;
+  }
+}
+
+/* Phones: a compact sheet so the map keeps at least half the screen. */
+.mapped.center {
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: 0;
+  text-align: left;
+}
+.mapped .trip-head {
+  font-size: 0.95rem;
+}
+.mapped .card.step {
+  padding: 0.8em 0.9em;
+}
+.mapped .step-main {
+  gap: 0.7em;
+}
+.mapped.trip .step-icon {
+  width: 52px;
+  height: 52px;
+}
+.mapped.trip .step-icon .icon.huge {
+  width: 34px;
+  height: 34px;
+}
+.mapped.trip .step-text {
+  font-size: 1.05rem;
+}
+.mapped .step-next {
+  margin: 0.7em -0.9em -0.8em;
+  padding: 0.5em 0.9em;
+}
+.mapped .btn.big {
+  min-height: 56px;
+}
+@media (max-height: 720px) {
+  .mapped .tip,
+  .mapped .dots {
+    display: none;
+  }
+  .sheet {
+    gap: 0.5em;
+  }
+}
+@media (min-width: 900px) {
+  .mapped.trip .step-text {
+    font-size: 1.15rem;
+  }
+}

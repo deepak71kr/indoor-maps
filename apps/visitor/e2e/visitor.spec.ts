@@ -43,7 +43,7 @@ test('full trip on 2G with a 4× slower CPU', async ({ page }) => {
   await page.getByRole('textbox').fill('1-LIFT');
   await page.getByRole('button', { name: 'Go' }).click();
   await expect(page.getByText('New route from here')).toBeVisible();
-  await expect(page.getByText('To Radiology')).toBeVisible();
+  await expect(page.getByText('Route to Radiology')).toBeVisible();
 
   await walkToTheEnd(page);
   await expect(page.getByRole('heading', { name: /Radiology is straight ahead/ })).toBeVisible();
@@ -80,7 +80,7 @@ test('an unfinished trip survives closing the browser', async ({ page }) => {
 
   await page.reload();
   await expect(page.getByText('Step 2 of 5')).toBeVisible();
-  await expect(page.getByText('To Radiology')).toBeVisible();
+  await expect(page.getByText('Route to Radiology')).toBeVisible();
 });
 
 test('the 2D map follows the trip: route line, floor change, pan and re-centre', async ({
@@ -119,4 +119,32 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   await recentre.click();
   await expect(recentre).toBeHidden();
   await page.screenshot({ path: test.info().outputPath('map-floor2.png') });
+});
+
+test('map first: bottom sheet on a phone, side panel on a laptop', async ({ page }) => {
+  await page.goto('/?at=G-MAIN');
+  const map = page.getByRole('img', { name: /^Map of / });
+  const sheet = page.locator('.sheet');
+  await expect(map).toBeVisible();
+
+  // Phone: the map is on top and the sheet below it; the handle makes the sheet taller.
+  const mapBox = await map.boundingBox();
+  const closed = await sheet.boundingBox();
+  if (!mapBox || !closed) throw new Error('not laid out');
+  expect(closed.y).toBeGreaterThan(mapBox.y + 150);
+  await page.getByRole('button', { name: 'Show more' }).click();
+  await expect(page.getByRole('button', { name: 'Show less' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect
+    .poll(async () => (await sheet.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(closed.height);
+
+  // Laptop: the panel sits beside the map, which fills the rest of the screen.
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await expect.poll(async () => (await map.boundingBox())?.x ?? 0).toBeGreaterThanOrEqual(399);
+  const wide = await map.boundingBox();
+  expect(wide?.height).toBeGreaterThan(700);
+  await expect(page.getByRole('button', { name: 'Show more' })).toBeHidden();
 });

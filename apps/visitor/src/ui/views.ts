@@ -52,6 +52,45 @@ function mapPanel(state: State): HTMLElement | null {
   return mapView.el;
 }
 
+/**
+ * Map screens, Google-Maps style: the map fills the screen and the controls sit in a sheet —
+ * at the bottom on phones (tap the handle to make it taller), beside the map on wide screens.
+ * Without a map (no position yet) the plain page layout is used instead.
+ */
+function mapScreen(ctx: ViewContext, cls: string, ...sheet: Child[]): HTMLElement {
+  const map = mapPanel(ctx.state);
+  const content = sheet.filter((c): c is Node => c instanceof Node);
+  if (!map) return h('section', { class: `screen ${cls}` }, ...content);
+  const panel = h('div', { class: 'sheet' });
+  const handle = h('button', {
+    type: 'button',
+    class: 'handle',
+    'aria-label': tr('sheet.more'),
+    'aria-expanded': 'false',
+    onClick: () => setSheetOpen(panel, !panel.classList.contains('open')),
+  });
+  panel.append(handle, ...content);
+  return h(
+    'section',
+    { class: `screen mapped ${cls}` },
+    h(
+      'header',
+      { class: 'topbar' },
+      icon('arrive'),
+      h('span', { class: 'grow' }, ctx.state.site?.map.site.name ?? ''),
+    ),
+    map,
+    panel,
+  );
+}
+
+function setSheetOpen(panel: HTMLElement, open: boolean): void {
+  panel.classList.toggle('open', open);
+  const handle = panel.querySelector('.handle');
+  handle?.setAttribute('aria-expanded', String(open));
+  handle?.setAttribute('aria-label', tr(open ? 'sheet.less' : 'sheet.more'));
+}
+
 function title(text: string, emoji?: string): HTMLElement {
   return h(
     'h1',
@@ -179,7 +218,10 @@ function chooseView(ctx: ViewContext): HTMLElement {
   const levels = new Map(site.graph.levels.map((l) => [l.id, l]));
 
   const results = h('ul', { class: 'list', 'aria-live': 'polite' });
+  // Browsing by category makes way for the results while the visitor types.
+  const browse = h('div', { class: 'stack' });
   const showResults = (query: string) => {
+    browse.hidden = query.trim() !== '';
     const found = searchRooms(site, query, (c) => CATEGORY[c].label);
     if (found.length === 0) {
       replace(results, h('li', { class: 'muted' }, tr('choose.none')));
@@ -221,20 +263,32 @@ function chooseView(ctx: ViewContext): HTMLElement {
     placeholder: tr('choose.placeholder'),
     'aria-label': tr('choose.placeholder'),
     onInput: (event: Event) => showResults((event.target as HTMLInputElement).value),
+    // Typing needs room for the results: the sheet grows over the map.
+    onFocus: (event: Event) => {
+      const panel = (event.target as HTMLElement).closest<HTMLElement>('.sheet');
+      if (panel) setSheetOpen(panel, true);
+    },
   });
   showResults('');
 
   const categories = [...new Set(site.map.rooms.map((r) => r.category))].filter(
     (c) => c !== 'staff',
   );
-  const categoryChips = categories.map((c) =>
-    button(
-      `${CATEGORY[c].emoji} ${CATEGORY[c].label}`,
-      () => {
-        search.value = CATEGORY[c].label;
-        showResults(search.value);
-      },
-      'chip',
+  browse.append(
+    h('h2', {}, tr('choose.all')),
+    h(
+      'div',
+      { class: 'chips' },
+      ...categories.map((c) =>
+        button(
+          `${CATEGORY[c].emoji} ${CATEGORY[c].label}`,
+          () => {
+            search.value = CATEGORY[c].label;
+            showResults(search.value);
+          },
+          'chip',
+        ),
+      ),
     ),
   );
 
@@ -250,25 +304,27 @@ function chooseView(ctx: ViewContext): HTMLElement {
     ),
   );
 
-  return h(
-    'section',
-    { class: 'screen' },
-    mapPanel(ctx.state),
-    h('p', { class: 'site' }, site.map.site.name),
+  return mapScreen(
+    ctx,
+    'choose',
     h(
       'p',
       { class: 'here' },
       icon('arrive'),
-      h('span', { class: 'grow' }, tr('choose.you-are-at', { place: hereName })),
+      h(
+        'span',
+        { class: 'grow' },
+        tr('choose.you-are-at', { place: '' }),
+        h('strong', {}, hereName),
+      ),
       button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
     ),
-    title(tr('choose.title'), '🔍'),
+    title(tr('choose.title')),
     h('label', { class: 'search' }, icon('search'), search),
-    chips.length > 0 && h('h2', {}, tr('choose.nearest')),
-    chips.length > 0 && h('div', { class: 'chips' }, ...chips),
+    chips.length > 0 &&
+      h('div', { class: 'chips scroll', 'aria-label': tr('choose.nearest') }, ...chips),
     stepFreeToggle(ctx),
-    h('h2', {}, tr('choose.all')),
-    h('div', { class: 'chips' }, ...categoryChips),
+    browse,
     results,
   );
 }
@@ -298,29 +354,15 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
   // ~1 m/s indoors with people around; each lift/stairs ride adds ~45 s.
   const minutes = Math.max(1, Math.round(meters / 60 + rides * 0.75));
 
-  return h(
-    'section',
-    { class: `screen trip lvl-${step.levelColor}` },
-    mapPanel(ctx.state),
+  return mapScreen(
+    ctx,
+    `trip lvl-${step.levelColor}`,
     h(
-      'header',
+      'p',
       { class: 'trip-head' },
-      h(
-        'span',
-        { class: 'grow' },
-        tr('step.to', { place: target?.label ?? '' }),
-        h('small', {}, ` · ${tr('step.eta', { min: minutes, m: meters })}`),
-      ),
-      h(
-        'button',
-        {
-          type: 'button',
-          class: 'icon-btn',
-          'aria-label': tr('step.end'),
-          onClick: () => ctx.dispatch({ type: 'new-destination' }),
-        },
-        icon('close'),
-      ),
+      tr('step.to', { place: '' }),
+      h('strong', {}, target?.label ?? ''),
+      h('small', {}, ` · ${tr('step.eta', { min: minutes, m: meters })}`),
     ),
     h(
       'div',
@@ -334,19 +376,19 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
       ),
     ),
     notice === 'rerouted' && h('p', { class: 'notice', role: 'status' }, tr('rerouted')),
-    stepCard(step, index, steps[index + 1]),
+    stepCard(step, index, steps[index + 1], () => ctx.dispatch({ type: 'new-destination' })),
     button(tr('step.here'), () => ctx.dispatch({ type: 'confirm' }), 'btn primary big', 'check'),
     h(
       'div',
       { class: 'row' },
-      button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'btn', 'help'),
-      button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'btn', 'back'),
+      button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'btn small', 'help'),
+      button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'btn small', 'back'),
     ),
     site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
   );
 }
 
-function stepCard(step: Step, index: number, next: Step | undefined): HTMLElement {
+function stepCard(step: Step, index: number, next: Step | undefined, end: () => void): HTMLElement {
   return h(
     'article',
     { class: 'card step', 'data-step': index },
@@ -360,6 +402,7 @@ function stepCard(step: Step, index: number, next: Step | undefined): HTMLElemen
         h('p', { class: 'step-text', 'aria-live': 'polite' }, step.text),
         step.meters > 0 && h('p', { class: 'step-meters' }, `≈ ${step.meters} m`),
       ),
+      h('button', { type: 'button', class: 'end', onClick: end }, icon('close'), tr('step.end')),
     ),
     next && h('p', { class: 'step-next' }, tr('step.next', { text: next.text })),
   );
@@ -392,10 +435,9 @@ function arrivedView(ctx: ViewContext): HTMLElement {
   const toilet = site
     ? amenityChips(site, stepFree).find((c) => c.labelKey === 'chip.toilet')
     : undefined;
-  return h(
-    'section',
-    { class: `screen center arrived lvl-${arrive?.levelColor ?? 'teal'}` },
-    mapPanel(ctx.state),
+  return mapScreen(
+    ctx,
+    `center arrived lvl-${arrive?.levelColor ?? 'teal'}`,
     h('div', { class: 'step-icon' }, icon('arrive', 'icon huge')),
     h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
     arrive && floorBadge(arrive.levelName, arrive.levelColor),
