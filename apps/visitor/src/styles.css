@@ -1733,3 +1733,219 @@ span.floor {
     padding: 10px 12px;
   }
 }
+
+/* ================================================================================
+ * Colourful and easy (2026-10-16): for children and older visitors too.
+ * Every colour carries meaning (the move, the kind of place) and keeps text readable:
+ * white text only on shades with contrast >= 4.5:1.
+ * ================================================================================ */
+:root {
+  --go: #1e8e3e; /* confirm / straight on */
+  --left: #7b1fa2;
+  --right: #d84315;
+  --ride: #1565c0;
+  --back: #c62828;
+  --arrive: #c2185b;
+  --sun: #f9ab00;
+  font-size: 17px;
+}
+html.big-text {
+  font-size: 20px;
+}
+html.big-text .map text {
+  font-size: 13px;
+}
+
+/* Search bar: a soft colourful ring. */
+.searchbar {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(90deg, #4285f4, #34a853, #fbbc04, #ea4335) border-box;
+}
+.searching .searchbar {
+  background: var(--surface-2);
+  border-color: var(--blue);
+}
+
+/* Chips: each kind its own colour (tinted background, coloured text). */
+.top .chip,
+.chip {
+  --chip: var(--c, var(--blue));
+  background: color-mix(in srgb, var(--chip) 14%, var(--surface));
+  color: color-mix(in srgb, var(--chip) 80%, var(--text));
+  border: 1.5px solid color-mix(in srgb, var(--chip) 35%, transparent);
+  font-weight: 600;
+}
+.chip.a-toilet {
+  --chip: #1a73e8;
+}
+.chip.a-water {
+  --chip: #00838f;
+}
+.chip.a-atm {
+  --chip: #2e7d32;
+}
+.chip.a-help {
+  --chip: #e65100;
+}
+.top .chip {
+  box-shadow: 0 1px 3px rgb(60 64 67 / 0.25);
+}
+
+/* "You are at" as a friendly coloured card. */
+.sheet .here {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--blue) 14%, var(--surface)),
+    var(--surface)
+  );
+  border-left: 5px solid var(--blue);
+}
+
+/* Place rows: a coloured stripe in the category colour, bigger icons. */
+.place {
+  border-left: 4px solid color-mix(in srgb, var(--c, var(--line)) 70%, transparent);
+  padding-left: 10px;
+}
+.poi {
+  width: 44px;
+  height: 44px;
+  font-size: 1.35rem;
+  background: color-mix(in srgb, var(--c, var(--muted)) 22%, var(--surface));
+}
+
+/* Large-text switch. */
+.chip.text-size {
+  --chip: #5f6368;
+  gap: 2px;
+  min-height: 40px;
+}
+.chip.text-size span {
+  font-size: 0.8rem;
+}
+.chip.text-size b {
+  font-size: 1.05rem;
+}
+.chip.text-size.on {
+  --chip: var(--blue);
+}
+
+/* Direction banner: the colour of the move (green on, purple left, orange right…). */
+.banner {
+  --move: var(--go);
+  background: linear-gradient(135deg, var(--move), color-mix(in srgb, var(--move) 75%, #000));
+}
+.banner.move-left,
+.banner.move-slight-left {
+  --move: var(--left);
+}
+.banner.move-right,
+.banner.move-slight-right {
+  --move: var(--right);
+}
+.banner.move-lift,
+.banner.move-stairs {
+  --move: var(--ride);
+}
+.banner.move-u-turn {
+  --move: var(--back);
+}
+.banner .step-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.2);
+}
+.banner .step-title {
+  font-size: 1.6rem;
+}
+
+/* The one button that matters while walking: big and green. */
+.btn.go {
+  min-height: 60px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: var(--go);
+  border-color: var(--go);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--go) 70%, #000);
+}
+.btn.go .icon {
+  width: 26px;
+  height: 26px;
+  stroke-width: 3;
+}
+.btn.primary:not(.go) {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--blue) 70%, #000);
+}
+
+/* Progress dots: bigger, in the floor colour. */
+.dots i {
+  width: 10px;
+  height: 10px;
+}
+
+/* Step list: coloured number badges. */
+.steps .num {
+  border-color: var(--go);
+  color: var(--go);
+}
+.steps li.now .num {
+  background: var(--go);
+}
+
+/* Arrival: a pink check and a little burst of colour (still when reduced motion is on). */
+.arrived .sheet {
+  position: relative;
+  overflow: hidden;
+}
+.arrived .sheet .step-icon {
+  color: #fff;
+  background: var(--arrive);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--arrive) 20%, transparent);
+}
+.confetti {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 120px;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: 40px;
+  left: calc(8% + var(--i) * 6.5%);
+  width: 8px;
+  height: 14px;
+  border-radius: 3px;
+  background: hsl(calc(var(--i) * 37) 85% 55%);
+  animation: burst 1.4s ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+@keyframes burst {
+  from {
+    transform: translateY(40px) rotate(0);
+  }
+  to {
+    transform: translateY(-30px) rotate(calc(var(--i) * 50deg));
+  }
+}
+
+/* A livelier map: stronger room colours, greener grass, bluer water, a bolder route. */
+.map .room {
+  fill: color-mix(in srgb, var(--c, var(--m-wall)) 22%, var(--m-room));
+  stroke: color-mix(in srgb, var(--c, var(--m-wall)) 55%, var(--m-wall));
+}
+.map {
+  --m-green: #b7e4b0;
+  --m-water: #8fd0ff;
+  --m-tree: #66bb6a;
+  --m-tree-edge: #388e3c;
+}
+.map .route .ahead {
+  stroke-width: 8;
+}
+.map .route .casing {
+  stroke-width: 12;
+}

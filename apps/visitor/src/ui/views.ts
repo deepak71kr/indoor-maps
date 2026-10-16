@@ -142,6 +142,50 @@ function shortScreen(): boolean {
   return short;
 }
 
+// ---------- large text (older visitors), remembered on the phone ----------
+
+const BIG_KEY = 'im.big';
+
+/** Applies the saved text size; main.ts calls it at start. */
+export function applyTextSize(): void {
+  let big = false;
+  try {
+    big = localStorage.getItem(BIG_KEY) === '1';
+  } catch {
+    // No storage: normal size.
+  }
+  document.documentElement.classList.toggle('big-text', big);
+}
+
+/** "A+" switch: bigger letters and buttons everywhere. */
+function bigTextToggle(): HTMLElement {
+  const on = document.documentElement.classList.contains('big-text');
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: `chip text-size${on ? ' on' : ''}`,
+      'aria-pressed': String(on),
+      'aria-label': tr('big-text'),
+      title: tr('big-text'),
+      onClick: (e: Event) => {
+        const now = !document.documentElement.classList.contains('big-text');
+        document.documentElement.classList.toggle('big-text', now);
+        try {
+          localStorage.setItem(BIG_KEY, now ? '1' : '0');
+        } catch {
+          // Not remembered after a reload.
+        }
+        const el = e.currentTarget as HTMLElement;
+        el.classList.toggle('on', now);
+        el.setAttribute('aria-pressed', String(now));
+      },
+    },
+    h('span', { 'aria-hidden': 'true' }, 'A'),
+    h('b', { 'aria-hidden': 'true' }, 'A+'),
+  );
+}
+
 /** Tap, or swipe up / down, to make the sheet taller or shorter. */
 function sheetHandle(sheet: HTMLElement): HTMLButtonElement {
   let startY = 0;
@@ -402,7 +446,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
           type: 'choose',
           target: { destination: { type: 'amenity', kinds: chip.kinds }, label: tr(chip.labelKey) },
         }),
-      'chip',
+      `chip a-${chip.labelKey.slice(5)}`,
     ),
   );
   const categories = [...new Set(site.map.rooms.map((r) => r.category))]
@@ -415,7 +459,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
           showResults(search.value);
           search.focus();
         },
-        'chip',
+        `chip cat-${c}`,
       ),
     );
 
@@ -449,7 +493,13 @@ function chooseView(ctx: ViewContext): HTMLElement {
         ),
         button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
       ),
-      h('div', { class: 'sheet-title' }, title(tr('choose.title')), stepFreeToggle(ctx)),
+      h(
+        'div',
+        { class: 'sheet-title' },
+        title(tr('choose.title')),
+        stepFreeToggle(ctx),
+        bigTextToggle(),
+      ),
       h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
       recentList(ctx),
       places,
@@ -530,7 +580,12 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
           ...steps.slice(0, total).map((_, i) => h('i', { class: i <= index ? 'on' : '' })),
         ),
       ),
-      button(tr('step.here'), () => ctx.dispatch({ type: 'confirm' }), 'btn primary big', 'check'),
+      button(
+        tr('step.here'),
+        () => ctx.dispatch({ type: 'confirm' }),
+        'btn primary big go',
+        'check',
+      ),
       h(
         'div',
         { class: 'links' },
@@ -790,7 +845,8 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
 function banner(step: Step, index: number, next: Step | undefined, sign: boolean): HTMLElement {
   return h(
     'article',
-    { class: 'banner step', 'data-step': index },
+    // Coloured by the move, so "follow the colour" works for children and older visitors too.
+    { class: `banner step move-${step.icon}`, 'data-step': index },
     h('p', { class: 'step-text sr-only', 'aria-live': 'polite' }, step.text),
     h(
       'div',
@@ -976,6 +1032,11 @@ function arrivedView(ctx: ViewContext): HTMLElement {
     : undefined;
   return mapScreen(ctx, `center arrived lvl-${arrive?.levelColor ?? 'teal'}`, {
     sheet: [
+      h(
+        'div',
+        { class: 'confetti', 'aria-hidden': 'true' },
+        ...Array.from({ length: 14 }, (_, i) => h('i', { style: { '--i': String(i) } })),
+      ),
       h('div', { class: 'step-icon' }, icon('check', 'icon huge')),
       h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
       arrive &&

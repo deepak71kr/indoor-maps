@@ -23,6 +23,7 @@ export const ui = {
   'choose.all': 'All places',
   'choose.none': 'No matching places.',
   'step-free': 'Step-free route (no stairs)',
+  'big-text': 'Large text',
   'step.of': 'Step {n} of {total}',
   'step.to': 'Route to {place}',
   'step.here': "I'm here",

@@ -14,7 +14,7 @@ import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
 import { registerServiceWorker, saveMap } from './infra/offline';
 import { installIcons } from './ui/icons';
-import { offerCompass, setLiveHeading, view } from './ui/views';
+import { applyTextSize, offerCompass, setLiveHeading, view } from './ui/views';
 import { CALIBRATE_WINDOW_MS, northOffset, toMapHeading } from './app/heading';
 import { startCompass } from './infra/compass';
 import './styles.css';
@@ -99,7 +99,9 @@ function noteScan(facing: number | undefined): void {
   if (facing !== undefined) scan = { facing, at: Date.now(), firstReading: null };
 }
 
+let compassSeen = false;
 const compass = startCompass((heading) => {
+  compassSeen = true;
   const now = Date.now();
   if (scan && now - scan.at < CALIBRATE_WINDOW_MS) {
     scan.firstReading ??= now;
@@ -114,11 +116,18 @@ const compass = startCompass((heading) => {
   }
   setLiveHeading(offset === null ? null : toMapHeading(heading, offset));
 });
-if (compass?.needsPermission) offerCompass(() => compass.enable());
+// Offer the "allow compass" button only on phones that stay silent (iPhone until allowed);
+// laptops have no compass, and Android sends readings straight away.
+if (compass?.needsPermission && matchMedia('(pointer: coarse)').matches) {
+  setTimeout(() => {
+    if (!compassSeen) offerCompass(() => compass.enable());
+  }, 1500);
+}
 
 // ---------- boot ----------
 async function boot(): Promise<void> {
   installIcons();
+  applyTextSize();
   if (import.meta.env.PROD) registerServiceWorker();
   render();
   store.subscribe(render);
