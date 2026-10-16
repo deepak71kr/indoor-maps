@@ -121,6 +121,18 @@
 .cat-other {
   --c: #00838f;
 }
+.cat-library {
+  --c: #3949ab;
+}
+.cat-hostel {
+  --c: #ad1457;
+}
+.cat-sports {
+  --c: #2e7d32;
+}
+.cat-utility {
+  --c: #f57f17;
+}
 
 /* ---------- Base ---------- */
 * {
@@ -1111,6 +1123,20 @@ span.floor {
   stroke: var(--m-wall);
   stroke-width: 1;
   stroke-dasharray: 4 3;
+}
+.map .water {
+  fill: var(--m-water, #aadaff);
+  stroke: color-mix(in srgb, var(--m-water, #aadaff) 70%, #1a73e8);
+  stroke-width: 1;
+}
+.map .tree {
+  fill: var(--m-tree, #8fcf8a);
+  stroke: var(--m-tree-edge, #5fa85a);
+  stroke-width: 1;
+}
+.map .k-water > text {
+  fill: #1967d2;
+  font-style: italic;
 }
 .map .building {
   fill: var(--m-building);

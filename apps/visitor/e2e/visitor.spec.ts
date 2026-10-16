@@ -290,3 +290,22 @@ test('recent places and a shared room link', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'To: Radiology' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start' })).toBeVisible();
 });
+
+test('big campus (stress test): opens fast, finds a lab, walks through floors', async ({
+  page,
+}) => {
+  const started = Date.now();
+  await page.goto('/?site=demo-mesra&at=MAIN-GATE');
+  await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
+  expect(Date.now() - started).toBeLessThan(8_000);
+  const map = page.getByRole('img', { name: /^Map of / });
+  await expect(map.getByText('Main Building', { exact: true })).toBeVisible();
+
+  await page.getByRole('searchbox').fill('digital library');
+  await page.getByRole('button', { name: /Digital library/ }).click();
+  await page.getByRole('button', { name: 'Directions' }).click();
+  await expect(page.getByRole('button', { name: 'To: Digital library' })).toBeVisible();
+  await page.getByRole('button', { name: 'Start' }).click();
+  await walkToTheEnd(page);
+  await expect(page.getByRole('heading', { name: /Digital library is/ })).toBeVisible();
+});

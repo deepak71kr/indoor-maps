@@ -120,6 +120,8 @@ const LAYER: Partial<Record<ShapeKind, number>> = {
   road: 0,
   green: 0,
   parking: 0,
+  water: 0,
+  tree: 0,
   building: 1,
   floor: 2,
 };

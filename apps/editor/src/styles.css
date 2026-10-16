@@ -775,6 +775,16 @@ select {
   stroke: rgb(76 175 80 / 0.6);
   stroke-width: 1;
 }
+.shape.water {
+  fill: rgb(66 133 244 / 0.3);
+  stroke: rgb(66 133 244 / 0.6);
+  stroke-width: 1;
+}
+.shape.tree {
+  fill: rgb(56 142 60 / 0.45);
+  stroke: rgb(56 142 60 / 0.8);
+  stroke-width: 1;
+}
 .shape.parking {
   fill: rgb(107 119 133 / 0.15);
   stroke-dasharray: 4 3;

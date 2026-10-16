@@ -44,6 +44,8 @@ export interface DirectionsOptions {
 
 /** A straight stretch longer than this gets an extra "keep going" step at a named landmark. */
 const REASSURE_AFTER_METERS = 30;
+/** Outdoors (campus roads) landmarks are farther apart and paths are obvious: confirm less often. */
+const REASSURE_OUTDOOR_METERS = 100;
 /** A final hop shorter than this into a door becomes "Radiology is on your LEFT". */
 const DOOR_SPUR_MAX_METERS = 6;
 /** A dot without a landmark is named after a room whose door is this close (m). */
@@ -274,7 +276,9 @@ function walkSteps(
   let sinceLast = edges[0]?.length ?? 0;
   for (let j = 1; j < last; j++) {
     const turn = turnAt(j);
-    const reassure = sinceLast >= REASSURE_AFTER_METERS && nodes[j]?.landmark !== undefined;
+    const outdoor = edges[j - 1]?.kind === 'outdoor';
+    const every = outdoor ? REASSURE_OUTDOOR_METERS : REASSURE_AFTER_METERS;
+    const reassure = sinceLast >= every && nodes[j]?.landmark !== undefined;
     if ((turn !== null && turn !== 'straight') || reassure) {
       decisions.push(j);
       sinceLast = 0;

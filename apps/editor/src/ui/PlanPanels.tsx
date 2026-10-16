@@ -41,6 +41,8 @@ export const SHAPE_KINDS_UI: ReadonlyArray<{
   { kind: 'road', icon: '🛣️', label: 'Road / path', hint: 'Campus: roads and paved paths' },
   { kind: 'green', icon: '🌳', label: 'Lawn / garden', hint: 'Campus: lawns, gardens, grounds' },
   { kind: 'parking', icon: '🅿️', label: 'Parking', hint: 'Campus: a parking area' },
+  { kind: 'water', icon: '💧', label: 'Water', hint: 'Campus: a lake, pond or swimming pool' },
+  { kind: 'tree', icon: '🌳', label: 'Tree', hint: 'Campus: one tree (a small outline)' },
 ];
 
 export function OutlinePanel() {

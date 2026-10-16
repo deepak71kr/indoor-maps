@@ -85,6 +85,14 @@ export function shortPlace(name: string): string {
   return name.split(/ \(|, /)[0]?.trim() || name;
 }
 
+/** "Girls Hostel 1" → "GH1", "Medical Centre (Dispensary)" → "MC". */
+export function initials(name: string): string {
+  return shortPlace(name)
+    .split(/\s+/)
+    .map((word) => (/^\d+$/.test(word) ? word : (word[0] ?? '').toUpperCase()))
+    .join('');
+}
+
 /** "G", "1", "B1" for the floor buttons (Google-style switcher); full names stay in labels. */
 function shortName(name: string): string {
   const floor = /^(?:floor|level|lvl)\s*(.+)$/i.exec(name)?.[1];
@@ -347,8 +355,16 @@ export class MapView {
         this.plan.append(el);
       }
       const doors = nodes.filter((n) => DOOR_KINDS.has(n.kind));
-      for (const [x1, y1, x2, y2] of doorGaps(shapes, doors)) {
-        this.plan.append(s('line', { class: 'gap', x1, y1, x2, y2 }));
+      // Gaps in building footprints stay on a zoomed-out campus; gaps inside buildings don't.
+      const outside = shapes.filter((x) => OUTDOOR_SHAPE_KINDS.has(x.kind));
+      const inside = shapes.filter((x) => !OUTDOOR_SHAPE_KINDS.has(x.kind));
+      for (const [list, cls] of [
+        [outside, 'gap'],
+        [inside, 'gap in'],
+      ] as const) {
+        for (const [x1, y1, x2, y2] of doorGaps(list, doors)) {
+          this.plan.append(s('line', { class: cls, x1, y1, x2, y2 }));
+        }
       }
     } else {
       // No drawing yet: a corridor sketch from the walking lines.
@@ -365,7 +381,9 @@ export class MapView {
     for (const shape of shapes) {
       const building = shape.building ? buildings.get(shape.building) : undefined;
       if (building) {
-        this.addLabel(labelPoint(shape), [building.name], shapePoints(shape), 'label big', 'far');
+        // Long names get a short form when the block is small: "Girls Hostel 1" → "GH1".
+        const texts = [building.name, shortPlace(building.name), initials(building.name)];
+        this.addLabel(labelPoint(shape), texts, shapePoints(shape), 'label big', 'far');
         continue;
       }
       const room = shape.room ? rooms.get(shape.room) : undefined;
@@ -416,6 +434,7 @@ export class MapView {
         id: node.id,
         rank: RANK.entrance,
         box: { w, h: 20, dy: 24 },
+        zoom: 'near', // a zoomed-out campus shows building names instead
       });
     }
     for (const room of site.map.rooms) {
@@ -436,7 +455,7 @@ export class MapView {
         g.append(s('circle', { cx: dx, cy: -14, r: 11 }));
         g.append(s('text', { x: dx, y: -9.5 }, AMENITY_EMOJI[a.kind]));
         this.overlay.append(g);
-        this.pins.push({ p: node, el: g });
+        this.pins.push({ p: node, el: g, zoom: 'near' });
       });
     }
   }
@@ -907,6 +926,11 @@ export class MapView {
     this.svg.classList.toggle('far', far);
     for (const pin of [...this.pins, ...this.markers]) {
       const at = this.project(pin.p);
+      // Off screen: skip it (big campuses have thousands of labels; only a few are in view).
+      if (at.x < -160 || at.y < -160 || at.x > this.width + 160 || at.y > this.height + 160) {
+        if (pin.el.style.display !== 'none') pin.el.style.display = 'none';
+        continue;
+      }
       const turn = pin.angle === undefined ? '' : ` rotate(${(pin.angle - rot).toFixed(1)})`;
       pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
       if (this.campus && pin.zoom && (pin.zoom === 'far') !== far) {

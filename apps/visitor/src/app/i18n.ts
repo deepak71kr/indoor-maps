@@ -104,5 +104,9 @@ export const CATEGORY: Readonly<Record<Room['category'], { emoji: string; label:
   classroom: { emoji: '🎓', label: 'Classroom' },
   office: { emoji: '🗂️', label: 'Office' },
   staff: { emoji: '🔒', label: 'Staff only' },
+  library: { emoji: '📚', label: 'Library' },
+  hostel: { emoji: '🛏️', label: 'Hostel' },
+  sports: { emoji: '🏅', label: 'Sports' },
+  utility: { emoji: '⚡', label: 'Utility' },
   other: { emoji: '📍', label: 'Other' },
 };

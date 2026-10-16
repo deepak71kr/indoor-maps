@@ -45,6 +45,10 @@ export const ROOM_CATEGORIES = [
   'classroom',
   'office',
   'staff',
+  'library',
+  'hostel',
+  'sports',
+  'utility',
   'other',
 ] as const;
 
@@ -74,6 +78,7 @@ export const AMENITY_KINDS = [
  * Outdoors (Phase 10 — campus view), drawn on a shared level:
  * - `building`: a building footprint; linked to a `buildings[]` entry for its name and floors.
  * - `road`: roads and paved paths.  `green`: lawns, gardens.  `parking`: parking areas.
+ * - `water`: lakes, ponds, swimming pools.  `tree`: one tree (a small outline, drawn round).
  */
 export const SHAPE_KINDS = [
   'floor',
@@ -86,6 +91,8 @@ export const SHAPE_KINDS = [
   'road',
   'green',
   'parking',
+  'water',
+  'tree',
 ] as const;
 
 /** Shape kinds that describe the outdoors (campus view) rather than a building's inside. */
@@ -94,6 +101,8 @@ export const OUTDOOR_SHAPE_KINDS: ReadonlySet<string> = new Set([
   'road',
   'green',
   'parking',
+  'water',
+  'tree',
 ]);
 
 /** `public` = anyone can navigate there; `locked` = shown with 🔒, route ends at the door. */
