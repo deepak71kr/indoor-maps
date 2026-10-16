@@ -1,3 +1,4 @@
+import { roomIcon } from '@innermap/core';
 /** Properties of the selected dot(s), line, room or lift/staircase. */
 import type { Amenity, Connector, Edge, MapFile, MapNode, QrAnchor, Room } from '@innermap/schema';
 import { EDGE_KINDS, NODE_KINDS, ROOM_CATEGORIES } from '@innermap/schema';
@@ -262,6 +263,20 @@ function RoomProps({ store, doc, room }: Props & { room: Room }) {
           onChange={(e) => {
             const number = (e.target as HTMLInputElement).value.trim();
             if (number !== (room.number ?? '')) set('Room number', { number: number || null });
+          }}
+        />
+      </label>
+      <label>
+        Icon on the map
+        <input
+          key={`${room.id}-i`}
+          class="icon-input"
+          value={room.icon ?? ''}
+          maxLength={8}
+          placeholder={`${roomIcon(room, '📍')} (automatic)`}
+          onChange={(e) => {
+            const icon = (e.target as HTMLInputElement).value.trim();
+            if (icon !== (room.icon ?? '')) set('Room icon', { icon: icon || null });
           }}
         />
       </label>

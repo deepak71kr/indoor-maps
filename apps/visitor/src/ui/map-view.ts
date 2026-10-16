@@ -10,6 +10,7 @@
  */
 import type { Point, Site } from '@innermap/core';
 import {
+  roomIcon,
   boundsOf,
   containsPoint,
   doorGaps,
@@ -453,7 +454,7 @@ export class MapView {
         shapePoints(shape),
         cls,
         OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'room',
-        room ? CATEGORY[room.category].emoji : shapeIcon(shape),
+        room ? roomIcon(room, CATEGORY[room.category].emoji) : shapeIcon(shape),
       );
     }
     this.addEntranceArrows(nodes);
@@ -550,7 +551,7 @@ export class MapView {
     if (emoji) {
       // Google-style place marker above the name: a round badge in the category colour.
       const ico = s('g', { class: 'ico', transform: 'translate(0 -14)' });
-      ico.append(s('circle', { r: 11 }), s('text', { y: 4.5 }, emoji));
+      ico.append(s('circle', { r: 12 }), s('text', { y: 4.5 }, emoji));
       g.append(ico);
     }
     this.overlay.append(g);
@@ -1105,15 +1106,26 @@ export class MapView {
     const box = boundsOf(pin.fit.box.map((p) => this.project(p)));
     const width = box ? box.maxX - box.minX - 6 : 0;
     const height = box ? box.maxY - box.minY : 0;
-    const text = pin.fit.texts.find((t) => t.length * CHAR_PX <= width);
+    // The room's icon: above the name in a tall room, beside it in a low one, hidden if tiny.
+    const ico = pin.el.querySelector<SVGGElement>('.ico');
+    const roomy = !!ico && height >= ICON_ROOM_PX;
+    const fits = (room: number) => pin.fit?.texts.find((t) => t.length * CHAR_PX <= room);
+    // The name always wins over the icon: the icon goes beside it only if there is room left.
+    const text = fits(width);
+    const beside =
+      !!ico && !roomy && text !== undefined && text.length * CHAR_PX + 24 <= width && height >= 22;
     const label = pin.el.firstElementChild as SVGTextElement;
     if (label.textContent !== (text ?? '')) label.textContent = text ?? '';
     pin.el.style.display = text && height >= 16 && !hidden ? '' : 'none';
-    const ico = pin.el.querySelector<SVGGElement>('.ico');
     if (ico) {
-      const roomy = height >= ICON_ROOM_PX;
-      ico.style.display = roomy ? '' : 'none';
+      const half = ((text?.length ?? 0) * CHAR_PX) / 2;
+      ico.style.display = roomy || beside ? '' : 'none';
+      ico.setAttribute(
+        'transform',
+        roomy ? 'translate(0 -14)' : `translate(${(-half - 2).toFixed(1)} 0) scale(0.8)`,
+      );
       label.setAttribute('y', roomy ? '13' : '4');
+      label.setAttribute('x', beside ? '11' : '0');
     }
   }
 

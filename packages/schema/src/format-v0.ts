@@ -105,6 +105,8 @@ export const RoomSchema = z.strictObject({
   /** Door node ids; routing picks the closest one. */
   doors: z.array(id).min(1),
   visibility: z.enum(VISIBILITIES).optional(),
+  /** An emoji for the map and lists (e.g. "💻"); without it one is picked from the name. */
+  icon: z.string().trim().min(1).max(8).optional(),
 });
 
 export const AmenitySchema = z.strictObject({

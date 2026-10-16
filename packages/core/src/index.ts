@@ -45,6 +45,7 @@ export {
   shapePoints,
   shapeSides,
 } from './plan/plan';
+export { roomIcon } from './places/room-icon';
 export type { Site } from './site/site';
 export { loadSite } from './site/site';
 export type { Destination, Route, RouteError, RouteRequest } from './usecases/find-route';

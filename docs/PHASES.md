@@ -419,6 +419,8 @@ A phase is done only when **all** of these are true:
 - Rooms can be tapped for their card on the home, card, preview and arrival screens.
 - Big demo campus: west and east doors on 7 big buildings, second stairs in long buildings, Lift B in the Main Building, part of West Road closed for works.
 
+**Follow-up (2026-10-16): room icons.** Every room gets an icon that fits what it is, picked from its name by about 60 rules in core (roomIcon: 💻 computer lab, ⚛️ physics, 🩸 pathology, 🦷 dental, 🏸 badminton, 🏊 pool, 🛏️ hostel rooms, 🎓 lecture halls…), falling back to the category icon; a room's own optional `icon` (editor: "Icon on the map", with the automatic one as a hint) always wins. Shown on the map (a white badge in the category colour above the room number, or beside the name in a low room, never instead of the name), in lists, search, room cards and Recent. Over 90% of the big demo campus's rooms get a specific icon.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

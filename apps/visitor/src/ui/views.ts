@@ -1,5 +1,5 @@
 import type { Step } from '@innermap/core';
-import { findRoute } from '@innermap/core';
+import { findRoute, roomIcon } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
 import type { RoomResult } from '../app/search';
 import { amenityChips, nearbyLandmarks, resolvePosition, searchRooms } from '../app/search';
@@ -370,7 +370,11 @@ function placeItem(ctx: ViewContext, result: RoomResult): HTMLElement {
   const details = [room.number, cat.label].filter(Boolean).join(' · ');
   const content = document.createDocumentFragment();
   content.append(
-    h('span', { class: `poi cat-${room.category}`, 'aria-hidden': 'true' }, cat.emoji),
+    h(
+      'span',
+      { class: `poi cat-${room.category}`, 'aria-hidden': 'true' },
+      roomIcon(room, cat.emoji),
+    ),
     h(
       'span',
       { class: 'grow' },
@@ -756,10 +760,9 @@ function recentList(ctx: ViewContext): HTMLElement | null {
       { class: 'chips' },
       ...rooms.map((room) =>
         button(
-          room.name,
+          `${roomIcon(room, CATEGORY[room.category].emoji)} ${room.name}`,
           () => ctx.dispatch({ type: 'show-place', roomId: room.id }),
-          'chip',
-          'clock',
+          `chip cat-${room.category}`,
         ),
       ),
     ),
@@ -821,7 +824,11 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
       h(
         'div',
         { class: 'place-head' },
-        h('span', { class: `poi cat-${room.category}`, 'aria-hidden': 'true' }, cat.emoji),
+        h(
+          'span',
+          { class: `poi cat-${room.category}`, 'aria-hidden': 'true' },
+          roomIcon(room, cat.emoji),
+        ),
         h(
           'div',
           { class: 'grow' },

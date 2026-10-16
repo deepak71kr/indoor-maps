@@ -210,6 +210,8 @@ export function addDoorToRoom(doc: MapFile, roomId: string, doorId: string): Map
 export type RoomPatch = Partial<Pick<Room, 'name' | 'category'>> & {
   readonly number?: string | null;
   readonly visibility?: Room['visibility'] | null;
+  /** An emoji; `null` goes back to the one picked from the name. */
+  readonly icon?: string | null;
 };
 
 export function updateRoom(doc: MapFile, roomId: string, patch: RoomPatch): MapFile {

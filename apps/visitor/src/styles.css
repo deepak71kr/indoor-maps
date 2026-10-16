@@ -2021,3 +2021,12 @@ html.big-text .map text {
   font-size: 11px;
   stroke: none;
 }
+/* Room icons: a white badge with a ring in the category colour, so the emoji reads clearly. */
+.map .ico circle {
+  fill: #fff;
+  stroke: var(--c, #5f6368);
+  stroke-width: 2.5;
+}
+.map .ico text {
+  font-size: 13px;
+}
