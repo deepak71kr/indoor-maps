@@ -57,6 +57,10 @@ const CHAR_PX = 6.6;
 const FAR_SCALE = 4.5;
 /** A tap moves the finger less than this (pixels); more is a drag. */
 const TAP_PX = 8;
+/** A two-finger twist must pass this many degrees before the map rotates (pinch stays steady). */
+const TWIST_DEG = 12;
+/** Direction arrows along the route, this many meters apart. */
+const CHEVRON_EVERY = 7;
 /** Room labels get their category icon above the name when the room is this tall (px). */
 const ICON_ROOM_PX = 48;
 
@@ -129,6 +133,12 @@ export class MapView {
   private markers: Pin[] = [];
   private pointers = new Map<number, Point>();
   private travel = 0;
+  private twist = 0;
+  private rotating = false;
+  /** Rooms drawn on the shown floor, for "tap a room to go there". */
+  private roomShapes: Shape[] = [];
+  /** Called when the visitor taps a room on the map (set by the screen; null = ignore). */
+  onPick: ((roomId: string) => void) | null = null;
   /** Shown level has building footprints: switch between campus and inside views by zoom. */
   private campus = false;
   private footprints: Shape[] = [];
@@ -158,6 +168,11 @@ export class MapView {
       type: 'button',
       class: 'map-btn compass',
       onClick: () => {
+        // Rotated by hand while north-up: just turn back to north. Otherwise switch modes.
+        if (this.northUp && Math.abs(this.view.rot) > 1) {
+          this.animateTo({ ...this.view, rot: 0 });
+          return;
+        }
         this.northUp = !this.northUp;
         this.reframe();
       },
@@ -249,6 +264,7 @@ export class MapView {
     const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
     this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
+    this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
     this.campus = this.footprints.length > 0;
 
     // On a building's own floor, the campus around it, faded, so the visitor sees where it is.
@@ -261,6 +277,16 @@ export class MapView {
     }
 
     if (shapes.length > 0) {
+      // A soft shadow under buildings and floors lifts them off the ground (no filters: cheap).
+      for (const shape of shapes) {
+        if (shape.kind !== 'floor' && shape.kind !== 'building') continue;
+        const shade = s('polygon', {
+          class: `shade${shape.kind === 'floor' ? ' in' : ''}`,
+          points: flat(shapePoints(shape)),
+          transform: 'translate(0.5 0.7)',
+        });
+        this.plan.append(shade);
+      }
       for (const shape of shapes) this.plan.append(this.shapeEl(shape, rooms));
       const doors = nodes.filter((n) => DOOR_KINDS.has(n.kind));
       for (const [x1, y1, x2, y2] of doorGaps(shapes, doors)) {
@@ -447,39 +473,89 @@ export class MapView {
   // ---------- route and markers ----------
 
   private drawRoute(scene: MapScene, levelId: string): void {
-    const { site, path, at } = scene;
+    const { site, path, at, next } = scene;
     this.routeLayer.replaceChildren();
     for (const marker of this.markers) marker.el.remove();
     this.markers = [];
 
-    const walked = routeLines(site.graph, path.slice(0, at + 1)).get(levelId) ?? [];
-    const ahead = routeLines(site.graph, path.slice(at)).get(levelId) ?? [];
-    for (const [cls, lines] of [
+    // Three colours: walked (grey), this leg up to the next checkpoint (Google blue), the rest
+    // of the way (lighter blue). In the preview the whole route is one bright leg.
+    const nextAt = next ? path.indexOf(next, at) : -1;
+    const legEnd = nextAt >= at ? nextAt : path.length - 1;
+    const lines = (from: number, to: number) =>
+      to > from ? (routeLines(site.graph, path.slice(from, to + 1)).get(levelId) ?? []) : [];
+    const walked = lines(0, at);
+    const leg = lines(at, legEnd);
+    const later = nextAt >= at ? lines(legEnd, path.length - 1) : [];
+    for (const [cls, list] of [
       ['walked', walked],
-      ['casing', ahead],
-      ['ahead', ahead],
+      ['casing later-edge', later],
+      ['later', later],
+      ['casing', leg],
+      ['ahead', leg],
     ] as const) {
-      for (const line of lines) {
+      for (const line of list) {
         if (line.length > 1)
           this.routeLayer.append(s('polyline', { class: cls, points: flat(line) }));
       }
     }
 
-    const marker = (nodeId: string | null, cls: string, build: (g: SVGGElement) => void) => {
+    const marker = (
+      nodeId: string | null,
+      cls: string,
+      build: (g: SVGGElement) => void,
+      angle?: number,
+      p?: Point,
+    ) => {
       const node = nodeId ? site.graph.nodes.get(nodeId) : undefined;
-      if (node?.level !== levelId) return;
+      if (!p && node?.level !== levelId) return;
       const g = s('g', { class: cls });
       build(g);
       this.overlay.append(g);
-      this.markers.push({ p: node, el: g });
+      const at = p ?? (node as Point);
+      this.markers.push(angle === undefined ? { p: at, el: g } : { p: at, el: g, angle });
     };
+
+    // Arrows along the way still to walk, pointing where to go.
+    for (const line of [...leg, ...later]) {
+      let carry = CHEVRON_EVERY / 2;
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1] as Point;
+        const b = line[i] as Point;
+        const length = Math.hypot(b.x - a.x, b.y - a.y);
+        const angle = (Math.atan2(b.x - a.x, -(b.y - a.y)) * 180) / Math.PI;
+        for (let d = carry; d < length; d += CHEVRON_EVERY) {
+          const p = { x: a.x + ((b.x - a.x) * d) / length, y: a.y + ((b.y - a.y) * d) / length };
+          marker(null, 'chev', (g) => g.append(s('path', { d: 'M-4 2.5 0-1.5 4 2.5' })), angle, p);
+        }
+        carry = (((carry - length) % CHEVRON_EVERY) + CHEVRON_EVERY) % CHEVRON_EVERY;
+      }
+    }
+
+    const last = path.length > 1 ? (path[path.length - 1] ?? null) : null;
+    // Where the trip started (once the visitor has left it).
+    const first = path[0] ?? null;
+    if (path.length > 1 && first !== scene.here) {
+      marker(first, 'start', (g) => g.append(s('circle', { r: 6 })));
+    }
+
+    // Checkpoints: ✓ when passed, numbered when still to come; the next one pulses.
+    scene.checkpoints.forEach((id, i) => {
+      if (id === scene.here || id === last || id === next) return;
+      const passed = i < scene.done;
+      marker(id, passed ? 'cp done' : 'cp', (g) => {
+        g.append(s('circle', { r: 8.5 }));
+        if (passed) g.append(s('path', { d: 'M-3.5 0-1 2.5 3.5-2.5' }));
+        else g.append(s('text', { y: 3.5 }, String(i + 1)));
+      });
+    });
 
     // Where the route leaves this floor: "↑ Floor 2" at the lift or stairs.
     path.forEach((id, i) => {
       const node = site.graph.nodes.get(id);
-      const next = site.graph.nodes.get(path[i + 1] ?? '');
-      if (!node || !next || node.level === next.level || i < at) return;
-      const to = site.graph.levels.find((l) => l.id === next.level);
+      const following = site.graph.nodes.get(path[i + 1] ?? '');
+      if (!node || !following || node.level === following.level || i < at) return;
+      const to = site.graph.levels.find((l) => l.id === following.level);
       const from = site.graph.levels.find((l) => l.id === node.level);
       const text = `${(to?.ord ?? 0) > (from?.ord ?? 0) ? '↑' : '↓'} ${to?.name ?? ''}`;
       marker(id, `badge lvl-${to?.color ?? 'slate'}`, (g) => {
@@ -488,9 +564,8 @@ export class MapView {
       });
     });
 
-    const last = path.length > 1 ? (path[path.length - 1] ?? null) : null;
-    marker(scene.next !== last ? scene.next : null, 'next', (g) => {
-      g.append(s('circle', { class: 'pulse', r: 14 }), s('circle', { r: 6 }));
+    marker(next !== last ? next : null, 'next', (g) => {
+      g.append(s('circle', { class: 'pulse', r: 15 }), s('circle', { r: 7 }));
     });
     marker(last !== scene.here ? last : null, 'dest', (g) => {
       g.append(
@@ -587,9 +662,10 @@ export class MapView {
         s: from.s * (target.s / from.s) ** e,
         rot: from.rot + turn * e,
       };
+      // Land exactly on the target (e.g. 0°, not 360° after turning the short way round).
+      if (t >= 1) this.view = target;
       this.draw();
       if (t < 1) this.animation = requestAnimationFrame(step);
-      else this.view = target;
     };
     this.animation = requestAnimationFrame(step);
   }
@@ -643,7 +719,7 @@ export class MapView {
     const arrow = this.compass.firstElementChild as SVGElement | null;
     arrow?.setAttribute('style', `transform:rotate(${-rot}deg)`);
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
-    this.compass.hidden = this.scene?.facing === null;
+    this.compass.hidden = this.scene?.facing === null && Math.abs(rot) < 1;
     // Filled blue while the map follows the route; outlined once the visitor moved it away.
     this.locate.setAttribute('aria-pressed', String(!this.moved));
   }
@@ -677,6 +753,8 @@ export class MapView {
       this.svg.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, local(e));
       if (this.pointers.size === 1) this.travel = 0;
+      this.twist = 0;
+      this.rotating = false;
     });
     this.svg.addEventListener('pointermove', (e) => {
       const before = this.pointers.get(e.pointerId);
@@ -688,7 +766,25 @@ export class MapView {
       if (other) {
         const was = Math.hypot(before.x - other.x, before.y - other.y);
         const is = Math.hypot(now.x - other.x, now.y - other.y);
-        if (was > 0) this.zoomAt({ x: (now.x + other.x) / 2, y: (now.y + other.y) / 2 }, is / was);
+        const mid = { x: (now.x + other.x) / 2, y: (now.y + other.y) / 2 };
+        if (was > 0) this.zoomAt(mid, is / was);
+        // Two-finger twist turns the map (after a small dead zone, so pinching stays steady).
+        let turn =
+          ((Math.atan2(now.y - other.y, now.x - other.x) -
+            Math.atan2(before.y - other.y, before.x - other.x)) *
+            180) /
+          Math.PI;
+        if (turn > 180) turn -= 360;
+        if (turn < -180) turn += 360;
+        this.twist += turn;
+        if (this.rotating) this.rotateAt(mid, turn);
+        else if (Math.abs(this.twist) > TWIST_DEG) {
+          this.rotating = true;
+          this.rotateAt(mid, this.twist);
+        }
+      } else if (e.shiftKey) {
+        // Laptops: Shift + drag turns the map.
+        this.rotateAt({ x: this.width / 2, y: this.height / 2 }, (now.x - before.x) * 0.5);
       } else {
         this.panBy(now.x - before.x, now.y - before.y);
       }
@@ -716,16 +812,39 @@ export class MapView {
     }
   }
 
-  /** Tapping a building on the campus zooms into it and lists its floors in the picker. */
+  /**
+   * Tapping a room picks it as the destination (on screens that allow it); tapping a building
+   * on a zoomed-out campus zooms into it and lists its floors.
+   */
   private tap(at: Point): void {
-    if (!this.campus || !this.scene) return;
+    if (!this.scene) return;
     const p = this.unproject(at);
+    const far = this.campus && this.view.s < FAR_SCALE;
+    if (!far && this.onPick) {
+      const room = [...this.roomShapes].reverse().find((shape) => containsPoint(shape, p));
+      if (room?.room) {
+        this.onPick(room.room);
+        return;
+      }
+    }
+    if (!this.campus) return;
     const shape = this.footprints.find((f) => f.building !== undefined && containsPoint(f, p));
     if (!shape?.building) return;
     this.building = shape.building;
     this.fillPicker(this.scene, this.shownLevel);
     this.moved = true;
     this.animateTo(this.fitPoints(shapePoints(shape), this.view.rot));
+  }
+
+  /** Turn the map by `deg` (clockwise on screen) around a screen point. */
+  private rotateAt(at: Point, deg: number): void {
+    cancelAnimationFrame(this.animation);
+    const world = this.unproject(at);
+    this.view.rot = (((this.view.rot - deg) % 360) + 360) % 360;
+    const moved = this.project(world);
+    this.moved = true;
+    this.panBy(at.x - moved.x, at.y - moved.y);
+    this.requestDraw();
   }
 
   /** Screen pixel → meters on the plan. */

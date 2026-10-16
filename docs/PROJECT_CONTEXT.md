@@ -194,6 +194,7 @@ The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design
   - a **bottom sheet**: "You are at …", "Where to?", step-free, and every place as a Google-style row (round category icon, name, number · category, floor badge); tap or swipe the handle to make it taller. Typing opens a **full-screen search page** with a back arrow;
   - while walking: a **green direction banner** on top (big arrow, distance, instruction, "Then ↱ …"), and at the bottom "**2 min** · 80 m", "Route to X · Step 1 of 5", a red ✕, a blue ? (I'm lost) and a blue pill **✓ I'm here**;
   - **color-coded places**: each room category has a color (rooms tinted, labels in that color, a round icon badge like Google places); roads white, lawns green, parking with a blue P, the route Google blue with a darker edge, the destination a red pin, a fading blue beam in front of the dot;
+  - **navigation flow** (decided 2026-10-16): choose (search, list, or tap a room on the map) → **preview** of the whole route with From / To fields and **Start** → walk. On the map: walked path grey, this leg blue, the rest light blue with arrows; checkpoints ✓ / pulsing / numbered; two-finger rotate, compass back to north;
   - laptops: the same panels float in a 392 px column on the left, the map fills the screen behind them; routes are framed in the part of the map no panel covers.
 - **Light by design:**
   - our own SVG viewer (~4 KB brotli), not Leaflet or MapLibre;

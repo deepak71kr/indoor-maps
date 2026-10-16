@@ -23,10 +23,15 @@ describe('visitor state machine', () => {
     expect(loaded().screen).toEqual({ name: 'where-am-i' });
   });
 
-  it('QR scan → choose → navigate', () => {
+  it('QR scan → choose → preview the whole route → Start → navigate', () => {
     const chosen = loaded({ type: 'set-position', position: atMain });
     expect(chosen.screen.name).toBe('choose');
-    const nav = reducer(chosen, { type: 'choose', target: radiology });
+    const preview = reducer(chosen, { type: 'choose', target: radiology });
+    expect(preview.screen).toEqual({ name: 'preview' });
+    expect(preview.path[0]).toBe('G-ENT');
+    expect(preview.path.at(-1)).toBe('2-N30');
+    expect(reducer(preview, { type: 'confirm' })).toBe(preview); // nothing to confirm yet
+    const nav = reducer(preview, { type: 'start' });
     expect(nav.screen).toEqual({ name: 'navigate', step: 0 });
     expect(nav.steps.at(-1)?.kind).toBe('arrive');
     expect(nav.steps[0]?.text).toMatch(/^With the sign in front of you/); // QR facing used
@@ -36,6 +41,7 @@ describe('visitor state machine', () => {
     let s = loaded(
       { type: 'set-position', position: atMain },
       { type: 'choose', target: radiology },
+      { type: 'start' },
     );
     const cards = s.steps.length - 1;
     for (let i = 0; i < cards; i++) s = reducer(s, { type: 'confirm' });
@@ -47,6 +53,7 @@ describe('visitor state machine', () => {
     const s = loaded(
       { type: 'set-position', position: atMain },
       { type: 'choose', target: radiology },
+      { type: 'start' },
       { type: 'back' },
     );
     expect(s.screen).toEqual({ name: 'navigate', step: 0 });
@@ -56,6 +63,7 @@ describe('visitor state machine', () => {
     const s = loaded(
       { type: 'set-position', position: atMain },
       { type: 'choose', target: radiology },
+      { type: 'start' },
       { type: 'lost' },
       { type: 'set-position', position: { node: '1-LOB', facing: 90, source: 'qr' } },
     );
@@ -69,6 +77,7 @@ describe('visitor state machine', () => {
     const s = loaded(
       { type: 'set-position', position: atMain },
       { type: 'choose', target: radiology },
+      { type: 'start' },
       { type: 'confirm' },
       { type: 'lost' },
       { type: 'found-way' },
@@ -80,7 +89,7 @@ describe('visitor state machine', () => {
     const asked = loaded({ type: 'choose', target: radiology });
     expect(asked.screen.name).toBe('where-am-i');
     const s = reducer(asked, { type: 'set-position', position: atMain });
-    expect(s.screen.name).toBe('navigate');
+    expect(s.screen.name).toBe('preview');
     expect(s.notice).toBeNull();
   });
 
@@ -91,6 +100,7 @@ describe('visitor state machine', () => {
         type: 'choose',
         target: { destination: { type: 'node', nodeId: '2-E' }, label: 'Landing' },
       },
+      { type: 'start' },
     );
     expect(s.steps.some((step) => step.icon === 'stairs')).toBe(true);
     const free = reducer(s, { type: 'toggle-step-free' });
@@ -113,11 +123,25 @@ describe('visitor state machine', () => {
     let s = loaded(
       { type: 'set-position', position: atMain },
       { type: 'choose', target: radiology },
+      { type: 'start' },
     );
     while (s.screen.name === 'navigate') s = reducer(s, { type: 'confirm' });
     s = reducer(s, { type: 'new-destination' });
     expect(s.screen.name).toBe('choose');
     expect(s.position?.node).toBe('2-N30');
+  });
+
+  it('step-free in the preview re-plans the preview', () => {
+    const s = loaded(
+      { type: 'set-position', position: { node: '1-E' } },
+      {
+        type: 'choose',
+        target: { destination: { type: 'node', nodeId: '2-E' }, label: 'Landing' },
+      },
+      { type: 'toggle-step-free' },
+    );
+    expect(s.screen).toEqual({ name: 'preview' });
+    expect(s.steps.some((step) => step.icon === 'stairs')).toBe(false);
   });
 
   it('resume restores the saved step (clamped to the route)', () => {
@@ -196,6 +220,7 @@ describe('saved trip', () => {
   const navigating = loaded(
     { type: 'set-position', position: atMain },
     { type: 'choose', target: radiology },
+    { type: 'start' },
     { type: 'confirm' },
   );
 

@@ -134,6 +134,7 @@ test('draw a two-floor clinic with the tools and export a valid, routable map', 
   await phone.goto(url);
   await phone.getByRole('button', { name: 'Main Entrance' }).click();
   await phone.getByRole('button', { name: /Radiology/ }).click();
+  await phone.getByRole('button', { name: 'Start' }).click();
   await expect(phone.locator('.step-text')).toHaveText(
     'Walk past Reception desk (blue board) to Lift lobby.',
   );

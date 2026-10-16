@@ -24,6 +24,8 @@ export type Screen =
   | { readonly name: 'error'; readonly message: string }
   | { readonly name: 'where-am-i' }
   | { readonly name: 'choose' }
+  /** The whole route from start to destination, before walking (Google's "Start" screen). */
+  | { readonly name: 'preview' }
   | { readonly name: 'navigate'; readonly step: number }
   | { readonly name: 'lost'; readonly step: number }
   | { readonly name: 'arrived' }
@@ -55,6 +57,7 @@ export type Action =
       readonly step: number;
       readonly stepFree: boolean;
     }
+  | { readonly type: 'start' }
   | { readonly type: 'confirm' }
   | { readonly type: 'back' }
   | { readonly type: 'lost' }
@@ -96,8 +99,9 @@ export function reducer(state: State, action: Action): State {
     case 'set-position': {
       const rerouting = state.target !== null && state.screen.name !== 'arrived';
       if (rerouting && state.target) {
-        const next = plan(s, action.position, state.target);
+        // Mid-trip: straight back to walking. Otherwise (a new start point): preview again.
         const midTrip = state.screen.name === 'navigate' || state.screen.name === 'lost';
+        const next = plan(s, action.position, state.target, midTrip ? 'navigate' : 'preview');
         return { ...next, notice: midTrip ? 'rerouted' : null };
       }
       return {
@@ -112,11 +116,19 @@ export function reducer(state: State, action: Action): State {
 
     case 'choose':
       return s.position
-        ? plan(s, s.position, action.target)
+        ? plan(s, s.position, action.target, 'preview')
         : { ...s, target: action.target, screen: { name: 'where-am-i' } };
 
+    case 'start':
+      return s.screen.name === 'preview' ? { ...s, screen: { name: 'navigate', step: 0 } } : state;
+
     case 'resume': {
-      const planned = plan({ ...s, stepFree: action.stepFree }, action.position, action.target);
+      const planned = plan(
+        { ...s, stepFree: action.stepFree },
+        action.position,
+        action.target,
+        'navigate',
+      );
       if (planned.screen.name !== 'navigate') return planned;
       const last = Math.max(0, planned.steps.length - 2);
       return { ...planned, screen: { name: 'navigate', step: Math.min(action.step, last) } };
@@ -147,9 +159,12 @@ export function reducer(state: State, action: Action): State {
 
     case 'toggle-step-free': {
       const toggled = { ...s, stepFree: !s.stepFree };
-      if (s.screen.name !== 'navigate' || !s.target) return toggled;
+      if (!s.target) return toggled;
+      if (s.screen.name === 'preview' && s.position)
+        return plan(toggled, s.position, s.target, 'preview');
+      if (s.screen.name !== 'navigate') return toggled;
       const node = currentNode(s);
-      return node ? plan(toggled, { node }, s.target) : toggled;
+      return node ? plan(toggled, { node }, s.target, 'navigate') : toggled;
     }
 
     case 'new-destination': {
@@ -169,7 +184,12 @@ export function reducer(state: State, action: Action): State {
   }
 }
 
-function plan(state: State, position: Position, target: Target): State {
+function plan(
+  state: State,
+  position: Position,
+  target: Target,
+  then: 'preview' | 'navigate',
+): State {
   const { site } = state;
   if (!site) return state;
   const result = findRoute(site, {
@@ -192,7 +212,12 @@ function plan(state: State, position: Position, target: Target): State {
     result.value,
     position.facing === undefined ? {} : { startFacing: position.facing },
   );
-  const screen: Screen = steps.length <= 1 ? { name: 'arrived' } : { name: 'navigate', step: 0 };
+  const screen: Screen =
+    steps.length <= 1
+      ? { name: 'arrived' }
+      : then === 'preview'
+        ? { name: 'preview' }
+        : { name: 'navigate', step: 0 };
   const path = result.value.nodes.map((n) => n.id);
   return { ...state, position, target, steps, path, screen };
 }

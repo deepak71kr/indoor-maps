@@ -29,6 +29,8 @@ export function view(ctx: ViewContext): HTMLElement {
       return whereView(ctx);
     case 'choose':
       return chooseView(ctx);
+    case 'preview':
+      return previewView(ctx);
     case 'navigate':
       return stepView(ctx, screen.step);
     case 'lost':
@@ -45,12 +47,33 @@ export function view(ctx: ViewContext): HTMLElement {
 /** One map for the whole visit, so pan, zoom and the chosen floor survive re-renders. */
 let mapView: MapView | null = null;
 
-function mapPanel(state: State): MapView | null {
-  const scene = sceneFor(state);
+function mapPanel(ctx: ViewContext): MapView | null {
+  const scene = sceneFor(ctx.state);
   if (!scene) return null;
   mapView ??= new MapView();
+  // On the home screen a tap on a room on the map picks it as the destination.
+  const site = ctx.state.site;
+  mapView.onPick =
+    ctx.state.screen.name === 'choose' && site
+      ? (roomId) => {
+          const room = site.map.rooms.find((r) => r.id === roomId);
+          if (room)
+            ctx.dispatch({
+              type: 'choose',
+              target: { destination: { type: 'room', roomId }, label: room.name },
+            });
+        }
+      : null;
   mapView.update(scene);
   return mapView;
+}
+
+/** Minutes and meters still to go from step `from` (~1 m/s indoors, ~45 s per lift ride). */
+function tripStats(steps: readonly Step[], from: number): { minutes: number; meters: number } {
+  const left = steps.slice(from);
+  const meters = left.reduce((sum, s) => sum + s.meters, 0);
+  const rides = left.filter((s) => s.kind === 'ride').length;
+  return { minutes: Math.max(1, Math.round(meters / 60 + rides * 0.75)), meters };
 }
 
 const nodes = (children: readonly Child[]): Node[] =>
@@ -72,7 +95,7 @@ interface MapLayout {
  * the visible part. Without a map (no position yet) the plain page layout is used.
  */
 function mapScreen(ctx: ViewContext, cls: string, layout: MapLayout): HTMLElement {
-  const map = mapPanel(ctx.state);
+  const map = mapPanel(ctx);
   const top = nodes(layout.top ?? []);
   const content = nodes(layout.sheet);
   if (!map) return h('section', { class: `screen ${cls}` }, ...top, ...content);
@@ -393,6 +416,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
         button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
       ),
       h('div', { class: 'sheet-title' }, title(tr('choose.title')), stepFreeToggle(ctx)),
+      h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
       places,
     ],
     extra: [h('div', { class: 'search-page' }, h('h2', {}, tr('choose.all')), results)],
@@ -419,11 +443,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
   const step = steps[index];
   if (!step) return h('section');
   const total = steps.length - 1; // the last one is the arrival message
-  const left = steps.slice(index);
-  const meters = left.reduce((sum, s) => sum + s.meters, 0);
-  const rides = left.filter((s) => s.kind === 'ride').length;
-  // ~1 m/s indoors with people around; each lift/stairs ride adds ~45 s.
-  const minutes = Math.max(1, Math.round(meters / 60 + rides * 0.75));
+  const { minutes, meters } = tripStats(steps, index);
 
   return mapScreen(ctx, `trip lvl-${step.levelColor}`, {
     top: [
@@ -505,6 +525,113 @@ function banner(step: Step, index: number, next: Step | undefined): HTMLElement 
         h('span', { class: 'grow' }, next.text),
       ),
   );
+}
+
+/**
+ * Before walking, Google-style: From / To on top, the whole route on the map with numbered
+ * checkpoints, time and distance, the floors it crosses, every step, and a big Start button.
+ */
+function previewView(ctx: ViewContext): HTMLElement {
+  const { site, steps, target, position } = ctx.state;
+  if (!site) return h('section');
+  const { minutes, meters } = tripStats(steps, 0);
+  const startName =
+    (position && site.graph.nodes.get(position.node)?.landmark) ?? position?.node ?? '';
+  const checkpoints = steps.length - 1;
+  // The floors on the way, in order: Ground → Floor 2.
+  const floors = steps.reduce<Step[]>((list, s) => {
+    if (list.at(-1)?.levelId !== s.levelId) list.push(s);
+    return list;
+  }, []);
+  const via = steps.find((s) => s.kind === 'ride');
+
+  const field = (cls: string, label: string, text: string, onClick: () => void) =>
+    h(
+      'button',
+      { type: 'button', class: `field ${cls}`, 'aria-label': label, onClick },
+      h('span', { class: 'mark', 'aria-hidden': 'true' }),
+      h('span', { class: 'grow' }, text),
+    );
+
+  return mapScreen(ctx, 'preview', {
+    top: [
+      h(
+        'div',
+        { class: 'directions' },
+        roundButton('back', tr('search.back'), () => ctx.dispatch({ type: 'new-destination' })),
+        h(
+          'div',
+          { class: 'fields' },
+          field('from', tr('preview.from', { place: startName }), startName, () =>
+            ctx.dispatch({ type: 'ask-position' }),
+          ),
+          field('to', tr('preview.to', { place: target?.label ?? '' }), target?.label ?? '', () =>
+            ctx.dispatch({ type: 'new-destination' }),
+          ),
+        ),
+      ),
+    ],
+    sheet: [
+      h(
+        'div',
+        { class: 'trip-bar' },
+        h(
+          'div',
+          { class: 'grow trip-info' },
+          h(
+            'p',
+            { class: 'eta' },
+            h('strong', {}, tr('step.min', { min: minutes })),
+            ` (${tr('step.m', { m: meters })})`,
+          ),
+          h(
+            'p',
+            { class: 'trip-head' },
+            checkpoints === 1
+              ? tr('preview.checkpoint')
+              : tr('preview.checkpoints', { n: checkpoints }),
+            via ? ` · ${via.text.replace(/\.$/, '')}` : '',
+          ),
+        ),
+      ),
+      h(
+        'div',
+        { class: 'floors-row' },
+        ...floors
+          .flatMap((s, i) => [
+            i > 0 ? h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→') : null,
+            floorBadge(s.levelName, s.levelColor, buildingOf(ctx.state, s.target)),
+          ])
+          .filter((c): c is HTMLElement => c !== null),
+      ),
+      button(
+        tr('preview.start'),
+        () => ctx.dispatch({ type: 'start' }),
+        'btn primary big',
+        'straight',
+      ),
+      stepFreeToggle(ctx),
+      h('h2', {}, tr('preview.steps')),
+      h(
+        'ol',
+        { class: 'steps' },
+        ...steps.map((s, i) =>
+          h(
+            'li',
+            { class: s.kind === 'arrive' ? 'end' : '' },
+            h(
+              'span',
+              { class: 'num', 'aria-hidden': 'true' },
+              s.kind === 'arrive' ? '' : String(i + 1),
+            ),
+            icon(s.icon),
+            h('span', { class: 'grow' }, s.text),
+            s.meters > 0 ? h('small', {}, tr('step.m', { m: s.meters })) : null,
+          ),
+        ),
+      ),
+    ],
+  });
 }
 
 function lostView(ctx: ViewContext): HTMLElement {

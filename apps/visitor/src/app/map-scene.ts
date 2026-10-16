@@ -17,6 +17,10 @@ export interface MapScene {
   readonly at: number;
   /** The checkpoint to reach next (pulses). */
   readonly next: string | null;
+  /** Every checkpoint of the route in order (step targets, without the destination). */
+  readonly checkpoints: readonly string[];
+  /** How many checkpoints are already passed (drawn ✓ in grey). */
+  readonly done: number;
   /** Nodes to fit in view (empty = the whole floor); changing them re-frames the map. */
   readonly focus: readonly string[];
 }
@@ -29,20 +33,29 @@ export function sceneFor(state: State): MapScene | null {
   if (!site || !here || !level) return null;
   const at = Math.max(0, path.indexOf(here));
   const facing = facingAt(site.graph, path.length > 0 ? path : [here], at, startFacing(state, at));
-  const base = { site, levelId: level, here, facing, path, at };
+  const checkpoints = steps.slice(0, -1).map((s) => s.target);
+  const base = { site, levelId: level, here, facing, path, at, checkpoints, done: 0 };
 
   switch (screen.name) {
     case 'choose':
-      return { ...base, next: null, focus: [] };
+      return { ...base, checkpoints: [], next: null, focus: [] };
+    case 'preview':
+      // The whole route, start to destination (the map shows the visitor's floor of it).
+      return { ...base, next: null, focus: path };
     case 'navigate': {
       // Frame this step and the one after, so the next turn is already in view.
       const next = steps[screen.step]?.target ?? null;
       const after = steps[screen.step + 1]?.target ?? next;
       const end = after ? path.indexOf(after, at) : -1;
-      return { ...base, next, focus: end >= at ? path.slice(at, end + 1) : [here] };
+      return {
+        ...base,
+        done: screen.step,
+        next,
+        focus: end >= at ? path.slice(at, end + 1) : [here],
+      };
     }
     case 'arrived':
-      return { ...base, next: null, focus: path.slice(-3) };
+      return { ...base, done: checkpoints.length, next: null, focus: path.slice(-3) };
     default:
       return null;
   }

@@ -35,6 +35,7 @@ test('full trip on 2G with a 4× slower CPU', async ({ page }) => {
   // Choose Radiology (another floor) and start walking.
   await page.getByRole('searchbox').fill('radio');
   await page.getByRole('button', { name: /Radiology/ }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByText('Step 1 of 5')).toBeVisible();
   await iAmHere(page).click();
 
@@ -67,6 +68,7 @@ test('second visit works in airplane mode', async ({ page, context }) => {
   await offline.goto('/?at=2-WEST');
   await expect(offline.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   await offline.getByRole('button', { name: /CT scan/ }).click();
+  await offline.getByRole('button', { name: 'Start' }).click();
   await expect(offline.getByText(/turn around and walk past/)).toBeVisible();
   await walkToTheEnd(offline);
   await expect(offline.getByRole('heading', { name: /CT scan is on your RIGHT/ })).toBeVisible();
@@ -75,6 +77,7 @@ test('second visit works in airplane mode', async ({ page, context }) => {
 test('an unfinished trip survives closing the browser', async ({ page }) => {
   await page.goto('/?at=G-MAIN');
   await page.getByRole('button', { name: /Radiology/ }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
   await iAmHere(page).click();
   await expect(page.getByText('Step 2 of 5')).toBeVisible();
 
@@ -94,6 +97,7 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   await expect(map.getByText('Pharmacy')).toBeVisible(); // room names drawn from the plan
 
   await page.getByRole('button', { name: /Radiology/ }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
   await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
   await expect(map.getByText('↑ Floor 2')).toBeVisible(); // where the route leaves this floor
 
@@ -191,10 +195,63 @@ test('campus: gate → a lab on another building’s Floor 2, with the campus ma
   // Search by building, then walk: road → entrance → lift → Floor 2.
   await page.getByRole('searchbox').fill('block a');
   await page.getByRole('button', { name: /Computer lab/ }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByText('Fountain circle').first()).toBeVisible();
   for (let i = 0; i < 4; i++) await iAmHere(page).click();
   await expect(map).toHaveAccessibleName('Map of Block A · Floor 2');
   await expect(page.locator('.floor', { hasText: 'Block A · Floor 2' })).toBeVisible();
   await walkToTheEnd(page);
   await expect(page.getByRole('heading', { name: /Computer lab is on your RIGHT/ })).toBeVisible();
+});
+
+test('pick on the map → preview the whole route → walk: colours, checkpoints, rotate', async ({
+  page,
+}) => {
+  await page.goto('/?at=G-MAIN');
+  const map = page.getByRole('img', { name: /^Map of / });
+
+  // Tap the Pharmacy room on the map: it becomes the destination.
+  const room = await map.locator('.label', { hasText: 'Pharmacy' }).first().boundingBox();
+  if (!room) throw new Error('no Pharmacy label');
+  await page.mouse.click(room.x + room.width / 2, room.y + room.height / 2 + 8);
+  await expect(page.getByRole('button', { name: 'To: Pharmacy' })).toBeVisible();
+
+  // Change the destination from the To field, by search.
+  await page.getByRole('button', { name: 'To: Pharmacy' }).click();
+  await page.getByRole('searchbox').fill('radio');
+  await page.getByRole('button', { name: /Radiology/ }).click();
+
+  // Preview: From/To, time, floors, every step, numbered checkpoints, the whole route in blue.
+  await expect(page.getByRole('button', { name: 'From: Main Entrance' })).toBeVisible();
+  await expect(page.getByText('5 checkpoints')).toBeVisible();
+  await expect(page.locator('.steps li')).toHaveCount(6);
+  await expect(map.locator('.cp')).not.toHaveCount(0);
+  await expect(page.locator('.map .route .walked')).toHaveCount(0);
+
+  // Start, pass a checkpoint: walked grey + ✓, this leg blue, the rest lighter with arrows.
+  await page.getByRole('button', { name: 'Start' }).click();
+  await iAmHere(page).click();
+  await expect(page.locator('.map .route .walked')).not.toHaveCount(0);
+  await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
+  await expect(map.locator('.next')).toHaveCount(1);
+
+  // Rotate (Shift + drag on a laptop), then the compass turns it back to north.
+  const turned = () =>
+    page.evaluate(() => {
+      const g = document.querySelector('.map-svg > g:not(.overlay):not(defs)');
+      return Number(/rotate\(([-\d.e]+)\)/.exec(g?.getAttribute('transform') ?? '')?.[1] ?? 0);
+    });
+  await page.getByRole('button', { name: 'Turn the map north-up' }).click();
+  await expect.poll(turned).toBeCloseTo(0, 0);
+  const box = await map.boundingBox();
+  if (!box) throw new Error('map not laid out');
+  await page.keyboard.down('Shift');
+  await page.mouse.move(box.x + 80, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  await expect.poll(turned).not.toBeCloseTo(0, 0);
+  await page.locator('.compass').click();
+  await expect.poll(turned).toBeCloseTo(0, 0);
 });

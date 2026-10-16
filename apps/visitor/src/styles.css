@@ -967,6 +967,8 @@ span.floor {
   .choose .sheet,
   .choose .sheet.open,
   .trip .sheet,
+  .preview .sheet,
+  .preview .sheet.open,
   .arrived .sheet {
     max-height: none;
     min-height: 0;
@@ -1260,5 +1262,185 @@ span.floor {
   }
   .floors button {
     height: 36px;
+  }
+}
+
+/* ---------- Route preview (Google's directions screen) ---------- */
+.directions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px 8px 4px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.directions .round {
+  color: var(--text);
+}
+.fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+/* The dotted line joining the From dot to the To pin. */
+.fields::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 26px;
+  bottom: 26px;
+  border-left: 2px dotted var(--muted);
+}
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.field .grow {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.field .mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.field.from .mark {
+  background: var(--blue);
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 0 1.5px var(--blue);
+}
+.field.to .mark {
+  background: #ea4335;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+}
+.preview .sheet {
+  max-height: 48dvh;
+}
+.preview .sheet.open {
+  max-height: 85dvh;
+}
+.floors-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.floors-row .arrow {
+  color: var(--muted);
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.steps .num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--blue);
+  color: var(--blue);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.steps li.end .num {
+  border-color: #ea4335;
+  background: #ea4335;
+}
+.steps .icon {
+  color: var(--muted);
+}
+
+/* ---------- Route colours: walked / this leg / later; checkpoints; arrows ---------- */
+.map .route .later {
+  stroke: color-mix(in srgb, var(--m-route) 45%, #fff);
+  stroke-width: 6;
+}
+.map .route .later-edge {
+  stroke: color-mix(in srgb, var(--m-route) 60%, #fff);
+  stroke-width: 9;
+}
+.map .route .walked {
+  stroke: #9aa0a6;
+  stroke-width: 6;
+  stroke-dasharray: none;
+  opacity: 0.8;
+}
+.map .chev path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.map .cp circle {
+  fill: #fff;
+  stroke: var(--m-route);
+  stroke-width: 2.5;
+}
+.map .cp text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--m-route);
+  stroke: none;
+}
+.map .cp.done circle {
+  fill: #9aa0a6;
+  stroke: #fff;
+  stroke-width: 2;
+}
+.map .cp.done path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.map .start circle {
+  fill: #fff;
+  stroke: #5f6368;
+  stroke-width: 3;
+}
+.map .shade {
+  fill: rgb(60 64 67 / 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  .map .shade {
+    fill: rgb(0 0 0 / 0.45);
+  }
+}
+
+@media (min-width: 900px) {
+  .preview .sheet,
+  .preview .sheet.open {
+    max-height: none;
   }
 }

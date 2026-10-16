@@ -401,6 +401,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-16): Google Maps app look** for the visitor app — full-screen map, floating search bar + chips, floor buttons, my-location button, bottom sheet, full-screen search page, green navigation banner, color-coded places (see PROJECT_CONTEXT §6.1). First visit 24.0 KB.
 
+**Follow-up (2026-10-16): Google-style navigation** — pick a place by search, from the list or by **tapping a room on the map** → **route preview** (From / To, the whole route with numbered checkpoints, time, floors crossed, every step, **Start**) → walking with three route colours (walked grey with ✓ checkpoints, this leg Google blue, the rest lighter blue with direction arrows) and the blue dot. The map **rotates** with two fingers (Shift + drag on a laptop); the compass turns it back to north. Soft shadows under buildings. First visit 25.5 KB.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
