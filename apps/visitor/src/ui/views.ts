@@ -265,6 +265,11 @@ function floorBadge(levelName: string, color: string, building?: string): HTMLEl
   );
 }
 
+/** "Floor 2", or "Block A · Floor 2" on a campus. */
+function floorBadgeText(levelName: string, building?: string): string {
+  return building ? `${building} · ${levelName}` : levelName;
+}
+
 function buildingOf(state: State, nodeId: string): string | undefined {
   return state.site?.buildingAt(nodeId)?.name;
 }
@@ -643,6 +648,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
         index,
         steps[index + 1],
         index === 0 && ctx.state.position?.facing !== undefined,
+        floorBadgeText(step.levelName, buildingOf(ctx.state, step.target)),
       ),
       notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
       notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
@@ -959,7 +965,13 @@ function placeView(ctx: ViewContext, roomId: string): HTMLElement {
  *      from Reception desk → Lift A
  * and "Then …" underneath. The full sentence is read out to screen readers.
  */
-function banner(step: Step, index: number, next: Step | undefined, sign: boolean): HTMLElement {
+function banner(
+  step: Step,
+  index: number,
+  next: Step | undefined,
+  sign: boolean,
+  floorLabel = step.levelName,
+): HTMLElement {
   return h(
     'article',
     // Coloured by the move, so "follow the colour" works for children and older visitors too.
@@ -980,7 +992,7 @@ function banner(step: Step, index: number, next: Step | undefined, sign: boolean
       h(
         'div',
         { class: 'grow' },
-        h('span', { class: `floor-chip lvl-${step.levelColor}` }, step.levelName),
+        h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
         h(
           'p',
           { class: 'step-title' },

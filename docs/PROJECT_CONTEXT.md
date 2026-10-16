@@ -196,6 +196,7 @@ The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design
   - **color-coded places**: each room category has a color (rooms tinted, labels in that color, a round icon badge like Google places); roads white, lawns green, parking with a blue P, the route Google blue with a darker edge, the destination a red pin, a fading blue beam in front of the dot;
   - **navigation flow** (decided 2026-10-16): choose (search, list, or tap a room on the map) → **preview** of the whole route with From / To fields and **Start** → walk. On the map: walked path grey, this leg blue, the rest light blue with arrows; checkpoints ✓ / pulsing / numbered; two-finger rotate, compass back to north;
   - **directions named by checkpoints** (2026-10-16): banner = short move + "from <checkpoint> → <next checkpoint>"; corners without a landmark take the nearest room's name. **The map stays north-up** (founder found auto-rotation unpleasant); turning with the visitor is opt-in via the compass;
+  - **look (2026-10-16): light theme only, minimalist** — white / soft grey, one blue accent, colour only where it means something (move, floor, category icon); a compact white direction card instead of the big green banner;
   - laptops: the same panels float in a 392 px column on the left, the map fills the screen behind them; routes are framed in the part of the map no panel covers.
 - **Light by design:**
   - our own SVG viewer (~4 KB brotli), not Leaflet or MapLibre;

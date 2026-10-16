@@ -199,7 +199,7 @@ test('campus: gate → a lab on another building’s Floor 2, with the campus ma
   await expect(page.locator('.banner')).toContainText('Fountain circle');
   for (let i = 0; i < 4; i++) await iAmHere(page).click();
   await expect(map).toHaveAccessibleName('Map of Block A · Floor 2');
-  await expect(page.locator('.floor', { hasText: 'Block A · Floor 2' })).toBeVisible();
+  await expect(page.locator('.banner .floor-chip')).toHaveText('Block A · Floor 2');
   await walkToTheEnd(page);
   await expect(page.getByRole('heading', { name: /Computer lab is on your RIGHT/ })).toBeVisible();
 });
