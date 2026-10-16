@@ -188,7 +188,13 @@ The visitor sees a **simple 2D map**: flat shapes only, no photos, no 3D. Design
 - **Campus** (Phase 10): building blocks, roads, green grounds and entrance arrows. Routes go between buildings.
   - **Model (decided 2026-10-16):** one **shared Ground level** holds the outdoors *and* every building's ground floor (like Google Maps), so walking in through a door is an ordinary line — routing didn't change. Upper floors and basements **belong to one building** (`level.building`); floor order is unique per building. Floors are counted per building, so another building's Floor 1 never slows a lift ride.
   - **Zoom decides the view:** zoomed out the phone shows building blocks with their names; zoomed in it shows rooms. Tapping a building zooms into it and the floor picker lists its floors ("Block A · Floor 2"). On a building's upper floor the campus around it is drawn faded.
-- **Bottom panel:** shows "You are at", a "Where to?" search and quick chips (Restroom · Cafe · Water). While walking, it shows a blue step card with a big arrow, "Next: …", ✕ End route and ✓ I'm here.
+- **Google Maps (mobile app) look — decided 2026-10-16** (founder: "I like exactly Google Maps in app style"):
+  - the map fills the whole screen; a white floating **search bar** (red pin, "Search <site>", QR button) with a swipeable row of **chips** (Toilet · Water · ATM · categories) on top;
+  - Google-style **floor buttons** (2 / 1 / G, a blue dot on your floor) and a compass on the right; a round **"my location"** button above the sheet (blue while the map follows the route);
+  - a **bottom sheet**: "You are at …", "Where to?", step-free, and every place as a Google-style row (round category icon, name, number · category, floor badge); tap or swipe the handle to make it taller. Typing opens a **full-screen search page** with a back arrow;
+  - while walking: a **green direction banner** on top (big arrow, distance, instruction, "Then ↱ …"), and at the bottom "**2 min** · 80 m", "Route to X · Step 1 of 5", a red ✕, a blue ? (I'm lost) and a blue pill **✓ I'm here**;
+  - **color-coded places**: each room category has a color (rooms tinted, labels in that color, a round icon badge like Google places); roads white, lawns green, parking with a blue P, the route Google blue with a darker edge, the destination a red pin, a fading blue beam in front of the dot;
+  - laptops: the same panels float in a 392 px column on the left, the map fills the screen behind them; routes are framed in the part of the map no panel covers.
 - **Light by design:**
   - our own SVG viewer (~4 KB brotli), not Leaflet or MapLibre;
   - map shapes are optional `shapes` on each floor of the map file (the 3-floor demo is 1.8 KB); v0 publishing can split floors into separate files for huge campuses;

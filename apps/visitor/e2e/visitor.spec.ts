@@ -97,8 +97,14 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
   await expect(map.getByText('↑ Floor 2')).toBeVisible(); // where the route leaves this floor
 
-  // Peek at Floor 2 with the floor picker: the destination pin is there.
-  await page.getByRole('combobox', { name: 'Floor' }).selectOption('2');
+  // Peek at Floor 2 with the floor buttons: the destination pin is there.
+  const floors = page.getByRole('group', { name: 'Floor' });
+  await expect(floors.getByRole('button')).toHaveText(['2', '1', 'G']);
+  await floors.getByRole('button', { name: 'Floor 2', exact: true }).click();
+  await expect(floors.getByRole('button', { name: 'Floor 2', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await expect(map).toHaveAccessibleName('Map of Floor 2');
   await expect(page.locator('.map .dest')).toBeVisible();
 
@@ -107,31 +113,37 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   await expect(page.getByText('Step 4 of 5')).toBeVisible();
   await expect(map).toHaveAccessibleName('Map of Floor 2');
 
-  // Drag the map away, then come back to the route.
+  // Drag the map away (the middle is free: banner on top, sheet below), then come back.
   const box = await map.boundingBox();
   if (!box) throw new Error('map not laid out');
-  await page.mouse.move(box.x + 100, box.y + 100);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 220, box.y + 160, { steps: 5 });
-  await page.mouse.up();
   const recentre = page.getByRole('button', { name: 'Back to my route' });
-  await expect(recentre).toBeVisible();
+  await expect(recentre).toHaveAttribute('aria-pressed', 'true'); // following the route
+  await page.mouse.move(box.x + 60, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 180, box.y + box.height / 2 + 40, { steps: 5 });
+  await page.mouse.up();
+  await expect(recentre).toHaveAttribute('aria-pressed', 'false');
   await recentre.click();
-  await expect(recentre).toBeHidden();
+  await expect(recentre).toHaveAttribute('aria-pressed', 'true');
   await page.screenshot({ path: test.info().outputPath('map-floor2.png') });
 });
 
-test('map first: bottom sheet on a phone, side panel on a laptop', async ({ page }) => {
+test('Google Maps layout: full-screen map, search bar, bottom sheet / side panel', async ({
+  page,
+}) => {
   await page.goto('/?at=G-MAIN');
   const map = page.getByRole('img', { name: /^Map of / });
   const sheet = page.locator('.sheet');
   await expect(map).toBeVisible();
 
-  // Phone: the map is on top and the sheet below it; the handle makes the sheet taller.
+  // Phone: the map fills the screen; search bar on top, sheet at the bottom.
   const mapBox = await map.boundingBox();
   const closed = await sheet.boundingBox();
-  if (!mapBox || !closed) throw new Error('not laid out');
-  expect(closed.y).toBeGreaterThan(mapBox.y + 150);
+  const search = await page.getByRole('searchbox').boundingBox();
+  if (!mapBox || !closed || !search) throw new Error('not laid out');
+  expect(mapBox.height).toBeGreaterThan(800); // the whole Pixel 7 screen
+  expect(search.y).toBeLessThan(40);
+  expect(closed.y).toBeGreaterThan(mapBox.y + mapBox.height / 2);
   await page.getByRole('button', { name: 'Show more' }).click();
   await expect(page.getByRole('button', { name: 'Show less' })).toHaveAttribute(
     'aria-expanded',
@@ -141,11 +153,18 @@ test('map first: bottom sheet on a phone, side panel on a laptop', async ({ page
     .poll(async () => (await sheet.boundingBox())?.height ?? 0)
     .toBeGreaterThan(closed.height);
 
-  // Laptop: the panel sits beside the map, which fills the rest of the screen.
+  // Typing opens the full-screen search page; the back arrow returns to the map.
+  await page.getByRole('searchbox').fill('lab');
+  await expect(page.getByRole('button', { name: /Pathology lab/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to the map' }).click();
+  await expect(page.locator('.search-page')).toBeHidden();
+  await expect(page.getByRole('searchbox')).toHaveValue('');
+
+  // Laptop: a floating panel on the left, the map still fills the whole screen.
   await page.setViewportSize({ width: 1366, height: 768 });
-  await expect.poll(async () => (await map.boundingBox())?.x ?? 0).toBeGreaterThanOrEqual(399);
+  await expect.poll(async () => (await sheet.boundingBox())?.width ?? 0).toBeLessThan(400);
   const wide = await map.boundingBox();
-  expect(wide?.height).toBeGreaterThan(700);
+  expect(wide?.width).toBe(1366);
   await expect(page.getByRole('button', { name: 'Show more' })).toBeHidden();
 });
 
@@ -164,8 +183,9 @@ test('campus: gate → a lab on another building’s Floor 2, with the campus ma
   const label = await map.getByText('Block A', { exact: true }).boundingBox();
   if (!label) throw new Error('no Block A label');
   await page.mouse.click(label.x + label.width / 2, label.y + label.height + 12);
-  const floors = page.getByRole('combobox', { name: 'Floor' }).locator('option');
-  await expect(floors).toHaveText(['Block A · Floor 2', 'Block A · Floor 1', 'Ground · you']);
+  const floors = page.getByRole('group', { name: 'Floor' }).getByRole('button');
+  await expect(floors).toHaveText(['2', '1', 'G']);
+  await expect(floors.first()).toHaveAccessibleName('Block A · Floor 2');
   await expect(map.getByText('Block A', { exact: true })).toBeHidden(); // rooms show instead
 
   // Search by building, then walk: road → entrance → lift → Floor 2.

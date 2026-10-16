@@ -21,7 +21,7 @@ import {
 } from '@innermap/core';
 import type { Amenity, Room, Shape } from '@innermap/schema';
 import { OUTDOOR_SHAPE_KINDS } from '@innermap/schema';
-import { tr } from '../app/i18n';
+import { CATEGORY, tr } from '../app/i18n';
 import type { MapScene } from '../app/map-scene';
 import { h } from './dom';
 
@@ -57,6 +57,18 @@ const CHAR_PX = 6.6;
 const FAR_SCALE = 4.5;
 /** A tap moves the finger less than this (pixels); more is a drag. */
 const TAP_PX = 8;
+/** Room labels get their category icon above the name when the room is this tall (px). */
+const ICON_ROOM_PX = 48;
+
+/** "G", "1", "B1" for the floor buttons (Google-style switcher); full names stay in labels. */
+function shortName(name: string): string {
+  const floor = /^(?:floor|level|lvl)\s*(.+)$/i.exec(name)?.[1];
+  if (floor) return floor.slice(0, 3);
+  if (/^ground/i.test(name)) return 'G';
+  const basement = /^basement\s*(\d*)$/i.exec(name);
+  if (basement) return `B${basement[1] ?? ''}`;
+  return name.slice(0, 3);
+}
 
 const AMENITY_EMOJI: Readonly<Record<Amenity['kind'], string>> = {
   toilet: '🚻',
@@ -94,9 +106,12 @@ export class MapView {
   private readonly plan: SVGGElement;
   private readonly routeLayer: SVGGElement;
   private readonly overlay: SVGGElement;
-  private readonly picker: HTMLSelectElement;
+  /** Floor switcher and compass; the screen decides where they sit (under the search bar). */
+  readonly tools: HTMLElement;
+  /** "My location" button; the screen puts it just above its bottom sheet. */
+  readonly locate: HTMLButtonElement;
+  private readonly floors: HTMLElement;
   private readonly compass: HTMLButtonElement;
-  private readonly recenter: HTMLButtonElement;
 
   private scene: MapScene | null = null;
   private shownLevel = '';
@@ -121,6 +136,7 @@ export class MapView {
   private building: string | null = null;
   private queued = false;
   private animation = 0;
+  private framing = 0;
 
   constructor() {
     this.plan = s('g', { class: 'plan' });
@@ -129,18 +145,15 @@ export class MapView {
     world.append(this.plan, this.routeLayer);
     this.overlay = s('g', { class: 'overlay' });
     this.svg = s('svg', { class: 'map-svg', role: 'img' });
-    this.svg.append(world, this.overlay);
+    // The "beam" in front of the blue dot fades out, like Google Maps.
+    const defs = s('defs');
+    defs.innerHTML =
+      '<radialGradient id="im-beam" cx="0" cy="0" r="40" gradientUnits="userSpaceOnUse">' +
+      '<stop offset="0" stop-color="#1a73e8" stop-opacity=".45"/>' +
+      '<stop offset="1" stop-color="#1a73e8" stop-opacity="0"/></radialGradient>';
+    this.svg.append(defs, world, this.overlay);
 
-    this.picker = h('select', {
-      class: 'map-floor',
-      'aria-label': tr('map.floor'),
-      onChange: () => {
-        const scene = this.scene;
-        if (!scene) return;
-        this.browsing = this.picker.value === scene.levelId ? null : this.picker.value;
-        this.update(scene);
-      },
-    });
+    this.floors = h('div', { class: 'floors', role: 'group', 'aria-label': tr('map.floor') });
     this.compass = h('button', {
       type: 'button',
       class: 'map-btn compass',
@@ -151,19 +164,19 @@ export class MapView {
     });
     this.compass.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 17 13H7Z" fill="#d33"/><path d="M12 22 7 13h10Z" fill="#9aa"/></svg>';
-    this.recenter = h(
-      'button',
-      {
-        type: 'button',
-        class: 'map-btn recenter',
-        'aria-label': tr('map.recenter'),
-        hidden: true,
-        onClick: () => this.reframe(),
-      },
-      '◎',
-    );
-    this.el = h('div', { class: 'map' }, this.picker, this.compass, this.recenter);
-    this.el.prepend(this.svg);
+    this.locate = h('button', {
+      type: 'button',
+      class: 'map-btn locate',
+      'aria-label': tr('map.recenter'),
+      onClick: () => this.reframe(),
+    });
+    this.locate.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/>' +
+      '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" stroke-width="2"/></svg>';
+    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass);
+    this.el = h('div', { class: 'map' });
+    this.el.append(this.svg);
     this.listen();
   }
 
@@ -184,9 +197,40 @@ export class MapView {
     if (key !== this.framed && this.width > 0) {
       this.framed = key;
       this.moved = false;
-      this.animateTo(this.fit(scene, levelId, rot));
+      // Next frame: the new screen (search bar, sheet…) is on the page by then, so the route
+      // can be framed in the part of the map they leave visible.
+      cancelAnimationFrame(this.framing);
+      this.framing = requestAnimationFrame(() => {
+        if (this.scene) this.animateTo(this.fit(this.scene, this.shownLevel, rot));
+      });
     }
     this.requestDraw();
+  }
+
+  /**
+   * How much of the map is hidden under floating panels (`.covers-map` on the same screen):
+   * wide ones cover the top or bottom, narrow tall ones the left (laptop side panel).
+   */
+  private insets(): { top: number; right: number; bottom: number; left: number } {
+    const box = this.svg.getBoundingClientRect();
+    const inset = { top: 0, right: 0, bottom: 0, left: 0 };
+    const screen = this.el.closest('.mapped');
+    for (const el of screen?.querySelectorAll<HTMLElement>('.covers-map') ?? []) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.width >= box.width * 0.6) {
+        if (r.top + r.height / 2 < box.top + box.height / 2)
+          inset.top = Math.max(inset.top, r.bottom - box.top);
+        else inset.bottom = Math.max(inset.bottom, box.bottom - r.top);
+      } else if (r.left - box.left < box.width * 0.1) {
+        inset.left = Math.max(inset.left, r.right - box.left);
+      }
+    }
+    // Never let panels leave less than a third of the map.
+    inset.top = Math.min(inset.top, box.height * 0.35);
+    inset.bottom = Math.min(inset.bottom, box.height * 0.45);
+    inset.left = Math.min(inset.left, box.width * 0.5);
+    return inset;
   }
 
   // ---------- building the floor ----------
@@ -247,12 +291,14 @@ export class MapView {
         : [shape.label ?? (shape.kind === 'stairs' ? tr('map.stairs') : '')];
       if (shape.kind === 'floor' || shape.kind === 'wall' || !texts[0]) continue;
       const lock = room?.visibility === 'locked' ? '🔒 ' : '';
+      const cls = room ? `label cat-${room.category}` : `label k-${shape.kind}`;
       this.addLabel(
         labelPoint(shape),
         texts.filter(Boolean).map((t) => lock + t),
         shapePoints(shape),
-        'label',
+        cls,
         OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'near',
+        room ? CATEGORY[room.category].emoji : shapeIcon(shape),
       );
     }
     this.addEntranceArrows(nodes);
@@ -270,8 +316,9 @@ export class MapView {
       if (node?.level !== levelId) continue;
       list.forEach((a, i) => {
         const g = s('g', { class: 'amenity' });
-        const dx = (i - (list.length - 1) / 2) * 20;
-        g.append(s('text', { x: dx, y: -12 }, AMENITY_EMOJI[a.kind]));
+        const dx = (i - (list.length - 1) / 2) * 24;
+        g.append(s('circle', { cx: dx, cy: -14, r: 11 }));
+        g.append(s('text', { x: dx, y: -9.5 }, AMENITY_EMOJI[a.kind]));
         this.overlay.append(g);
         this.pins.push({ p: node, el: g });
       });
@@ -296,9 +343,16 @@ export class MapView {
     box?: readonly Point[],
     cls = 'label',
     zoom?: 'far' | 'near',
+    emoji?: string,
   ): void {
     const g = s('g', { class: cls });
     g.append(s('text', { y: 4 }, texts[0]));
+    if (emoji) {
+      // Google-style place marker above the name: a round badge in the category colour.
+      const ico = s('g', { class: 'ico', transform: 'translate(0 -14)' });
+      ico.append(s('circle', { r: 11 }), s('text', { y: 4.5 }, emoji));
+      g.append(ico);
+    }
     this.overlay.append(g);
     this.pins.push({ p, el: g, ...(box && { fit: { texts, box } }), ...(zoom && { zoom }) });
   }
@@ -355,21 +409,39 @@ export class MapView {
       )
       .reverse();
     const signature = `${scene.levelId}|${building ?? ''}|${levels.length}`;
-    if (this.picker.dataset['for'] !== signature) {
-      this.picker.dataset['for'] = signature;
-      this.picker.replaceChildren(
+    if (this.floors.dataset['for'] !== signature) {
+      this.floors.dataset['for'] = signature;
+      this.floors.replaceChildren(
         ...levels.map((l) =>
           h(
-            'option',
-            { value: l.id },
-            l.id === scene.levelId
-              ? `${this.levelName(l.id)} · ${tr('map.you-short')}`
-              : this.levelName(l.id),
+            'button',
+            {
+              type: 'button',
+              class: l.id === scene.levelId ? 'you' : '',
+              'data-level': l.id,
+              'aria-label': this.levelName(l.id),
+              title:
+                l.id === scene.levelId
+                  ? `${this.levelName(l.id)} · ${tr('map.you-short')}`
+                  : this.levelName(l.id),
+              onClick: () => {
+                const current = this.scene;
+                if (!current) return;
+                this.browsing = l.id === current.levelId ? null : l.id;
+                this.update(current);
+              },
+            },
+            shortName(l.name),
           ),
         ),
       );
     }
-    this.picker.value = levelId;
+    this.floors.hidden = levels.length < 2;
+    for (const button of this.floors.children) {
+      const on = (button as HTMLElement).dataset['level'] === levelId;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', String(on));
+    }
   }
 
   // ---------- route and markers ----------
@@ -428,7 +500,7 @@ export class MapView {
     });
     marker(scene.here, 'you', (g) => {
       if (scene.facing !== null)
-        g.append(s('path', { class: 'cone', d: 'M0 0-14-34A36 36 0 0 1 14-34Z' }));
+        g.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
       g.append(s('circle', { class: 'halo', r: 16 }), s('circle', { class: 'dot', r: 8 }));
       g.append(s('text', { y: 30 }, tr('map.you')));
     });
@@ -458,14 +530,23 @@ export class MapView {
     const box = boundsOf(turned) ?? { minX: 0, minY: 0, maxX: 10, maxY: 10 };
     const w = Math.max(box.maxX - box.minX, MIN_EXTENT);
     const hgt = Math.max(box.maxY - box.minY, MIN_EXTENT * 0.6);
-    const scale = Math.min((this.width - 56) / w, (this.height - 72) / hgt);
-    const mx = (box.minX + box.maxX) / 2;
-    const my = (box.minY + box.maxY) / 2;
+    const pad = this.insets();
+    const freeW = this.width - pad.left - pad.right;
+    const freeH = this.height - pad.top - pad.bottom;
+    const scale = Math.min(
+      FIT_MAX_SCALE,
+      Math.max(MIN_SCALE, Math.min((freeW - 48) / w, (freeH - 56) / hgt)),
+    );
+    // Centre the box in the free part of the map, not under the panels.
+    const ox = (pad.left - pad.right) / 2 / scale;
+    const oy = (pad.top - pad.bottom) / 2 / scale;
+    const mx = (box.minX + box.maxX) / 2 - ox;
+    const my = (box.minY + box.maxY) / 2 - oy;
     const b = rad(rot);
     return {
       cx: mx * Math.cos(b) - my * Math.sin(b),
       cy: mx * Math.sin(b) + my * Math.cos(b),
-      s: Math.min(FIT_MAX_SCALE, Math.max(MIN_SCALE, scale)),
+      s: scale,
       rot,
     };
   }
@@ -562,7 +643,9 @@ export class MapView {
     const arrow = this.compass.firstElementChild as SVGElement | null;
     arrow?.setAttribute('style', `transform:rotate(${-rot}deg)`);
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
-    this.recenter.hidden = !this.moved;
+    this.compass.hidden = this.scene?.facing === null;
+    // Filled blue while the map follows the route; outlined once the visitor moved it away.
+    this.locate.setAttribute('aria-pressed', String(!this.moved));
   }
 
   /** Longest text that fits inside the room as drawn right now; none if the room is tiny. */
@@ -575,6 +658,12 @@ export class MapView {
     const label = pin.el.firstElementChild as SVGTextElement;
     if (label.textContent !== (text ?? '')) label.textContent = text ?? '';
     pin.el.style.display = text && height >= 16 && !hidden ? '' : 'none';
+    const ico = pin.el.querySelector<SVGGElement>('.ico');
+    if (ico) {
+      const roomy = height >= ICON_ROOM_PX;
+      ico.style.display = roomy ? '' : 'none';
+      label.setAttribute('y', roomy ? '13' : '4');
+    }
   }
 
   // ---------- gestures: drag to pan, pinch / wheel to zoom ----------
@@ -688,4 +777,16 @@ function campusShapes(site: Site): Shape[] {
     .filter((l) => l.building === undefined)
     .flatMap((l) => l.shapes ?? [])
     .filter((shape) => OUTDOOR_SHAPE_KINDS.has(shape.kind));
+}
+
+/** Icons for outlines that are not rooms (parking, lifts…), Google-style. */
+function shapeIcon(shape: Shape): string | undefined {
+  switch (shape.kind) {
+    case 'parking':
+      return '🅿️';
+    case 'lift':
+      return '🛗';
+    default:
+      return undefined;
+  }
 }

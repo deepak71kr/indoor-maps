@@ -1,37 +1,61 @@
-/* ---------- Design tokens (docs/PROJECT_CONTEXT.md §6) ---------- */
+/*
+ * Visitor app styles — Google Maps (mobile) look: the map fills the screen, white floating
+ * search bar and chips, a bottom sheet, a green direction banner while walking.
+ * Design notes: docs/PROJECT_CONTEXT.md §6.
+ */
+
+/* ---------- Design tokens ---------- */
 :root {
-  --brand: #0b7a80;
-  --bg: #f4f6f8;
+  --blue: #1a73e8;
+  --blue-dark: #1558b0;
+  --blue-soft: #e8f0fe;
+  --green: #188038;
+  --nav: #0f7b3e;
+  --red: #d93025;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --text: #16202a;
-  --muted: #5a6573;
-  --line: #dde3ea;
-  --danger: #c0352b;
-  --ok: #1d8a4e;
-  --radius: 16px;
+  --surface-2: #f1f3f4;
+  --text: #202124;
+  --muted: #5f6368;
+  --line: #dadce0;
+  --shadow: 0 1px 2px rgb(60 64 67 / 0.3), 0 2px 6px 2px rgb(60 64 67 / 0.15);
+  --shadow-up: 0 -1px 3px rgb(60 64 67 / 0.2), 0 -4px 12px rgb(60 64 67 / 0.12);
+  --brand: var(--blue);
+  --danger: var(--red);
+  --ok: var(--green);
+  --radius: 12px;
   --gap: 16px;
-  --tap: 52px;
-  --lvl: var(--brand);
+  --tap: 48px;
+  --lvl: var(--blue);
   font:
-    17px/1.45 system-ui,
+    16px/1.45 Roboto,
+    system-ui,
     -apple-system,
     'Segoe UI',
-    Roboto,
     sans-serif;
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1419;
-    --surface: #1a2129;
-    --text: #eef2f5;
-    --muted: #a3adb8;
-    --line: #2c3640;
+    --blue: #8ab4f8;
+    --blue-dark: #4c8df6;
+    --blue-soft: #283c5a;
+    --green: #81c995;
+    --nav: #146c3a;
+    --red: #f28b82;
+    --bg: #1f1f1f;
+    --surface: #2b2c2f;
+    --surface-2: #3c4043;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --line: #3c4043;
+    --shadow: 0 1px 3px rgb(0 0 0 / 0.6), 0 2px 8px rgb(0 0 0 / 0.4);
+    --shadow-up: 0 -2px 12px rgb(0 0 0 / 0.5);
   }
 }
 
-/* Each floor has a color used everywhere (badge, step icon, card edge). */
+/* Each floor keeps its color (badges, progress dots) so visitors know which floor they're on. */
 .lvl-teal {
   --lvl: #0f8b8d;
 }
@@ -57,6 +81,47 @@
   --lvl: #546271;
 }
 
+/* Place categories, color-coded like Google Maps places (rooms, list icons, map labels). */
+.cat-emergency {
+  --c: #d93025;
+}
+.cat-opd {
+  --c: #c2185b;
+}
+.cat-ward {
+  --c: #7b1fa2;
+}
+.cat-lab {
+  --c: #00897b;
+}
+.cat-diagnostics {
+  --c: #1e6fd9;
+}
+.cat-pharmacy {
+  --c: #2e7d32;
+}
+.cat-billing {
+  --c: #c26400;
+}
+.cat-food {
+  --c: #e8590c;
+}
+.cat-admin {
+  --c: #546e7a;
+}
+.cat-office {
+  --c: #6d4c41;
+}
+.cat-classroom {
+  --c: #8e24aa;
+}
+.cat-staff {
+  --c: #80868b;
+}
+.cat-other {
+  --c: #00838f;
+}
+
 /* ---------- Base ---------- */
 * {
   box-sizing: border-box;
@@ -65,6 +130,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  -webkit-tap-highlight-color: transparent;
 }
 main {
   max-width: 480px;
@@ -73,17 +139,19 @@ main {
   min-height: 100vh;
 }
 h1 {
-  font-size: 1.6rem;
-  line-height: 1.2;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.25;
   margin: 0.2em 0 0.6em;
   outline: none;
 }
 h2 {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
-  margin: 1.4em 0 0.5em;
+  margin: 1.2em 0 0.4em;
 }
 p {
   margin: 0 0 0.8em;
@@ -102,7 +170,7 @@ small {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
-  animation: in 0.25s ease-out;
+  animation: in 0.2s ease-out;
 }
 .center {
   text-align: center;
@@ -123,11 +191,10 @@ small {
   flex: 1;
 }
 .site {
-  color: var(--brand);
-  font-weight: 600;
+  color: var(--blue);
+  font-weight: 500;
   margin: 0;
 }
-
 .icon {
   width: 22px;
   height: 22px;
@@ -139,64 +206,96 @@ small {
   stroke-linejoin: round;
 }
 .icon.huge {
-  width: 72px;
-  height: 72px;
-  stroke-width: 2.2;
+  width: 64px;
+  height: 64px;
+  stroke-width: 2.4;
 }
 
 /* ---------- Controls ---------- */
 .btn,
 .item,
 .chip,
-.icon-btn {
+.round {
   font: inherit;
   color: inherit;
   cursor: pointer;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
+  transition: transform 0.1s ease;
+}
+.btn,
+.item {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius);
   min-height: var(--tap);
   padding: 0 1em;
-  transition: transform 0.1s ease;
 }
 .btn:active,
 .item:active,
-.chip:active {
-  transform: scale(0.98);
+.chip:active,
+.round:active {
+  transform: scale(0.97);
 }
 .btn.primary {
-  background: var(--brand);
-  border-color: var(--brand);
+  background: var(--blue);
+  border-color: var(--blue);
   color: #fff;
-  font-weight: 600;
+  font-weight: 500;
+  border-radius: 999px;
 }
-.trip .btn.primary {
-  background: var(--lvl);
-  border-color: var(--lvl);
+@media (prefers-color-scheme: dark) {
+  .btn.primary {
+    color: #202124;
+  }
 }
 .btn.big {
-  min-height: 64px;
-  font-size: 1.15rem;
+  min-height: 52px;
+  font-size: 1.05rem;
 }
-.icon-btn {
-  min-height: 48px;
-  min-width: 48px;
+.round {
+  flex: none;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: none;
+  border-radius: 50%;
   background: transparent;
+  color: var(--muted);
 }
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5em;
+  gap: 8px;
 }
 .chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  min-height: 48px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.link {
+  font: inherit;
+  color: var(--blue);
+  background: none;
+  border: none;
+  min-height: 44px;
+  padding: 0 0.4em;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.link .icon {
+  width: 18px;
+  height: 18px;
 }
 
 input[type='text'],
@@ -210,40 +309,27 @@ input[type='search'] {
   border-radius: var(--radius);
   background: var(--surface);
 }
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.search .icon {
-  position: absolute;
-  left: 14px;
-  color: var(--muted);
-}
-.search input {
-  padding-left: 44px;
-}
 h1:focus-visible {
   outline: none; /* focused by code for screen readers, not by the user */
 }
 :focus-visible:not(h1) {
-  outline: 3px solid var(--brand);
+  outline: 3px solid var(--blue);
   outline-offset: 2px;
 }
-
 .toggle {
   display: flex;
   align-items: center;
-  gap: 0.6em;
-  min-height: var(--tap);
+  gap: 0.5em;
+  min-height: 44px;
   cursor: pointer;
+  font-size: 0.9rem;
 }
 .toggle input {
-  width: 24px;
-  height: 24px;
-  accent-color: var(--brand);
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--blue);
 }
-
 .list {
   list-style: none;
   margin: 0;
@@ -257,30 +343,20 @@ h1:focus-visible {
   justify-content: flex-start;
   text-align: left;
 }
-.place .emoji {
-  font-size: 1.3rem;
-}
-.place .icon {
-  color: var(--muted);
-  width: 18px;
-}
-
-.floor {
+span.floor {
   display: inline-block;
-  padding: 0.15em 0.65em;
+  padding: 0.15em 0.6em;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #fff;
   background: var(--lvl);
   white-space: nowrap;
 }
-
 .here {
   display: flex;
   align-items: center;
-  gap: 0.5em;
-  color: var(--muted);
+  gap: 0.6em;
   margin: 0;
 }
 .error {
@@ -294,108 +370,38 @@ h1:focus-visible {
   align-items: center;
   color: var(--muted);
 }
-.notice {
-  background: color-mix(in srgb, var(--lvl) 14%, var(--surface));
-  border-radius: var(--radius);
-  padding: 0.6em 0.9em;
-}
-
-/* ---------- Trip ---------- */
-.trip-head {
-  display: flex;
-  align-items: center;
-  font-weight: 600;
-}
-.progress {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-.dots {
-  display: flex;
-  gap: 4px;
-}
-.dots i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
-}
-.dots i.on {
-  background: var(--lvl);
-}
-
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1.4em;
-  border-top: 6px solid var(--lvl);
-}
-.step {
-  animation: in 0.25s ease-out;
-}
-/* With the map above it, the step card is the blue card of the mockups: floor-colored. */
-.trip .card.step {
-  background: var(--lvl);
-  color: #fff;
-  border: none;
-  padding: 1em 1.1em;
-}
-.step-main {
-  display: flex;
-  gap: 0.9em;
-  align-items: center;
-}
-.trip .step-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0;
-  flex: none;
-  color: #fff;
-  background: rgb(255 255 255 / 0.18);
-}
-.trip .step-icon .icon.huge {
-  width: 44px;
-  height: 44px;
-}
-.trip .step-text {
-  margin: 0;
-  font-size: 1.15rem;
-}
-.step-meters {
-  margin: 0.2em 0 0;
-  opacity: 0.85;
-}
-.step-next {
-  margin: 0.8em -1.1em -1em;
-  padding: 0.55em 1.1em;
-  font-size: 0.9rem;
-  background: rgb(0 0 0 / 0.16);
-  border-radius: 0 0 var(--radius) var(--radius);
-}
 .tip {
   display: flex;
   gap: 0.5em;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--muted);
+  margin: 0;
+}
+.tip .icon {
+  width: 18px;
+  height: 18px;
 }
 .step-icon {
   display: inline-grid;
   place-items: center;
-  width: 112px;
-  height: 112px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  color: var(--lvl);
-  background: color-mix(in srgb, var(--lvl) 12%, var(--surface));
-  margin-bottom: 0.6em;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, var(--surface));
 }
 .step-text {
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 500;
   line-height: 1.35;
+}
+.code-form > input {
+  flex: 1 1 auto;
+}
+.code-form > .btn {
+  flex: 0 0 auto;
+  min-width: 88px;
 }
 
 /* ---------- Scanner ---------- */
@@ -430,7 +436,6 @@ h1:focus-visible {
     transform: translateY(8px);
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -440,49 +445,600 @@ h1:focus-visible {
   }
 }
 
-.code-form > input {
-  flex: 1 1 auto;
+/* ---------- Map screens: the map fills the screen, panels float over it ---------- */
+.mapped {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  gap: 0;
+  animation: none;
+  background: var(--m-out, #eef0f2);
 }
-.code-form > .btn {
-  flex: 0 0 auto;
-  min-width: 88px;
+.mapped > .map {
+  position: absolute;
+  inset: 0;
 }
-.link {
-  font: inherit;
-  color: var(--brand);
-  background: none;
-  border: none;
-  min-height: 48px;
-  padding: 0 0.4em;
-  font-weight: 600;
-  cursor: pointer;
+.side {
+  display: contents;
+}
+.top {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 0;
+  pointer-events: none;
+}
+.top > * {
+  pointer-events: auto;
+}
+.bottom {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
-/* ---------- 2D map (Phase 9): flat shapes, no images ---------- */
-.map {
-  --m-out: #e6e9ed;
-  --m-floor: #ffffff;
-  --m-wall: #8c96a3;
-  --m-room: #f1f3f5;
-  --m-text: #3b4652;
-  --m-route: #1a73e8;
-  position: relative;
-  margin: calc(-1 * var(--gap)) calc(-1 * var(--gap)) 0;
-  height: min(42vh, 380px);
-  min-height: 210px;
-  background: var(--m-out);
+/* Search bar: white pill with a shadow, red pin "logo", back arrow while searching. */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 52px;
+  padding: 0 4px 0 14px;
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.searchbar input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  outline: none;
+}
+.searchbar input::placeholder {
+  color: var(--muted);
+}
+.searchbar .logo {
+  display: grid;
+  color: #ea4335;
+}
+.searchbar .logo .icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.2;
+}
+.searchbar .back {
+  display: none;
+  margin-left: -10px;
+  color: var(--text);
+}
+.searchbar .scan {
+  color: var(--blue);
+}
+
+/* Chips: one swipeable row floating over the map. */
+.chips.scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -12px;
+  padding: 0 12px 6px;
+}
+.chips.scroll::-webkit-scrollbar {
+  display: none;
+}
+.top .chip {
+  flex: none;
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+
+/* Floor switcher + compass on the right, under the search bar (Google indoor maps). */
+.map-tools {
+  position: absolute;
+  right: 12px;
+  top: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.floors {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
   overflow: hidden;
+}
+.floors[hidden] {
+  display: none;
+}
+.floors button {
+  position: relative;
+  width: 44px;
+  height: 42px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+.floors button + button {
+  border-top: 1px solid var(--line);
+}
+.floors button.on {
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 700;
+}
+/* The visitor's own floor carries a small blue dot. */
+.floors button.you::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+.map-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--muted);
+  cursor: pointer;
+}
+.map-btn[hidden] {
+  display: none;
+}
+.map-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.locate {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 12px);
+  width: 52px;
+  height: 52px;
+}
+.locate[aria-pressed='true'] {
+  color: var(--blue);
+}
+
+/* Bottom sheet. */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 46dvh;
+  padding: 0 16px calc(14px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-up);
+  transition: max-height 0.25s ease;
+}
+.sheet > * {
+  flex-shrink: 0;
+}
+.sheet.open {
+  max-height: 85dvh;
+}
+.handle {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 24px;
+  margin: 0 -16px -4px;
+  border: none;
+  background: var(--surface);
+  cursor: grab;
+  touch-action: none;
+}
+.handle::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 2px;
+  background: var(--line);
+}
+.sheet h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+/* Home sheet: "You are at …", "Where to?", all places. */
+.choose .sheet {
+  max-height: 34dvh;
+}
+.choose .sheet.open {
+  max-height: 82dvh;
+}
+.you-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--blue) 22%, transparent);
+  margin: 0 4px;
+}
+.here .link {
+  min-height: 36px;
+}
+.sheet-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.sheet-title .toggle {
+  color: var(--muted);
+}
+
+/* Place rows (sheet + search page), Google list style: round category icon, name, details. */
+.place {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  min-height: 64px;
+  padding: 8px 0;
+  gap: 14px;
+}
+.list .place {
+  margin: 0;
+}
+.place .grow {
+  display: flex;
+  flex-direction: column;
+}
+.place .name {
+  font-weight: 500;
+}
+.place small {
+  font-size: 0.85rem;
+}
+.place .icon {
+  width: 18px;
+  color: var(--muted);
+}
+.poi {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: color-mix(in srgb, var(--c, var(--muted)) 16%, var(--surface));
+  border: 2px solid color-mix(in srgb, var(--c, var(--muted)) 45%, transparent);
+}
+
+/* Search page: full screen while typing, the search bar stays on top. */
+.search-page {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  padding: calc(76px + env(safe-area-inset-top)) 16px 16px;
+  overflow-y: auto;
+  background: var(--surface);
+}
+.searching .search-page {
+  display: block;
+}
+.searching .chips,
+.searching .map-tools,
+.searching .bottom {
+  display: none;
+}
+.searching .searchbar {
+  box-shadow: none;
+  background: var(--surface-2);
+}
+.searching .searchbar .logo {
+  display: none;
+}
+.searching .searchbar .back {
+  display: grid;
+}
+.search-page h2 {
+  margin-top: 0;
+}
+
+/* Walking: green banner on top (Google navigation), trip bar at the bottom. */
+.banner {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--nav);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.banner-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.banner .step-icon {
+  width: 52px;
+  height: 52px;
+  background: none;
+  color: #fff;
+}
+.banner .step-icon .icon.huge {
+  width: 46px;
+  height: 46px;
+  stroke-width: 2.6;
+}
+.banner .step-meters {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.banner .step-text {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.then {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  background: rgb(0 0 0 / 0.2);
+}
+.then .icon {
+  width: 18px;
+  height: 18px;
+}
+.then .grow {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.toast {
+  align-self: center;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #323232;
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+}
+.trip .sheet {
+  max-height: 60dvh;
+  gap: 12px;
+}
+.trip-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.trip-info p {
+  margin: 0;
+}
+.eta {
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+.eta strong {
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--green);
+}
+.trip-head {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.trip-head strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.round.end {
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  color: var(--red);
+}
+.round.lost {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dots {
+  display: flex;
+  gap: 4px;
+}
+.dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.dots i.on {
+  background: var(--lvl);
+}
+.links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.links .link {
+  flex: none;
+  padding-left: 0;
+}
+@media (max-height: 700px) {
+  .trip .tip,
+  .trip .dots {
+    display: none;
+  }
+}
+
+/* Arrived. */
+.arrived .sheet {
+  align-items: center;
+  text-align: center;
+  max-height: 60dvh;
+}
+.arrived .sheet .step-icon {
+  width: 64px;
+  height: 64px;
+}
+.arrived .sheet .step-icon .icon.huge {
+  width: 38px;
+  height: 38px;
+  stroke-width: 3;
+}
+.arrived .sheet h1 {
+  font-size: 1.2rem;
+}
+.arrived .sheet .btn.big {
+  align-self: stretch;
+}
+
+/* Laptops and tablets: a floating side panel on the left, map everywhere else. */
+@media (min-width: 900px) {
+  .side {
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: 392px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .top,
+  .bottom {
+    position: static;
+    padding: 0;
+  }
+  .bottom {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+    pointer-events: none;
+  }
+  .sheet,
+  .sheet.open,
+  .choose .sheet,
+  .choose .sheet.open,
+  .trip .sheet,
+  .arrived .sheet {
+    max-height: none;
+    min-height: 0;
+    flex: 0 1 auto;
+    padding-top: 14px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    pointer-events: auto;
+  }
+  .handle {
+    display: none;
+  }
+  .top .map-tools {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+  }
+  .locate {
+    position: fixed;
+    top: auto;
+    right: 16px;
+    bottom: 24px;
+    pointer-events: auto;
+  }
+  .search-page {
+    top: 12px;
+    left: 12px;
+    bottom: 12px;
+    right: auto;
+    width: 392px;
+    padding-top: 76px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+}
+
+/* ---------- The 2D map: flat shapes, no images, Google indoor-map colors ---------- */
+.map {
+  --m-out: #eef0f2;
+  --m-floor: #ffffff;
+  --m-wall: #b9bec5;
+  --m-room: #f6f7f8;
+  --m-text: #3c4043;
+  --m-route: #1a73e8;
+  --m-route-edge: #1558b0;
+  --m-road: #ffffff;
+  --m-road-edge: #d5d9de;
+  --m-green: #c9e9c6;
+  --m-park: #e3e7ec;
+  --m-building: #e2e5e9;
+  --m-entry: #188038;
+  height: 100%;
+  overflow: hidden;
+  background: var(--m-out);
   touch-action: none;
   user-select: none;
 }
 @media (prefers-color-scheme: dark) {
   .map {
-    --m-out: #11161c;
-    --m-floor: #27303a;
-    --m-wall: #5d6a78;
-    --m-room: #1d242c;
-    --m-text: #d5dce3;
-    --m-route: #5b9cff;
+    --m-out: #1b1e22;
+    --m-floor: #2b3037;
+    --m-wall: #4f5862;
+    --m-room: #24292f;
+    --m-text: #e8eaed;
+    --m-route: #8ab4f8;
+    --m-route-edge: #4c8df6;
+    --m-road: #353b43;
+    --m-road-edge: #2b3037;
+    --m-green: #1e3626;
+    --m-park: #262c33;
+    --m-building: #30363e;
+    --m-entry: #81c995;
   }
 }
 .map-svg {
@@ -504,13 +1060,13 @@ h1:focus-visible {
   stroke-width: 2.5;
 }
 .map .room {
-  fill: var(--m-room);
-  stroke: var(--m-wall);
+  fill: color-mix(in srgb, var(--c, var(--m-wall)) 13%, var(--m-room));
+  stroke: color-mix(in srgb, var(--c, var(--m-wall)) 40%, var(--m-wall));
   stroke-width: 1.5;
 }
 .map .lift,
 .map .stairs {
-  fill: color-mix(in srgb, var(--m-wall) 22%, var(--m-floor));
+  fill: color-mix(in srgb, var(--m-wall) 28%, var(--m-floor));
   stroke: var(--m-wall);
   stroke-width: 1.5;
 }
@@ -536,423 +1092,14 @@ h1:focus-visible {
   stroke: var(--m-floor);
   stroke-width: 22;
 }
-/* Rooms: a light tint of their category color. */
-.map .cat-emergency {
-  fill: color-mix(in srgb, #e5484d 16%, var(--m-room));
-}
-.map .cat-opd,
-.map .cat-ward {
-  fill: color-mix(in srgb, #3e7bfa 14%, var(--m-room));
-}
-.map .cat-lab,
-.map .cat-diagnostics {
-  fill: color-mix(in srgb, #8e4ec6 14%, var(--m-room));
-}
-.map .cat-pharmacy,
-.map .cat-food {
-  fill: color-mix(in srgb, #30a46c 16%, var(--m-room));
-}
-.map .cat-billing,
-.map .cat-admin,
-.map .cat-office {
-  fill: color-mix(in srgb, #f5a524 16%, var(--m-room));
-}
 .map .locked {
-  fill: color-mix(in srgb, var(--m-wall) 20%, var(--m-room));
+  fill: color-mix(in srgb, var(--m-wall) 22%, var(--m-room));
 }
-.map .route polyline {
-  fill: none;
-  stroke-width: 7;
-}
-.map .route .casing {
-  stroke: #fff;
-  stroke-width: 11;
-}
-.map .route .ahead {
-  stroke: var(--m-route);
-}
-.map .route .walked {
-  stroke: var(--m-wall);
-  stroke-dasharray: 1 10;
-}
-.map text {
-  font-size: 11px;
-  font-weight: 600;
-  text-anchor: middle;
-  fill: var(--m-text);
-  paint-order: stroke;
-  stroke: var(--m-floor);
-  stroke-width: 3px;
-  stroke-linejoin: round;
-}
-.map .amenity text {
-  font-size: 15px;
-  stroke: none;
-}
-.map .you .dot {
-  fill: var(--m-route);
-  stroke: #fff;
-  stroke-width: 3;
-}
-.map .you .halo {
-  fill: color-mix(in srgb, var(--m-route) 22%, transparent);
-}
-.map .you .cone {
-  fill: color-mix(in srgb, var(--m-route) 30%, transparent);
-}
-.map .you text {
-  font-size: 12px;
-  fill: var(--m-route);
-}
-.map .next circle {
-  fill: var(--m-route);
-  stroke: #fff;
-  stroke-width: 2;
-}
-.map .next .pulse {
-  fill: none;
-  stroke: var(--m-route);
-  stroke-width: 3;
-  animation: pulse 1.6s ease-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.2;
-  }
-}
-.map .dest path {
-  fill: #d93025;
-  stroke: #fff;
-  stroke-width: 2;
-}
-.map .dest circle {
-  fill: #fff;
-}
-.map .badge rect {
-  fill: var(--lvl);
-}
-.map .badge text {
-  fill: #fff;
-  stroke: none;
-  text-anchor: start;
-}
-.map-floor,
-.map-btn {
-  position: absolute;
-  top: 10px;
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--text);
-  background: var(--surface);
-  border: none;
-  border-radius: 12px;
-  min-height: 44px;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
-}
-.map-floor {
-  left: 10px;
-  padding: 0 0.6em;
-  font-weight: 600;
-}
-.map-btn {
-  right: 10px;
-  width: 44px;
-  padding: 0;
-  cursor: pointer;
-}
-.map-btn svg {
-  width: 26px;
-  height: 26px;
-  vertical-align: middle;
-}
-.map .recenter {
-  top: auto;
-  bottom: 10px;
-  font-size: 1.4rem;
-  color: var(--m-route);
-}
-.arrived .map {
-  align-self: stretch;
-}
-
-/* ---------- Map screens: map first (phone: bottom sheet, wide: side panel) ---------- */
-.mapped {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  background: var(--bg);
-  animation: none;
-}
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  min-height: 52px;
-  padding: 0 var(--gap);
-  padding-top: env(safe-area-inset-top);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  font-weight: 700;
-  z-index: 2;
-}
-.topbar .icon {
-  color: var(--brand);
-}
-.mapped .map {
-  margin: 0;
-  height: auto;
-  min-height: 150px;
-  flex: 1 1 auto;
-}
-.mapped .map .recenter {
-  bottom: 28px;
-}
-.sheet {
-  position: relative;
-  z-index: 1;
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
-  max-height: 58dvh;
-  margin-top: -18px;
-  padding: 0 var(--gap) calc(var(--gap) + env(safe-area-inset-bottom));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: var(--surface);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -2px 12px rgb(0 0 0 / 0.14);
-  transition: max-height 0.2s ease;
-}
-.sheet.open {
-  max-height: 82dvh;
-}
-.handle {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  flex: none;
-  height: 22px;
-  margin: 0 calc(-1 * var(--gap));
-  border: none;
-  background: var(--surface);
-  cursor: pointer;
-}
-.handle::before {
-  content: '';
-  display: block;
-  width: 40px;
-  height: 5px;
-  margin: 0 auto;
-  border-radius: 3px;
-  background: var(--line);
-}
-.sheet h1 {
-  font-size: 1.25rem;
-  margin: 0;
-}
-.sheet h2 {
-  margin: 0.6em 0 0;
-}
-.sheet .here {
-  color: var(--text);
-}
-.sheet .here .icon {
-  color: var(--m-route, #1a73e8);
-}
-.sheet .here .link {
-  min-height: 40px;
-}
-.sheet .search input {
-  border-radius: 999px;
-  background: var(--bg);
-}
-.chips.scroll {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 0 calc(-1 * var(--gap));
-  padding: 0 var(--gap) 2px;
-}
-.chips.scroll .chip {
-  flex: none;
-  min-height: 42px;
-}
-.sheet .toggle {
-  min-height: 44px;
-}
-.trip-head {
-  display: block;
-  margin: 0;
-  font-weight: 400;
-}
-.sheet > * {
-  flex-shrink: 0;
-}
-.trip-head strong {
-  font-weight: 700;
-}
-.trip .card.step {
-  position: relative;
-}
-.step-main .end {
-  align-self: flex-start;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin: -0.3em -0.4em 0 0;
-  min-width: 48px;
-  min-height: 48px;
-  padding: 4px;
-  font: inherit;
-  font-size: 0.7rem;
-  line-height: 1.1;
-  color: #fff;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.step-main .end .icon {
-  width: 28px;
-  height: 28px;
-  padding: 5px;
-  border-radius: 50%;
-  background: #fff;
-  color: #d93025;
-  stroke-width: 3;
-}
-.btn.small {
-  min-height: 44px;
-  font-size: 0.95rem;
-}
-.sheet .tip {
-  margin: 0;
-}
-.arrived .sheet {
-  align-items: center;
-  text-align: center;
-}
-.arrived .sheet .step-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0;
-}
-.arrived .sheet .step-icon .icon.huge {
-  width: 44px;
-  height: 44px;
-}
-.arrived .sheet h1 {
-  font-size: 1.2rem;
-}
-.arrived .sheet .btn.big {
-  align-self: stretch;
-}
-
-/* Laptops and tablets in landscape: panel on the left, map fills the rest. */
-@media (min-width: 900px) {
-  .mapped {
-    display: grid;
-    grid-template: 'bar map' auto 'sheet map' 1fr / 400px 1fr;
-  }
-  .topbar {
-    grid-area: bar;
-    border-right: 1px solid var(--line);
-  }
-  .mapped .map {
-    grid-area: map;
-    height: 100%;
-  }
-  .mapped .map .recenter {
-    bottom: 16px;
-  }
-  .sheet,
-  .sheet.open {
-    grid-area: sheet;
-    max-height: none;
-    margin: 0;
-    padding-top: var(--gap);
-    border-radius: 0;
-    border-right: 1px solid var(--line);
-    box-shadow: 2px 0 10px rgb(0 0 0 / 0.08);
-  }
-  .handle {
-    display: none;
-  }
-}
-
-/* Phones: a compact sheet so the map keeps at least half the screen. */
-.mapped.center {
-  align-items: stretch;
-  justify-content: flex-start;
-  min-height: 0;
-  text-align: left;
-}
-.mapped .trip-head {
-  font-size: 0.95rem;
-}
-.mapped .card.step {
-  padding: 0.8em 0.9em;
-}
-.mapped .step-main {
-  gap: 0.7em;
-}
-.mapped.trip .step-icon {
-  width: 52px;
-  height: 52px;
-}
-.mapped.trip .step-icon .icon.huge {
-  width: 34px;
-  height: 34px;
-}
-.mapped.trip .step-text {
-  font-size: 1.05rem;
-}
-.mapped .step-next {
-  margin: 0.7em -0.9em -0.8em;
-  padding: 0.5em 0.9em;
-}
-.mapped .btn.big {
-  min-height: 56px;
-}
-@media (max-height: 720px) {
-  .mapped .tip,
-  .mapped .dots {
-    display: none;
-  }
-  .sheet {
-    gap: 0.5em;
-  }
-}
-@media (min-width: 900px) {
-  .mapped.trip .step-text {
-    font-size: 1.15rem;
-  }
-}
-
-/* ---------- Campus view (Phase 10): roads, lawns, buildings ---------- */
-.map {
-  --m-road: #fbfbfc;
-  --m-green: #d5ecd4;
-  --m-park: #dde2e9;
-  --m-building: #d9dee6;
-  --m-entry: #1e8e3e;
-}
-@media (prefers-color-scheme: dark) {
-  .map {
-    --m-road: #2c343d;
-    --m-green: #1c3124;
-    --m-park: #222a33;
-    --m-building: #323c47;
-    --m-entry: #4cc274;
-  }
-}
+/* Campus: roads, lawns, parking, building footprints. */
 .map .road {
   fill: var(--m-road);
-  stroke: color-mix(in srgb, var(--m-wall) 45%, transparent);
-  stroke-width: 1;
+  stroke: var(--m-road-edge);
+  stroke-width: 1.5;
 }
 .map .green {
   fill: var(--m-green);
@@ -966,7 +1113,7 @@ h1:focus-visible {
 .map .building {
   fill: var(--m-building);
   stroke: var(--m-wall);
-  stroke-width: 2.5;
+  stroke-width: 2;
 }
 .map .ghost {
   opacity: 0.45;
@@ -974,12 +1121,144 @@ h1:focus-visible {
 .map-svg.far .in {
   display: none;
 }
+
+/* The route: Google blue with a darker edge; the part already walked turns grey dots. */
+.map .route polyline {
+  fill: none;
+  stroke-width: 7;
+}
+.map .route .casing {
+  stroke: var(--m-route-edge);
+  stroke-width: 10;
+}
+.map .route .ahead {
+  stroke: var(--m-route);
+}
+.map .route .walked {
+  stroke: var(--m-wall);
+  stroke-width: 5;
+  stroke-dasharray: 0.1 9;
+}
+
+/* Labels: dark text with a white halo; room names in their category color. */
+.map text {
+  font-size: 11px;
+  font-weight: 500;
+  text-anchor: middle;
+  fill: var(--m-text);
+  paint-order: stroke;
+  stroke: var(--m-floor);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.map .label[class*='cat-'] > text {
+  fill: color-mix(in srgb, var(--c) 85%, #000);
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .map .label[class*='cat-'] > text {
+    fill: color-mix(in srgb, var(--c) 45%, #fff);
+  }
+}
+.map .ico circle {
+  fill: var(--c, #5f6368);
+  stroke: #fff;
+  stroke-width: 2;
+}
+.map .k-parking .ico circle {
+  fill: #1a73e8;
+}
+.map .ico text {
+  font-size: 11px;
+  stroke: none;
+}
+.map .k-green > text {
+  fill: #2e7d32;
+  font-style: italic;
+}
+.map .k-parking > text {
+  fill: #1a73e8;
+}
 .map .big text {
   font-size: 13px;
   font-weight: 700;
+  fill: #5f6368;
+}
+.map .amenity circle {
+  fill: var(--m-floor);
+  stroke: var(--m-wall);
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25));
+}
+.map .amenity text {
+  font-size: 12px;
+  stroke: none;
 }
 .map .entry path {
   fill: var(--m-entry);
   stroke: #fff;
   stroke-width: 1.5;
+}
+
+/* You are here: blue dot, white ring, soft halo and a fading beam. */
+.map .you .dot {
+  fill: var(--m-route);
+  stroke: #fff;
+  stroke-width: 3;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
+}
+.map .you .halo {
+  fill: color-mix(in srgb, var(--m-route) 20%, transparent);
+}
+.map .you .cone {
+  fill: url(#im-beam);
+}
+.map .you text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--m-route);
+}
+.map .next circle {
+  fill: #fff;
+  stroke: var(--m-route);
+  stroke-width: 3;
+}
+.map .next .pulse {
+  fill: none;
+  stroke-width: 3;
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+.map .dest path {
+  fill: #ea4335;
+  stroke: #b31412;
+  stroke-width: 1;
+  transform: scale(1.25);
+}
+.map .dest circle {
+  fill: #b31412;
+  transform: scale(1.25);
+}
+.map .badge rect {
+  fill: var(--lvl);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3));
+}
+.map .badge text {
+  fill: #fff;
+  stroke: none;
+  text-anchor: start;
+  font-weight: 700;
+}
+/* Short phones: keep the right-hand buttons clear of each other. */
+@media (max-height: 700px) {
+  .map-tools .compass {
+    display: none;
+  }
+  .floors button {
+    height: 36px;
+  }
 }

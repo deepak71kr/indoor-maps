@@ -399,6 +399,8 @@ A phase is done only when **all** of these are true:
 - Editor: 🏢 Buildings list, "Belongs to" per floor, Outline kinds Building / Road / Lawn / Parking (drawn underneath the rooms automatically), footprints link to the first building not drawn yet, the campus shows faded under a building's own floors, **Load campus** button. 2 new browser tests.
 - Tests: 190 unit + 15 browser tests (6 visitor, 9 editor). First visit 22.3 KB.
 
+**Follow-up (2026-10-16): Google Maps app look** for the visitor app — full-screen map, floating search bar + chips, floor buttons, my-location button, bottom sheet, full-screen search page, green navigation banner, color-coded places (see PROJECT_CONTEXT §6.1). First visit 24.0 KB.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

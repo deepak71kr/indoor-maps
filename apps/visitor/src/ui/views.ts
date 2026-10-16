@@ -1,5 +1,6 @@
 import type { Step } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
+import type { RoomResult } from '../app/search';
 import { amenityChips, nearbyLandmarks, resolvePosition, searchRooms } from '../app/search';
 import { sceneFor } from '../app/map-scene';
 import type { Action, Position, State } from '../app/state';
@@ -44,49 +45,83 @@ export function view(ctx: ViewContext): HTMLElement {
 /** One map for the whole visit, so pan, zoom and the chosen floor survive re-renders. */
 let mapView: MapView | null = null;
 
-function mapPanel(state: State): HTMLElement | null {
+function mapPanel(state: State): MapView | null {
   const scene = sceneFor(state);
   if (!scene) return null;
   mapView ??= new MapView();
   mapView.update(scene);
-  return mapView.el;
+  return mapView;
+}
+
+const nodes = (children: readonly Child[]): Node[] =>
+  children.filter((c): c is Node => c instanceof Node);
+
+interface MapLayout {
+  /** Floats over the top of the map: search bar + chips, or the direction banner. */
+  readonly top?: readonly Child[];
+  /** The white sheet at the bottom (phones) / the side panel (laptops). */
+  readonly sheet: readonly Child[];
+  /** Full-screen layers, e.g. the search results page. */
+  readonly extra?: readonly Child[];
 }
 
 /**
- * Map screens, Google-Maps style: the map fills the screen and the controls sit in a sheet —
- * at the bottom on phones (tap the handle to make it taller), beside the map on wide screens.
- * Without a map (no position yet) the plain page layout is used instead.
+ * Map screens, Google Maps style: the map fills the whole screen; a search bar or direction
+ * banner floats on top, the controls sit in a bottom sheet (phones) or a side panel (laptops).
+ * Panels marked `covers-map` tell the map which part of it is hidden, so routes are framed in
+ * the visible part. Without a map (no position yet) the plain page layout is used.
  */
-function mapScreen(ctx: ViewContext, cls: string, ...sheet: Child[]): HTMLElement {
+function mapScreen(ctx: ViewContext, cls: string, layout: MapLayout): HTMLElement {
   const map = mapPanel(ctx.state);
-  const content = sheet.filter((c): c is Node => c instanceof Node);
-  if (!map) return h('section', { class: `screen ${cls}` }, ...content);
-  const panel = h('div', { class: 'sheet' });
-  const handle = h('button', {
+  const top = nodes(layout.top ?? []);
+  const content = nodes(layout.sheet);
+  if (!map) return h('section', { class: `screen ${cls}` }, ...top, ...content);
+  const sheet = h('div', { class: 'sheet' });
+  sheet.append(sheetHandle(sheet), ...content);
+  return h(
+    'section',
+    { class: `screen mapped ${cls}` },
+    map.el,
+    h(
+      'div',
+      { class: 'side' },
+      h('div', { class: 'top covers-map' }, ...top, map.tools),
+      h('div', { class: 'bottom covers-map' }, map.locate, sheet),
+    ),
+    ...nodes(layout.extra ?? []),
+  );
+}
+
+/** Tap, or swipe up / down, to make the sheet taller or shorter. */
+function sheetHandle(sheet: HTMLElement): HTMLButtonElement {
+  let startY = 0;
+  let swiped = false;
+  return h('button', {
     type: 'button',
     class: 'handle',
     'aria-label': tr('sheet.more'),
     'aria-expanded': 'false',
-    onClick: () => setSheetOpen(panel, !panel.classList.contains('open')),
+    onPointerdown: (e: PointerEvent) => {
+      startY = e.clientY;
+      swiped = false;
+    },
+    onPointerup: (e: PointerEvent) => {
+      const dy = e.clientY - startY;
+      if (Math.abs(dy) > 24) {
+        swiped = true;
+        setSheetOpen(sheet, dy < 0);
+      }
+    },
+    onClick: () => {
+      if (!swiped) setSheetOpen(sheet, !sheet.classList.contains('open'));
+      swiped = false;
+    },
   });
-  panel.append(handle, ...content);
-  return h(
-    'section',
-    { class: `screen mapped ${cls}` },
-    h(
-      'header',
-      { class: 'topbar' },
-      icon('arrive'),
-      h('span', { class: 'grow' }, ctx.state.site?.map.site.name ?? ''),
-    ),
-    map,
-    panel,
-  );
 }
 
-function setSheetOpen(panel: HTMLElement, open: boolean): void {
-  panel.classList.toggle('open', open);
-  const handle = panel.querySelector('.handle');
+function setSheetOpen(sheet: HTMLElement, open: boolean): void {
+  sheet.classList.toggle('open', open);
+  const handle = sheet.querySelector('.handle');
   handle?.setAttribute('aria-expanded', String(open));
   handle?.setAttribute('aria-label', tr(open ? 'sheet.less' : 'sheet.more'));
 }
@@ -124,6 +159,20 @@ function button(
     { type: 'button', class: cls, onClick },
     iconName ? icon(iconName) : null,
     label,
+  );
+}
+
+/** A round icon button (Google's ✕ / ? in navigation); the label is for screen readers. */
+function roundButton(
+  iconName: IconName,
+  label: string,
+  onClick: () => void,
+  cls = '',
+): HTMLButtonElement {
+  return h(
+    'button',
+    { type: 'button', class: `round ${cls}`, 'aria-label': label, title: label, onClick },
+    icon(iconName),
   );
 }
 
@@ -219,89 +268,76 @@ function whereView(ctx: ViewContext): HTMLElement {
   );
 }
 
+/** One place in a list, Google style: category badge, name, details, floor. */
+function placeItem(ctx: ViewContext, result: RoomResult): HTMLElement {
+  const { room, levelId, building, target } = result;
+  const level = ctx.state.site?.graph.levels.find((l) => l.id === levelId);
+  const cat = CATEGORY[room.category];
+  const details = [room.number, cat.label].filter(Boolean).join(' · ');
+  const content = document.createDocumentFragment();
+  content.append(
+    h('span', { class: `poi cat-${room.category}`, 'aria-hidden': 'true' }, cat.emoji),
+    h(
+      'span',
+      { class: 'grow' },
+      h('span', { class: 'name' }, room.name),
+      h('small', {}, ` ${details}`),
+    ),
+  );
+  if (room.visibility === 'locked') content.append(icon('lock'));
+  if (level) content.append(floorBadge(level.name, level.color, building));
+  return h(
+    'li',
+    {},
+    button(content, () => ctx.dispatch({ type: 'choose', target }), 'item place'),
+  );
+}
+
 function chooseView(ctx: ViewContext): HTMLElement {
   const { site, stepFree } = ctx.state;
   if (!site) return h('section');
   const here = currentNode(ctx.state);
   const hereName = (here && site.graph.nodes.get(here)?.landmark) ?? here ?? '';
-  const levels = new Map(site.graph.levels.map((l) => [l.id, l]));
+  const label = (c: keyof typeof CATEGORY) => CATEGORY[c].label;
 
+  // Search page (full screen while typing, like Google Maps).
   const results = h('ul', { class: 'list', 'aria-live': 'polite' });
-  // Browsing by category makes way for the results while the visitor types.
-  const browse = h('div', { class: 'stack' });
   const showResults = (query: string) => {
-    browse.hidden = query.trim() !== '';
-    const found = searchRooms(site, query, (c) => CATEGORY[c].label);
-    if (found.length === 0) {
-      replace(results, h('li', { class: 'muted' }, tr('choose.none')));
-      return;
-    }
-    replace(
-      results,
-      ...found.map(({ room, levelId, building, target }) => {
-        const level = levels.get(levelId);
-        const cat = CATEGORY[room.category];
-        return h(
-          'li',
-          {},
-          button(
-            [
-              h('span', { class: 'emoji', 'aria-hidden': 'true' }, cat.emoji),
-              h(
-                'span',
-                { class: 'grow' },
-                room.name,
-                room.number ? h('small', {}, ` ${room.number}`) : null,
-              ),
-              room.visibility === 'locked' ? icon('lock') : null,
-              level ? floorBadge(level.name, level.color, building) : null,
-            ].reduce<DocumentFragment>((frag, child) => {
-              if (child) frag.append(child);
-              return frag;
-            }, document.createDocumentFragment()),
-            () => ctx.dispatch({ type: 'choose', target }),
-            'item place',
-          ),
-        );
-      }),
-    );
+    const found = searchRooms(site, query, label);
+    if (found.length === 0) replace(results, h('li', { class: 'muted' }, tr('choose.none')));
+    else replace(results, ...found.map((r) => placeItem(ctx, r)));
   };
-
+  showResults('');
+  let screen: HTMLElement | null = null;
+  const setSearching = (on: boolean) => screen?.classList.toggle('searching', on);
   const search = h('input', {
     type: 'search',
-    placeholder: tr('choose.placeholder'),
-    'aria-label': tr('choose.placeholder'),
+    placeholder: tr('choose.placeholder', { site: site.map.site.name }),
+    'aria-label': tr('choose.placeholder', { site: site.map.site.name }),
+    autocomplete: 'off',
     onInput: (event: Event) => showResults((event.target as HTMLInputElement).value),
-    // Typing needs room for the results: the sheet grows over the map.
-    onFocus: (event: Event) => {
-      const panel = (event.target as HTMLElement).closest<HTMLElement>('.sheet');
-      if (panel) setSheetOpen(panel, true);
+    onFocus: () => setSearching(true),
+    onKeydown: (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSearch();
     },
   });
-  showResults('');
-
-  const categories = [...new Set(site.map.rooms.map((r) => r.category))].filter(
-    (c) => c !== 'staff',
-  );
-  browse.append(
-    h('h2', {}, tr('choose.all')),
-    h(
-      'div',
-      { class: 'chips' },
-      ...categories.map((c) =>
-        button(
-          `${CATEGORY[c].emoji} ${CATEGORY[c].label}`,
-          () => {
-            search.value = CATEGORY[c].label;
-            showResults(search.value);
-          },
-          'chip',
-        ),
-      ),
-    ),
+  const closeSearch = () => {
+    search.value = '';
+    showResults('');
+    search.blur();
+    setSearching(false);
+  };
+  const searchBar = h(
+    'div',
+    { class: 'searchbar' },
+    h('span', { class: 'logo', 'aria-hidden': 'true' }, icon('arrive')),
+    roundButton('back', tr('search.back'), closeSearch, 'back'),
+    search,
+    ctx.scan ? roundButton('qr', tr('scan'), ctx.scan, 'scan') : null,
   );
 
-  const chips = amenityChips(site, stepFree).map((chip) =>
+  // Chips under the search bar: nearest amenities go straight there; categories search.
+  const amenity = amenityChips(site, stepFree).map((chip) =>
     button(
       `${chip.emoji} ${tr(chip.labelKey)}`,
       () =>
@@ -312,30 +348,56 @@ function chooseView(ctx: ViewContext): HTMLElement {
       'chip',
     ),
   );
-
-  return mapScreen(
-    ctx,
-    'choose',
-    h(
-      'p',
-      { class: 'here' },
-      icon('arrive'),
-      h(
-        'span',
-        { class: 'grow' },
-        tr('choose.you-are-at', { place: '' }),
-        h('strong', {}, hereName),
+  const categories = [...new Set(site.map.rooms.map((r) => r.category))]
+    .filter((c) => c !== 'staff')
+    .map((c) =>
+      button(
+        `${CATEGORY[c].emoji} ${CATEGORY[c].label}`,
+        () => {
+          search.value = CATEGORY[c].label;
+          showResults(search.value);
+          search.focus();
+        },
+        'chip',
       ),
-      button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
-    ),
-    title(tr('choose.title')),
-    h('label', { class: 'search' }, icon('search'), search),
-    chips.length > 0 &&
-      h('div', { class: 'chips scroll', 'aria-label': tr('choose.nearest') }, ...chips),
-    stepFreeToggle(ctx),
-    browse,
-    results,
+    );
+
+  // Bottom sheet: where you are, then every place (Google's "Explore" list).
+  const places = h(
+    'ul',
+    { class: 'list places' },
+    ...searchRooms(site, '', label).map((r) => placeItem(ctx, r)),
   );
+
+  screen = mapScreen(ctx, 'choose', {
+    top: [
+      searchBar,
+      h(
+        'div',
+        { class: 'chips scroll', 'aria-label': tr('choose.nearest') },
+        ...amenity,
+        ...categories,
+      ),
+    ],
+    sheet: [
+      h(
+        'p',
+        { class: 'here' },
+        h('span', { class: 'you-dot', 'aria-hidden': 'true' }),
+        h(
+          'span',
+          { class: 'grow' },
+          tr('choose.you-are-at', { place: '' }),
+          h('strong', {}, hereName),
+        ),
+        button(tr('choose.change'), () => ctx.dispatch({ type: 'ask-position' }), 'link'),
+      ),
+      h('div', { class: 'sheet-title' }, title(tr('choose.title')), stepFreeToggle(ctx)),
+      places,
+    ],
+    extra: [h('div', { class: 'search-page' }, h('h2', {}, tr('choose.all')), results)],
+  });
+  return screen;
 }
 
 function stepFreeToggle(ctx: ViewContext): HTMLElement {
@@ -363,57 +425,85 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
   // ~1 m/s indoors with people around; each lift/stairs ride adds ~45 s.
   const minutes = Math.max(1, Math.round(meters / 60 + rides * 0.75));
 
-  return mapScreen(
-    ctx,
-    `trip lvl-${step.levelColor}`,
-    h(
-      'p',
-      { class: 'trip-head' },
-      tr('step.to', { place: '' }),
-      h('strong', {}, target?.label ?? ''),
-      h('small', {}, ` · ${tr('step.eta', { min: minutes, m: meters })}`),
-    ),
-    h(
-      'div',
-      { class: 'progress' },
-      floorBadge(step.levelName, step.levelColor, buildingOf(ctx.state, step.target)),
-      h('span', { class: 'grow' }, tr('step.of', { n: index + 1, total })),
+  return mapScreen(ctx, `trip lvl-${step.levelColor}`, {
+    top: [
+      banner(step, index, steps[index + 1]),
+      notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
+    ],
+    sheet: [
       h(
-        'span',
-        { class: 'dots', 'aria-hidden': 'true' },
-        ...steps.slice(0, total).map((_, i) => h('i', { class: i <= index ? 'on' : '' })),
+        'div',
+        { class: 'trip-bar' },
+        roundButton(
+          'close',
+          tr('step.end'),
+          () => ctx.dispatch({ type: 'new-destination' }),
+          'end',
+        ),
+        h(
+          'div',
+          { class: 'grow trip-info' },
+          h(
+            'p',
+            { class: 'eta' },
+            h('strong', {}, tr('step.min', { min: minutes })),
+            ` · ${tr('step.m', { m: meters })}`,
+          ),
+          h(
+            'p',
+            { class: 'trip-head' },
+            tr('step.to', { place: '' }),
+            h('strong', {}, target?.label ?? ''),
+            ` · ${tr('step.of', { n: index + 1, total })}`,
+          ),
+        ),
+        roundButton('help', tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'lost'),
       ),
-    ),
-    notice === 'rerouted' && h('p', { class: 'notice', role: 'status' }, tr('rerouted')),
-    stepCard(step, index, steps[index + 1], () => ctx.dispatch({ type: 'new-destination' })),
-    button(tr('step.here'), () => ctx.dispatch({ type: 'confirm' }), 'btn primary big', 'check'),
-    h(
-      'div',
-      { class: 'row' },
-      button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'btn small', 'help'),
-      button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'btn small', 'back'),
-    ),
-    site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
-  );
+      h(
+        'div',
+        { class: 'progress' },
+        floorBadge(step.levelName, step.levelColor, buildingOf(ctx.state, step.target)),
+        h(
+          'span',
+          { class: 'dots', 'aria-hidden': 'true' },
+          ...steps.slice(0, total).map((_, i) => h('i', { class: i <= index ? 'on' : '' })),
+        ),
+      ),
+      button(tr('step.here'), () => ctx.dispatch({ type: 'confirm' }), 'btn primary big', 'check'),
+      h(
+        'div',
+        { class: 'links' },
+        button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'link', 'back'),
+        site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
+      ),
+    ],
+  });
 }
 
-function stepCard(step: Step, index: number, next: Step | undefined, end: () => void): HTMLElement {
+/** The green direction banner of Google Maps navigation, with "Then …" underneath. */
+function banner(step: Step, index: number, next: Step | undefined): HTMLElement {
   return h(
     'article',
-    { class: 'card step', 'data-step': index },
+    { class: 'banner step', 'data-step': index },
     h(
       'div',
-      { class: 'step-main' },
+      { class: 'banner-main' },
       h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
       h(
         'div',
         { class: 'grow' },
+        step.meters > 0 && h('p', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
         h('p', { class: 'step-text', 'aria-live': 'polite' }, step.text),
-        step.meters > 0 && h('p', { class: 'step-meters' }, `≈ ${step.meters} m`),
       ),
-      h('button', { type: 'button', class: 'end', onClick: end }, icon('close'), tr('step.end')),
     ),
-    next && h('p', { class: 'step-next' }, tr('step.next', { text: next.text })),
+    next &&
+      h(
+        'p',
+        { class: 'then' },
+        h('span', {}, tr('step.then')),
+        icon(next.icon),
+        h('span', { class: 'grow' }, next.text),
+      ),
   );
 }
 
@@ -444,34 +534,35 @@ function arrivedView(ctx: ViewContext): HTMLElement {
   const toilet = site
     ? amenityChips(site, stepFree).find((c) => c.labelKey === 'chip.toilet')
     : undefined;
-  return mapScreen(
-    ctx,
-    `center arrived lvl-${arrive?.levelColor ?? 'teal'}`,
-    h('div', { class: 'step-icon' }, icon('arrive', 'icon huge')),
-    h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
-    arrive && floorBadge(arrive.levelName, arrive.levelColor, buildingOf(ctx.state, arrive.target)),
-    button(
-      tr('arrived.new'),
-      () => ctx.dispatch({ type: 'new-destination' }),
-      'btn primary big',
-      'search',
-    ),
-    toilet &&
+  return mapScreen(ctx, `center arrived lvl-${arrive?.levelColor ?? 'teal'}`, {
+    sheet: [
+      h('div', { class: 'step-icon' }, icon('check', 'icon huge')),
+      h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
+      arrive &&
+        floorBadge(arrive.levelName, arrive.levelColor, buildingOf(ctx.state, arrive.target)),
       button(
-        `${toilet.emoji} ${tr('choose.nearest')} ${tr('chip.toilet').toLowerCase()}`,
-        () => {
-          ctx.dispatch({ type: 'new-destination' });
-          ctx.dispatch({
-            type: 'choose',
-            target: {
-              destination: { type: 'amenity', kinds: toilet.kinds },
-              label: tr('chip.toilet'),
-            },
-          });
-        },
-        'chip',
+        tr('arrived.new'),
+        () => ctx.dispatch({ type: 'new-destination' }),
+        'btn primary big',
+        'search',
       ),
-  );
+      toilet &&
+        button(
+          `${toilet.emoji} ${tr('choose.nearest')} ${tr('chip.toilet').toLowerCase()}`,
+          () => {
+            ctx.dispatch({ type: 'new-destination' });
+            ctx.dispatch({
+              type: 'choose',
+              target: {
+                destination: { type: 'amenity', kinds: toilet.kinds },
+                label: tr('chip.toilet'),
+              },
+            });
+          },
+          'chip',
+        ),
+    ],
+  });
 }
 
 function noRouteView(
