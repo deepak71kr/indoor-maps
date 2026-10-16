@@ -137,6 +137,11 @@ export class MapView {
   readonly locate: HTMLButtonElement;
   private readonly floors: HTMLElement;
   private readonly compass: HTMLButtonElement;
+  /** "Show the whole route" (Google's route overview), while there is a route. */
+  private readonly overview: HTMLButtonElement;
+  /** Room outlines and label points on the shown floor, by room id (highlight, pin). */
+  private roomEls = new Map<string, SVGElement>();
+  private roomCenters = new Map<string, Point>();
 
   private scene: MapScene | null = null;
   private shownLevel = '';
@@ -222,7 +227,16 @@ export class MapView {
       '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/>' +
       '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" stroke-width="2"/></svg>';
-    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass);
+    this.overview = h('button', {
+      type: 'button',
+      class: 'map-btn overview',
+      'aria-label': tr('map.overview'),
+      title: tr('map.overview'),
+      onClick: () => this.showWholeRoute(),
+    });
+    this.overview.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>';
+    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview);
     this.el = h('div', { class: 'map' });
     this.el.append(this.svg);
     this.listen();
@@ -239,6 +253,8 @@ export class MapView {
     if (levelId !== this.shownLevel) this.buildLevel(levelId);
     this.fillPicker(scene, levelId);
     this.drawRoute(scene, levelId);
+    for (const [id, el] of this.roomEls) el.classList.toggle('selected', id === scene.selected);
+    this.overview.hidden = scene.path.length < 2;
 
     const rot = this.northUp || scene.facing === null ? (this.userRot ?? 0) : scene.facing;
     const key = `${levelId}|${scene.focus.join(',')}|${rot}`;
@@ -298,6 +314,8 @@ export class MapView {
     this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
     this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
+    this.roomEls = new Map();
+    this.roomCenters = new Map();
     this.campus = this.footprints.length > 0;
 
     // On a building's own floor, the campus around it, faded, so the visitor sees where it is.
@@ -320,7 +338,14 @@ export class MapView {
         });
         this.plan.append(shade);
       }
-      for (const shape of shapes) this.plan.append(this.shapeEl(shape, rooms));
+      for (const shape of shapes) {
+        const el = this.shapeEl(shape, rooms);
+        if (shape.kind === 'room' && shape.room) {
+          this.roomEls.set(shape.room, el);
+          this.roomCenters.set(shape.room, labelPoint(shape));
+        }
+        this.plan.append(el);
+      }
       const doors = nodes.filter((n) => DOOR_KINDS.has(n.kind));
       for (const [x1, y1, x2, y2] of doorGaps(shapes, doors)) {
         this.plan.append(s('line', { class: 'gap', x1, y1, x2, y2 }));
@@ -515,7 +540,7 @@ export class MapView {
           l.id === levelId,
       )
       .reverse();
-    const signature = `${scene.levelId}|${building ?? ''}|${levels.length}`;
+    const signature = `${scene.levelId}|${scene.youLevel}|${building ?? ''}|${levels.length}`;
     if (this.floors.dataset['for'] !== signature) {
       this.floors.dataset['for'] = signature;
       this.floors.replaceChildren(
@@ -524,11 +549,11 @@ export class MapView {
             'button',
             {
               type: 'button',
-              class: l.id === scene.levelId ? 'you' : '',
+              class: l.id === scene.youLevel ? 'you' : '',
               'data-level': l.id,
               'aria-label': this.levelName(l.id),
               title:
-                l.id === scene.levelId
+                l.id === scene.youLevel
                   ? `${this.levelName(l.id)} · ${tr('map.you-short')}`
                   : this.levelName(l.id),
               onClick: () => {
@@ -715,6 +740,31 @@ export class MapView {
       undefined,
       RANK.dest,
     );
+    // An open room card: a red pin on the room, with its name.
+    if (scene.selected) {
+      const room = site.map.rooms.find((r) => r.id === scene.selected);
+      const door = site.graph.nodes.get(room?.doors[0] ?? '');
+      const at = this.roomCenters.get(scene.selected) ?? (door?.level === levelId ? door : null);
+      if (room && at) {
+        marker(
+          null,
+          'dest',
+          (g) => {
+            g.append(
+              s('path', { d: 'M0 0c-2-6-9-10-9-17a9 9 0 0 1 18 0c0 7-7 11-9 17Z' }),
+              s('circle', { cx: 0, cy: -17, r: 3.5 }),
+            );
+            const name = s('g', { class: 'tag dest-name' });
+            const w = this.tag(name, room.name, 0, -44);
+            g.append(name);
+            return { w, h: 46, dy: -24 };
+          },
+          undefined,
+          at,
+          RANK.dest,
+        );
+      }
+    }
     marker(
       scene.here,
       'you',
@@ -1035,6 +1085,18 @@ export class MapView {
     this.fillPicker(this.scene, this.shownLevel);
     this.moved = true;
     this.animateTo(this.fitPoints(shapePoints(shape), this.view.rot));
+  }
+
+  /** Route overview: frame the whole route on the floor being shown. */
+  private showWholeRoute(): void {
+    const scene = this.scene;
+    if (!scene) return;
+    const points = scene.path
+      .map((id) => scene.site.graph.nodes.get(id))
+      .filter((n): n is NonNullable<typeof n> => n?.level === this.shownLevel);
+    if (points.length === 0) return;
+    this.moved = true;
+    this.animateTo(this.fitPoints(points, this.view.rot));
   }
 
   /** Turn the map by `deg` (clockwise on screen) around a screen point. */

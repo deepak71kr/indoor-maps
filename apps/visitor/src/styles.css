@@ -1564,3 +1564,130 @@ span.floor {
   font-size: 10px;
   text-anchor: start;
 }
+
+/* ---------- Place card (tap a room), swap, recent, step list, voice ---------- */
+.placebar {
+  padding: 0 4px;
+}
+.placebar .back.show {
+  display: grid;
+  margin: 0;
+}
+.placebar .grow {
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.place-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.place-head .poi {
+  width: 52px;
+  height: 52px;
+  font-size: 1.6rem;
+}
+.place-head h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+.place-head p {
+  margin: 2px 0 0;
+}
+.away {
+  font-size: 0.9rem;
+  color: var(--green);
+  font-weight: 500;
+}
+.away.warn {
+  color: var(--red);
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.actions .btn {
+  flex: none;
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 0 18px;
+  font-weight: 500;
+}
+.btn.outline {
+  border-color: var(--line);
+  color: var(--blue);
+  background: var(--surface);
+}
+.actions .icon {
+  width: 20px;
+  height: 20px;
+}
+.place-card .sheet {
+  max-height: 46dvh;
+}
+.directions .swap {
+  color: var(--text);
+}
+.recent .chips .chip {
+  gap: 6px;
+}
+.recent .chip .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+.recent h2 {
+  margin-top: 0;
+}
+.round.voice {
+  background: var(--surface-2);
+}
+.round.voice.on {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.links .link + .link {
+  margin-left: auto;
+}
+/* While walking the step list shows once the sheet is opened (Steps button or handle). */
+.trip .sheet:not(.open) .steps {
+  display: none;
+}
+.steps li.passed {
+  opacity: 0.5;
+}
+.steps li.now {
+  background: var(--blue-soft);
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.steps li.now .num {
+  background: var(--blue);
+  color: #fff;
+}
+.map .room.selected {
+  stroke: #ea4335;
+  stroke-width: 3;
+  fill: color-mix(in srgb, #ea4335 16%, var(--m-room));
+}
+.map-btn.overview[hidden] {
+  display: none;
+}
+@media (min-width: 900px) {
+  .place-card .sheet,
+  .place-card .sheet.open {
+    max-height: none;
+  }
+  .trip .sheet:not(.open) .steps {
+    display: block;
+  }
+}
+/* An opened sheet covers the map: its "my location" button steps aside. */
+.bottom:has(.sheet.open) .locate {
+  display: none;
+}

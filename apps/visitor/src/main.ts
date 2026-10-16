@@ -8,7 +8,7 @@ import { loadSite } from '@innermap/core';
 import { tr } from './app/i18n';
 import { codeFromQr, resolvePosition } from './app/search';
 import type { KeyValue } from './app/session';
-import { loadTrip, persistTrip } from './app/session';
+import { loadRecent, loadTrip, persistRecent, persistTrip } from './app/session';
 import { initialState } from './app/state';
 import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
@@ -22,6 +22,8 @@ const DEFAULT_SITE = 'demo-hospital';
 const params = new URLSearchParams(location.search);
 const siteId = (params.get('site') ?? DEFAULT_SITE).replace(/[^a-z0-9-]/g, '');
 const qrCode = params.get('at');
+/** A shared place link: ?to=<room id> opens straight to the route there. */
+const toRoom = params.get('to');
 
 const storage: KeyValue | null = (() => {
   try {
@@ -102,6 +104,7 @@ async function boot(): Promise<void> {
   const site = loadSite(map);
   const trip = loadTrip(storage, siteId, Date.now());
   store.dispatch({ type: 'map-loaded', site });
+  store.dispatch({ type: 'recent-loaded', recent: loadRecent(storage, siteId) });
 
   const scanned = qrCode ? resolvePosition(site, qrCode) : null;
   if (qrCode) {
@@ -134,7 +137,23 @@ async function boot(): Promise<void> {
     });
   }
 
-  store.subscribe((state) => persistTrip(storage, siteId, state, Date.now()));
+  // A shared link to a room: plan the route there (asks "where are you?" first if needed).
+  const shared = toRoom ? site.map.rooms.find((r) => r.id === toRoom) : undefined;
+  if (shared && !trip) {
+    store.dispatch({
+      type: 'choose',
+      target: { destination: { type: 'room', roomId: shared.id }, label: shared.name },
+    });
+  }
+
+  let savedRecent = store.getState().recent;
+  store.subscribe((state) => {
+    persistTrip(storage, siteId, state, Date.now());
+    if (state.recent !== savedRecent) {
+      savedRecent = state.recent;
+      persistRecent(storage, siteId, state.recent);
+    }
+  });
 }
 
 void boot();

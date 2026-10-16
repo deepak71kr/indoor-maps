@@ -214,12 +214,22 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   const room = await map.locator('.label', { hasText: 'Pharmacy' }).first().boundingBox();
   if (!room) throw new Error('no Pharmacy label');
   await page.mouse.click(room.x + room.width / 2, room.y + room.height / 2 + 8);
+  // Its card opens (Google style): name, floor, how far, Directions / Start / Share.
+  await expect(page.getByRole('heading', { name: 'Pharmacy' })).toBeVisible();
+  await expect(page.getByText('from you')).toBeVisible();
+  await expect(map.locator('.room.selected')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Directions' }).click();
   await expect(page.getByRole('button', { name: 'To: Pharmacy' })).toBeVisible();
+  // Reverse the route, then back again.
+  await page.getByRole('button', { name: 'Reverse the route' }).click();
+  await expect(page.getByRole('button', { name: 'To: Main Entrance' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reverse the route' }).click();
 
   // Change the destination from the To field, by search.
   await page.getByRole('button', { name: 'To: Pharmacy' }).click();
   await page.getByRole('searchbox').fill('radio');
   await page.getByRole('button', { name: /Radiology/ }).click();
+  await page.getByRole('button', { name: 'Directions' }).click();
 
   // Preview: From/To, time, floors, every step, numbered checkpoints, the whole route in blue.
   await expect(page.getByRole('button', { name: 'From: Main Entrance' })).toBeVisible();
@@ -237,6 +247,11 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   // Checkpoints are named: the banner says from where to where, the map tags the next one.
   await expect(page.locator('.banner .route-line').first()).toContainText('from Reception desk');
   await expect(map.locator('.next .tag, .next text').first()).toBeVisible();
+  // The step list (Google's Steps) highlights where you are; the overview shows it all.
+  await page.getByRole('button', { name: 'Steps' }).click();
+  await expect(page.locator('.steps li.now')).toContainText('Turn RIGHT');
+  await page.getByRole('button', { name: 'Show the whole route' }).click();
+  await page.getByRole('button', { name: 'Steps' }).click(); // close the list again
 
   // Rotate (Shift + drag on a laptop), then the compass turns it back to north.
   const turned = () =>
@@ -258,4 +273,20 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   await expect.poll(turned).not.toBeCloseTo(0, 0);
   await page.locator('.compass').click();
   await expect.poll(turned).toBeCloseTo(0, 0);
+});
+
+test('recent places and a shared room link', async ({ page }) => {
+  await page.goto('/?at=G-MAIN');
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Pharmacy/ })
+    .click();
+  await page.getByRole('button', { name: 'Directions' }).click();
+  await page.getByRole('button', { name: 'Back to the map' }).click();
+  await expect(page.locator('.recent')).toContainText('Pharmacy');
+
+  // Someone shares a link to Radiology: it opens the route there from the scanned sticker.
+  await page.goto('/?at=G-MAIN&to=radiology');
+  await expect(page.getByRole('button', { name: 'To: Radiology' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start' })).toBeVisible();
 });

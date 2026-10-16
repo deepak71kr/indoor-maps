@@ -1,4 +1,5 @@
 import type { Step } from '@innermap/core';
+import { findRoute } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
 import type { RoomResult } from '../app/search';
 import { amenityChips, nearbyLandmarks, resolvePosition, searchRooms } from '../app/search';
@@ -29,6 +30,8 @@ export function view(ctx: ViewContext): HTMLElement {
       return whereView(ctx);
     case 'choose':
       return chooseView(ctx);
+    case 'place':
+      return placeView(ctx, screen.roomId);
     case 'preview':
       return previewView(ctx);
     case 'navigate':
@@ -53,16 +56,11 @@ function mapPanel(ctx: ViewContext): MapView | null {
   mapView ??= new MapView();
   // On the home screen a tap on a room on the map picks it as the destination.
   const site = ctx.state.site;
+  // On the home screen (and an open card) a tap on a room opens its card, like Google Maps.
+  const { name } = ctx.state.screen;
   mapView.onPick =
-    ctx.state.screen.name === 'choose' && site
-      ? (roomId) => {
-          const room = site.map.rooms.find((r) => r.id === roomId);
-          if (room)
-            ctx.dispatch({
-              type: 'choose',
-              target: { destination: { type: 'room', roomId }, label: room.name },
-            });
-        }
+    (name === 'choose' || name === 'place') && site
+      ? (roomId) => ctx.dispatch({ type: 'show-place', roomId })
       : null;
   mapView.update(scene);
   return mapView;
@@ -312,7 +310,14 @@ function placeItem(ctx: ViewContext, result: RoomResult): HTMLElement {
   return h(
     'li',
     {},
-    button(content, () => ctx.dispatch({ type: 'choose', target }), 'item place'),
+    button(
+      content,
+      () =>
+        target.destination.type === 'room'
+          ? ctx.dispatch({ type: 'show-place', roomId: target.destination.roomId })
+          : ctx.dispatch({ type: 'choose', target }),
+      'item place',
+    ),
   );
 }
 
@@ -417,6 +422,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
       ),
       h('div', { class: 'sheet-title' }, title(tr('choose.title')), stepFreeToggle(ctx)),
       h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
+      recentList(ctx),
       places,
     ],
     extra: [h('div', { class: 'search-page' }, h('h2', {}, tr('choose.all')), results)],
@@ -482,6 +488,7 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
             ` · ${tr('step.of', { n: index + 1, total })}`,
           ),
         ),
+        voiceButton(ctx),
         roundButton('help', tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'lost'),
       ),
       h(
@@ -499,13 +506,252 @@ function stepView(ctx: ViewContext, index: number): HTMLElement {
         'div',
         { class: 'links' },
         button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'link', 'back'),
-        site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'link',
+            onClick: (e: Event) => {
+              const sheet = (e.currentTarget as HTMLElement).closest<HTMLElement>('.sheet');
+              if (sheet) setSheetOpen(sheet, !sheet.classList.contains('open'));
+            },
+          },
+          icon('list'),
+          tr('step.list'),
+        ),
+      ),
+      site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
+      // All steps (Google's step list), the current one highlighted; shown when the sheet opens.
+      stepList(steps, index),
+    ],
+  });
+}
+
+/** Every step of the trip: number, icon, short title, where to; `current` highlighted. */
+function stepList(steps: readonly Step[], current: number): HTMLElement {
+  return h(
+    'ol',
+    { class: 'steps' },
+    ...steps.map((s, i) =>
+      h(
+        'li',
+        {
+          class: [
+            s.kind === 'arrive' ? 'end' : '',
+            i < current ? 'passed' : '',
+            i === current ? 'now' : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+        },
+        h(
+          'span',
+          { class: 'num', 'aria-hidden': 'true' },
+          s.kind === 'arrive' ? '' : String(i + 1),
+        ),
+        icon(s.icon),
+        h(
+          'span',
+          { class: 'grow' },
+          h('b', {}, s.title),
+          s.kind === 'walk' && s.to ? h('small', {}, ` → ${s.to}`) : null,
+          s.via ? h('small', { class: 'via' }, tr('step.via', { place: s.via })) : null,
+        ),
+        s.meters > 0 ? h('small', {}, tr('step.m', { m: s.meters })) : null,
+      ),
+    ),
+  );
+}
+
+// ---------- voice guidance (the phone's own speech engine: offline, no download) ----------
+
+const VOICE_KEY = 'im.voice';
+let lastSpoken = '';
+
+function voiceOn(): boolean {
+  try {
+    return localStorage.getItem(VOICE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function speak(text: string): void {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(new SpeechSynthesisUtterance(text.replace(/[🎉🔒]/gu, '')));
+}
+
+/** 🔊 toggle in the trip bar; while on, each new step is read aloud once. */
+function voiceButton(ctx: ViewContext): HTMLButtonElement | null {
+  if (!('speechSynthesis' in window)) return null;
+  const { screen, steps } = ctx.state;
+  const step = screen.name === 'navigate' ? steps[screen.step] : undefined;
+  const key = `${screen.name === 'navigate' ? screen.step : ''}|${step?.text ?? ''}`;
+  if (voiceOn() && step && key !== lastSpoken) speak(step.text);
+  lastSpoken = key;
+  const on = voiceOn();
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: `round voice${on ? ' on' : ''}`,
+      'aria-label': tr(on ? 'step.voice-off' : 'step.voice-on'),
+      'aria-pressed': String(on),
+      title: tr(on ? 'step.voice-off' : 'step.voice-on'),
+      onClick: (e: Event) => {
+        const now = !voiceOn();
+        try {
+          localStorage.setItem(VOICE_KEY, now ? '1' : '0');
+        } catch {
+          // No storage: voice stays off after a reload.
+        }
+        const el = e.currentTarget as HTMLButtonElement;
+        el.classList.toggle('on', now);
+        el.setAttribute('aria-pressed', String(now));
+        el.setAttribute('aria-label', tr(now ? 'step.voice-off' : 'step.voice-on'));
+        replace(el, icon(now ? 'volume' : 'mute'));
+        if (now && step) speak(step.text);
+        else speechSynthesis.cancel();
+      },
+    },
+    icon(on ? 'volume' : 'mute'),
+  );
+}
+
+/** Recently chosen rooms (Google's "Recent"), each opening its card. */
+function recentList(ctx: ViewContext): HTMLElement | null {
+  const { recent, site } = ctx.state;
+  const rooms = recent.flatMap((r) =>
+    r.destination.type === 'room'
+      ? (site?.map.rooms.filter(
+          (room) => r.destination.type === 'room' && room.id === r.destination.roomId,
+        ) ?? [])
+      : [],
+  );
+  if (rooms.length === 0) return null;
+  return h(
+    'div',
+    { class: 'recent' },
+    h('h2', {}, tr('choose.recent')),
+    h(
+      'div',
+      { class: 'chips' },
+      ...rooms.map((room) =>
+        button(
+          room.name,
+          () => ctx.dispatch({ type: 'show-place', roomId: room.id }),
+          'chip',
+          'clock',
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * A room's card, Google style: the room highlighted on its floor, name, number · category,
+ * floor, how far it is from you, and Directions / Start / Share.
+ */
+function placeView(ctx: ViewContext, roomId: string): HTMLElement {
+  const { site, stepFree } = ctx.state;
+  const room = site?.map.rooms.find((r) => r.id === roomId);
+  if (!site || !room) return h('section');
+  const door = site.graph.nodes.get(room.doors[0] ?? '');
+  const level = site.graph.levels.find((l) => l.id === door?.level);
+  const cat = CATEGORY[room.category];
+  const here = currentNode(ctx.state);
+  const target = { destination: { type: 'room' as const, roomId }, label: room.name };
+  const route = here
+    ? findRoute(site, { from: here, to: target.destination, profile: { stepFree } })
+    : null;
+  const away =
+    route?.ok === true
+      ? tr('place.from-you', {
+          min: Math.max(
+            1,
+            Math.round(route.value.walkingMeters / 60 + route.value.floorChanges * 0.75),
+          ),
+          m: Math.round(route.value.walkingMeters),
+        })
+      : tr('place.no-route');
+  const close = () => ctx.dispatch({ type: 'close-place' });
+
+  const share = async (el: HTMLElement) => {
+    const url = `${location.origin}${location.pathname}?site=${encodeURIComponent(site.map.site.id)}&to=${encodeURIComponent(roomId)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: room.name, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        if (el.lastChild) el.lastChild.textContent = tr('place.copied');
+      }
+    } catch {
+      // Cancelled or blocked: nothing to do.
+    }
+  };
+
+  return mapScreen(ctx, 'place-card', {
+    top: [
+      h(
+        'div',
+        { class: 'searchbar placebar' },
+        roundButton('back', tr('search.back'), close, 'back show'),
+        h('span', { class: 'grow' }, room.name),
+        roundButton('close', tr('place.close'), close),
+      ),
+    ],
+    sheet: [
+      h(
+        'div',
+        { class: 'place-head' },
+        h('span', { class: `poi cat-${room.category}`, 'aria-hidden': 'true' }, cat.emoji),
+        h(
+          'div',
+          { class: 'grow' },
+          title(room.name),
+          h('p', { class: 'muted' }, [room.number, cat.label].filter(Boolean).join(' · ')),
+        ),
+      ),
+      h(
+        'div',
+        { class: 'floors-row' },
+        level ? floorBadge(level.name, level.color, buildingOf(ctx.state, door?.id ?? '')) : null,
+        h('span', { class: `away${route?.ok ? '' : ' warn'}` }, '🚶 ', away),
+      ),
+      room.visibility === 'locked' && h('p', { class: 'hint' }, icon('lock'), tr('place.locked')),
+      h(
+        'div',
+        { class: 'actions' },
+        button(
+          tr('place.directions'),
+          () => ctx.dispatch({ type: 'choose', target }),
+          'btn primary',
+          'directions',
+        ),
+        button(
+          tr('place.start'),
+          () => {
+            ctx.dispatch({ type: 'choose', target });
+            ctx.dispatch({ type: 'start' });
+          },
+          'btn outline',
+          'straight',
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'btn outline',
+            onClick: (e: Event) => void share(e.currentTarget as HTMLElement),
+          },
+          icon('share'),
+          h('span', {}, tr('place.share')),
+        ),
       ),
     ],
   });
 }
 
-/** The green direction banner of Google Maps navigation, with "Then …" underneath. */
 /**
  * The green direction banner of Google Maps navigation, named by checkpoints:
  *   ↱  Turn RIGHT                       4 m
@@ -600,6 +846,7 @@ function previewView(ctx: ViewContext): HTMLElement {
             ctx.dispatch({ type: 'new-destination' }),
           ),
         ),
+        roundButton('swap', tr('preview.swap'), () => ctx.dispatch({ type: 'swap' }), 'swap'),
       ),
     ],
     sheet: [

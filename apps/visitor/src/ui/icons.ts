@@ -22,6 +22,15 @@ const PATHS = {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   wheelchair: '<circle cx="11" cy="4" r="1.5"/><path d="M11 7v6h6l2 5M8 10a5 5 0 1 0 7 7"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  directions:
+    '<path d="M12 2.5 21.5 12 12 21.5 2.5 12Z"/><path d="M9 15v-3.5h5.5M12 8.5l2.5 3-2.5 3"/>',
+  share:
+    '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.6M8.2 13.2l7.6 4.6"/>',
+  swap: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  volume: '<path d="M4 9v6h4l5 4V5L8 9H4ZM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  mute: '<path d="M4 9v6h4l5 4V5L8 9H4ZM17 9l5 6M22 9l-5 6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
 } as const;
 
 export type IconName = keyof typeof PATHS;

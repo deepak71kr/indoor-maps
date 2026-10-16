@@ -6,8 +6,12 @@ import { currentNode } from './state';
 
 export interface MapScene {
   readonly site: Site;
-  /** Floor the visitor is on — shown unless they pick another one. */
+  /** Floor to show — the visitor's, or a tapped room's — unless they pick another one. */
   readonly levelId: string;
+  /** Floor the visitor is on (the floor buttons mark it with a dot). */
+  readonly youLevel: string;
+  /** A room to highlight (its card is open). */
+  readonly selected?: string;
   readonly here: string | null;
   /** Degrees clockwise from up (a QR sticker or the way they walked); null = unknown. */
   readonly facing: number | null;
@@ -34,11 +38,37 @@ export function sceneFor(state: State): MapScene | null {
   const at = Math.max(0, path.indexOf(here));
   const facing = facingAt(site.graph, path.length > 0 ? path : [here], at, startFacing(state, at));
   const checkpoints = steps.slice(0, -1).map((s) => s.target);
-  const base = { site, levelId: level, here, facing, path, at, checkpoints, done: 0 };
+  const base = {
+    site,
+    levelId: level,
+    youLevel: level,
+    here,
+    facing,
+    path,
+    at,
+    checkpoints,
+    done: 0,
+  };
 
   switch (screen.name) {
     case 'choose':
       return { ...base, checkpoints: [], next: null, focus: [] };
+    case 'place': {
+      // Show the room on its own floor, centred, highlighted.
+      const room = site.map.rooms.find((r) => r.id === screen.roomId);
+      const door = room ? site.graph.nodes.get(room.doors[0] ?? '') : undefined;
+      if (!room || !door) return { ...base, checkpoints: [], next: null, focus: [] };
+      return {
+        ...base,
+        levelId: door.level,
+        selected: room.id,
+        checkpoints: [],
+        path: [],
+        at: 0,
+        next: null,
+        focus: [door.id],
+      };
+    }
     case 'preview':
       // The whole route, start to destination (the map shows the visitor's floor of it).
       return { ...base, next: null, focus: path };

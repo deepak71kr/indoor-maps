@@ -24,6 +24,8 @@ export type Screen =
   | { readonly name: 'error'; readonly message: string }
   | { readonly name: 'where-am-i' }
   | { readonly name: 'choose' }
+  /** A room's card (tapped on the map or in a list): details + Directions / Start / Share. */
+  | { readonly name: 'place'; readonly roomId: string }
   /** The whole route from start to destination, before walking (Google's "Start" screen). */
   | { readonly name: 'preview' }
   | { readonly name: 'navigate'; readonly step: number }
@@ -43,7 +45,12 @@ export interface State {
   readonly stepFree: boolean;
   /** One-off message, e.g. after re-routing. */
   readonly notice: 'rerouted' | null;
+  /** Rooms chosen recently, newest first (saved on the phone by main.ts). */
+  readonly recent: readonly Target[];
 }
+
+/** How many recent destinations to remember. */
+export const RECENT_MAX = 5;
 
 export type Action =
   | { readonly type: 'map-loaded'; readonly site: Site }
@@ -58,6 +65,11 @@ export type Action =
       readonly stepFree: boolean;
     }
   | { readonly type: 'start' }
+  | { readonly type: 'show-place'; readonly roomId: string }
+  | { readonly type: 'close-place' }
+  /** Preview: walk the other way (destination becomes the start). */
+  | { readonly type: 'swap' }
+  | { readonly type: 'recent-loaded'; readonly recent: readonly Target[] }
   | { readonly type: 'confirm' }
   | { readonly type: 'back' }
   | { readonly type: 'lost' }
@@ -75,6 +87,7 @@ export const initialState: State = {
   path: [],
   stepFree: false,
   notice: null,
+  recent: [],
 };
 
 /** The node the visitor is standing at right now. */
@@ -114,10 +127,38 @@ export function reducer(state: State, action: Action): State {
       };
     }
 
-    case 'choose':
-      return s.position
-        ? plan(s, s.position, action.target, 'preview')
-        : { ...s, target: action.target, screen: { name: 'where-am-i' } };
+    case 'choose': {
+      const remembered = { ...s, recent: remember(s.recent, action.target) };
+      return remembered.position
+        ? plan(remembered, remembered.position, action.target, 'preview')
+        : { ...remembered, target: action.target, screen: { name: 'where-am-i' } };
+    }
+
+    case 'show-place':
+      return s.site?.map.rooms.some((r) => r.id === action.roomId) &&
+        (s.screen.name === 'choose' || s.screen.name === 'place')
+        ? { ...s, screen: { name: 'place', roomId: action.roomId } }
+        : state;
+
+    case 'close-place':
+      return s.screen.name === 'place' ? { ...s, screen: { name: 'choose' } } : state;
+
+    case 'swap': {
+      if (s.screen.name !== 'preview' || !s.site || !s.position) return state;
+      const end = s.path[s.path.length - 1];
+      const start = s.position.node;
+      if (!end || end === start) return state;
+      const startName = s.site.graph.nodes.get(start)?.landmark ?? start;
+      return plan(
+        s,
+        { node: end, source: 'picked' },
+        { destination: { type: 'node', nodeId: start }, label: startName },
+        'preview',
+      );
+    }
+
+    case 'recent-loaded':
+      return { ...s, recent: action.recent.slice(0, RECENT_MAX) };
 
     case 'start':
       return s.screen.name === 'preview' ? { ...s, screen: { name: 'navigate', step: 0 } } : state;
@@ -182,6 +223,14 @@ export function reducer(state: State, action: Action): State {
     case 'ask-position':
       return { ...s, screen: { name: 'where-am-i' } };
   }
+}
+
+/** Newest first, no duplicates; only rooms (amenity chips are one tap away anyway). */
+function remember(recent: readonly Target[], target: Target): readonly Target[] {
+  if (target.destination.type !== 'room') return recent;
+  const id = target.destination.roomId;
+  const others = recent.filter((r) => r.destination.type !== 'room' || r.destination.roomId !== id);
+  return [target, ...others].slice(0, RECENT_MAX);
 }
 
 function plan(

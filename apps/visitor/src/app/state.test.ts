@@ -144,6 +144,42 @@ describe('visitor state machine', () => {
     expect(s.steps.some((step) => step.icon === 'stairs')).toBe(false);
   });
 
+  it('a room card: open it from the map or a list, then Directions plans the route', () => {
+    const chosen = loaded({ type: 'set-position', position: atMain });
+    const card = reducer(chosen, { type: 'show-place', roomId: 'radiology' });
+    expect(card.screen).toEqual({ name: 'place', roomId: 'radiology' });
+    expect(reducer(card, { type: 'close-place' }).screen.name).toBe('choose');
+    expect(reducer(chosen, { type: 'show-place', roomId: 'nope' })).toBe(chosen);
+    const preview = reducer(card, { type: 'choose', target: radiology });
+    expect(preview.screen.name).toBe('preview');
+    expect(preview.recent).toEqual([radiology]);
+  });
+
+  it('remembers recent rooms, newest first, without duplicates', () => {
+    const pharmacy: Target = {
+      destination: { type: 'room', roomId: 'pharmacy' },
+      label: 'Pharmacy',
+    };
+    let s = loaded({ type: 'set-position', position: atMain });
+    for (const target of [radiology, pharmacy, radiology]) {
+      s = reducer(s, { type: 'choose', target });
+      s = reducer(s, { type: 'new-destination' });
+    }
+    expect(s.recent.map((r) => r.label)).toEqual(['Radiology', 'Pharmacy']);
+  });
+
+  it('swap in the preview: walk back from the destination to the start', () => {
+    const s = loaded(
+      { type: 'set-position', position: atMain },
+      { type: 'choose', target: radiology },
+      { type: 'swap' },
+    );
+    expect(s.screen.name).toBe('preview');
+    expect(s.position?.node).toBe('2-N30');
+    expect(s.path.at(-1)).toBe('G-ENT');
+    expect(s.target?.label).toBe('Main Entrance');
+  });
+
   it('resume restores the saved step (clamped to the route)', () => {
     const s = loaded({
       type: 'resume',

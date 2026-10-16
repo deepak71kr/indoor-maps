@@ -35,6 +35,36 @@ export function loadTrip(storage: KeyValue | null, site: string, now: number): S
   }
 }
 
+const RECENT_KEY = 'im.recent';
+
+/** Recent destinations for this site (newest first); empty when storage is missing. */
+export function loadRecent(storage: KeyValue | null, site: string): Target[] {
+  try {
+    const raw = storage?.getItem(`${RECENT_KEY}.${site}`);
+    const list = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(list)
+      ? list.filter(
+          (t): t is Target =>
+            typeof t === 'object' && t !== null && 'destination' in t && 'label' in t,
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function persistRecent(
+  storage: KeyValue | null,
+  site: string,
+  recent: readonly Target[],
+): void {
+  try {
+    storage?.setItem(`${RECENT_KEY}.${site}`, JSON.stringify(recent));
+  } catch {
+    // Storage full or blocked: recent places just won't be remembered.
+  }
+}
+
 /** Saves while a trip is in progress; clears once it ends. */
 export function persistTrip(
   storage: KeyValue | null,
