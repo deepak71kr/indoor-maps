@@ -1717,3 +1717,19 @@ span.floor {
 .bottom:has(.sheet.open) .locate {
   display: none;
 }
+
+/* Short phones: "my location" sits in the right-hand stack (see shortScreen() in views.ts). */
+.map-tools .locate {
+  position: static;
+  width: 44px;
+  height: 44px;
+}
+@media (max-height: 720px) {
+  .banner .route-line.via,
+  .banner .route-line.sign {
+    display: none;
+  }
+  .banner-main {
+    padding: 10px 12px;
+  }
+}

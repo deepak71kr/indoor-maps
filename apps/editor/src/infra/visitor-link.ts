@@ -8,10 +8,17 @@ import type { MapFile } from '@innermap/schema';
 const KEY = 'im-editor.visitorUrl';
 const DEV_PORT = 5173;
 
-/** The visitor app address set by the admin, or a guess for local development. */
+/** Set by the deploy build: where the public visitor app lives (QR stickers point there). */
+const DEPLOYED_VISITOR = import.meta.env['VITE_VISITOR_URL'] as string | undefined;
+
+/** The visitor app address set by the admin, else the deployed one, else local development. */
 export function savedVisitorUrl(): string {
   try {
-    return localStorage.getItem(KEY) ?? `${location.protocol}//${location.hostname}:${DEV_PORT}`;
+    return (
+      localStorage.getItem(KEY) ??
+      DEPLOYED_VISITOR ??
+      `${location.protocol}//${location.hostname}:${DEV_PORT}`
+    );
   } catch {
     return `http://localhost:${DEV_PORT}`;
   }

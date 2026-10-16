@@ -92,11 +92,15 @@ function sampleMaps(): Plugin {
  */
 function serviceWorkerManifest(): Plugin {
   const placeholder = /(["'`])__IM_MANIFEST__\1/;
+  let base = '/';
   return {
     name: 'inner-map-sw-manifest',
     apply: 'build',
     // Run after Vite emits index.html, so the HTML is in the precache list too.
     enforce: 'post',
+    configResolved(config) {
+      base = config.base;
+    },
     generateBundle(_options, bundle) {
       const sw = bundle['sw.js'];
       if (!sw || sw.type !== 'chunk') return;
@@ -110,7 +114,7 @@ function serviceWorkerManifest(): Plugin {
         hash.update(name).update(item?.type === 'chunk' ? item.code : (item?.source ?? ''));
       }
       const version = hash.digest('hex').slice(0, 10);
-      const files = names.map((name) => `/${name}`);
+      const files = names.map((name) => `${base}${name}`);
       if (!placeholder.test(sw.code)) this.error('sw.js: manifest placeholder not found');
       sw.code = sw.code.replace(placeholder, JSON.stringify(JSON.stringify({ version, files })));
     },
@@ -118,6 +122,8 @@ function serviceWorkerManifest(): Plugin {
 }
 
 export default defineConfig({
+  // GitHub Pages serves the app at /<repo>/ (set by the deploy workflow); "/" everywhere else.
+  base: process.env['BASE_PATH'] ?? '/',
   plugins: [sampleMaps(), serviceWorkerManifest()],
   server: { port: 5173 },
   build: {

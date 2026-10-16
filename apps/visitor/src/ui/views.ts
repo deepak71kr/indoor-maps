@@ -107,10 +107,20 @@ function mapScreen(ctx: ViewContext, cls: string, layout: MapLayout): HTMLElemen
       'div',
       { class: 'side' },
       h('div', { class: 'top covers-map' }, ...top, map.tools),
-      h('div', { class: 'bottom covers-map' }, map.locate, sheet),
+      h('div', { class: 'bottom covers-map' }, shortScreen() ? null : map.locate, sheet),
     ),
     ...nodes(layout.extra ?? []),
   );
+}
+
+/**
+ * Short phones: "my location" joins the button stack on the right instead of floating above
+ * the sheet, where it could land on top of the floor buttons.
+ */
+function shortScreen(): boolean {
+  const short = typeof matchMedia === 'function' && matchMedia('(max-height: 720px)').matches;
+  if (short && mapView) mapView.tools.append(mapView.locate);
+  return short;
 }
 
 /** Tap, or swipe up / down, to make the sheet taller or shorter. */
@@ -776,7 +786,7 @@ function banner(step: Step, index: number, next: Step | undefined, sign: boolean
           h('span', { class: 'grow' }, step.title),
           step.meters > 0 && h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
         ),
-        sign && h('p', { class: 'route-line' }, tr('step.sign')),
+        sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
         (step.from || step.to) &&
           h(
             'p',

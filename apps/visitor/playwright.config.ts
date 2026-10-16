@@ -12,6 +12,8 @@ export default defineConfig({
     ...devices['Pixel 7'],
     baseURL: `http://localhost:${PORT}`,
     serviceWorkers: 'allow',
+    // A stuck click fails fast with the locator named (not a silent 2-minute test timeout).
+    actionTimeout: 15_000,
   },
   webServer: {
     command: `pnpm build && pnpm exec vite preview --port ${PORT} --strictPort`,

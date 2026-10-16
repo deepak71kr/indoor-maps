@@ -1,0 +1,65 @@
+name: Deploy
+
+# Publishes the apps to GitHub Pages (free) after CI passes on main:
+#   https://deepak71kr.github.io/indoor-maps/          visitor app (what QR stickers open)
+#   https://deepak71kr.github.io/indoor-maps/editor/   map editor
+# One-time setup: repo Settings → Pages → Source: "GitHub Actions".
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Only ship code that passed every check and browser test.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    env:
+      SITE: /${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The exact commit CI tested.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build visitor app
+        run: pnpm --filter @innermap/visitor build
+        env:
+          BASE_PATH: ${{ env.SITE }}
+      - name: Build editor
+        run: pnpm --filter @innermap/editor build
+        env:
+          BASE_PATH: ${{ env.SITE }}editor/
+          VITE_VISITOR_URL: https://${{ github.repository_owner }}.github.io${{ env.SITE }}
+      - name: Assemble the site
+        run: |
+          mkdir -p site
+          cp -r apps/visitor/dist/. site/
+          cp -r apps/editor/dist site/editor
+          touch site/.nojekyll
+          du -sh site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: pages
+        uses: actions/deploy-pages@v4

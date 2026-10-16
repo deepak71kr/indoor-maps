@@ -87,7 +87,8 @@ async function boot(): Promise<void> {
 
   let map: MapFile;
   try {
-    const mapUrl = `/maps/${siteId}.json`;
+    // BASE_URL is "/" locally and "/indoor-maps/" on GitHub Pages.
+    const mapUrl = `${import.meta.env.BASE_URL}maps/${siteId}.json`;
     const response = await fetch(mapUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     void saveMap(mapUrl, response.clone());

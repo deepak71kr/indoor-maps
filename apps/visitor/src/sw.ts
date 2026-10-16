@@ -19,6 +19,8 @@ interface Manifest {
 const MANIFEST = JSON.parse('__IM_MANIFEST__') as Manifest;
 
 const SHELL = `im-shell-${MANIFEST.version}`;
+/** Where the app lives: "/" locally, "/indoor-maps/" on GitHub Pages (the worker's scope). */
+const BASE = new URL(sw.registration.scope).pathname;
 /** Shared with the page, which saves the first map it downloads. */
 const MAPS = 'im-maps';
 const MAP_TIMEOUT_MS = 2000;
@@ -55,7 +57,7 @@ sw.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(cachedShell(request));
-  } else if (url.pathname.startsWith('/maps/')) {
+  } else if (url.pathname.startsWith(`${BASE}maps/`)) {
     event.respondWith(networkFirst(request));
   } else {
     event.respondWith(cacheFirst(request));
@@ -63,7 +65,7 @@ sw.addEventListener('fetch', (event) => {
 });
 
 async function cachedShell(request: Request): Promise<Response> {
-  const cached = await caches.match('/index.html', { ...MATCH, cacheName: SHELL });
+  const cached = await caches.match(`${BASE}index.html`, { ...MATCH, cacheName: SHELL });
   return cached ?? fetch(request);
 }
 

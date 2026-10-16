@@ -7,7 +7,7 @@
     <title>Inner Map</title>
     <script>
       // Start downloading the map in parallel with the app's JavaScript (saves a round trip
-      // on 2G). Site rules must match main.ts.
+      // on 2G). Site rules must match main.ts. Relative URL: works under any base path.
       (function () {
         var site = (new URLSearchParams(location.search).get('site') || 'demo-hospital').replace(
           /[^a-z0-9-]/g,
@@ -17,7 +17,7 @@
         link.rel = 'preload';
         link.as = 'fetch';
         link.crossOrigin = 'anonymous';
-        link.href = '/maps/' + site + '.json';
+        link.href = 'maps/' + site + '.json';
         document.head.appendChild(link);
       })();
     </script>

@@ -19,7 +19,7 @@ export async function saveMap(url: string, response: Response): Promise<void> {
 export function registerServiceWorker(): void {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker
-    .register('/sw.js')
+    .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
     .then((registration) => {
       // When a new version finishes installing, let it take over now; this page keeps running
       // the code it already loaded, and the NEXT open uses the new version.
