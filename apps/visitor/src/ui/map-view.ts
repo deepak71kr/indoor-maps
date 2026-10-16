@@ -129,7 +129,7 @@ export function initials(name: string): string {
 }
 
 /** "G", "1", "B1" for the floor buttons (Google-style switcher); full names stay in labels. */
-function shortName(name: string): string {
+export function shortName(name: string): string {
   const floor = /^(?:floor|level|lvl)\s*(.+)$/i.exec(name)?.[1];
   if (floor) return floor.slice(0, 3);
   if (/^ground/i.test(name)) return 'G';
@@ -179,6 +179,8 @@ export class MapView {
   /** "My location" button; the screen puts it just above its bottom sheet. */
   readonly locate: HTMLButtonElement;
   private readonly floors: HTMLElement;
+  /** "Viewing Floor 2 · you're on Ground  [Back]" while looking at another floor. */
+  private readonly floorNote: HTMLElement;
   private readonly compass: HTMLButtonElement;
   /** "Show the whole route" (Google's route overview), while there is a route. */
   private readonly overview: HTMLButtonElement;
@@ -299,14 +301,16 @@ export class MapView {
       zoomButton(tr('map.zoom-out'), '−', 0.5),
     );
     this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview, zoom);
+    this.floorNote = h('div', { class: 'floor-note', role: 'status', hidden: true });
     this.el = h('div', { class: 'map' });
-    this.el.append(this.svg);
+    this.el.append(this.svg, this.floorNote);
     this.listen();
   }
 
   /** Show a scene; cheap to call on every render. */
   update(scene: MapScene): void {
-    if (scene.levelId !== this.scene?.levelId) {
+    // A new floor for the visitor, or the next step of the trip: show their own floor again.
+    if (scene.levelId !== this.scene?.levelId || scene.next !== this.scene?.next) {
       this.browsing = null;
       this.building = null;
     }
@@ -376,6 +380,13 @@ export class MapView {
     const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
     const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
     this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
+    // Each floor in its own colour: walls and room outlines follow --lvl (styles.css).
+    this.svg.setAttribute('class', `map-svg lvl-${level?.color ?? 'slate'}`);
+    // A quick fade, so a floor change is seen, not just a jump.
+    if (this.placed && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.svg.classList.add('swap');
+      setTimeout(() => this.svg.classList.remove('swap'), 300);
+    }
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
     this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
     this.roomEls = new Map();
@@ -421,6 +432,11 @@ export class MapView {
         for (const [x1, y1, x2, y2] of doorGaps(list, doors)) {
           this.plan.append(s('line', { class: cls, x1, y1, x2, y2 }));
         }
+      }
+      // Ways in and out of the building: a green bar across the doorway.
+      const entrances = nodes.filter((n) => n.kind === 'entrance');
+      for (const [x1, y1, x2, y2] of doorGaps(shapes, entrances, 1.6)) {
+        this.plan.append(s('line', { class: 'entry-bar', x1, y1, x2, y2 }));
       }
     } else {
       // No drawing yet: a corridor sketch from the walking lines.
@@ -481,7 +497,7 @@ export class MapView {
     for (const node of nodes) {
       if (node.kind !== 'entrance' || !node.landmark) continue;
       const g = s('g', { class: 'tag entrance' });
-      const w = this.tag(g, `🚪 ${shortPlace(node.landmark)}`, 0, 24);
+      const w = this.tag(g, `⇄ ${shortPlace(node.landmark)}`, 0, 24);
       this.overlay.append(g);
       this.pins.push({
         p: node,
@@ -627,7 +643,17 @@ export class MapView {
           l.id === levelId,
       )
       .reverse();
-    const signature = `${scene.levelId}|${scene.youLevel}|${building ?? ''}|${levels.length}`;
+    // Floors the route passes through, and the destination's floor.
+    const onRoute = new Set(scene.path.map((id) => scene.site.graph.nodes.get(id)?.level));
+    const last = scene.path[scene.path.length - 1];
+    const destLevel =
+      (last ? scene.site.graph.nodes.get(last)?.level : undefined) ??
+      (scene.selected
+        ? scene.site.graph.nodes.get(
+            scene.site.map.rooms.find((r) => r.id === scene.selected)?.doors[0] ?? '',
+          )?.level
+        : undefined);
+    const signature = `${scene.levelId}|${scene.youLevel}|${building ?? ''}|${levels.length}|${[...onRoute].join()}|${destLevel ?? ''}`;
     if (this.floors.dataset['for'] !== signature) {
       this.floors.dataset['for'] = signature;
       this.floors.replaceChildren(
@@ -636,7 +662,14 @@ export class MapView {
             'button',
             {
               type: 'button',
-              class: l.id === scene.youLevel ? 'you' : '',
+              class: [
+                `lvl-${l.color}`,
+                l.id === scene.youLevel ? 'you' : '',
+                onRoute.has(l.id) && scene.path.length > 1 ? 'route' : '',
+                l.id === destLevel ? 'dest' : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
               'data-level': l.id,
               'aria-label': this.levelName(l.id),
               title:
@@ -656,6 +689,7 @@ export class MapView {
       );
     }
     this.floors.hidden = levels.length < 2;
+    this.updateFloorNote(scene, levelId);
     for (const button of this.floors.children) {
       const on = (button as HTMLElement).dataset['level'] === levelId;
       button.classList.toggle('on', on);
@@ -1282,6 +1316,46 @@ export class MapView {
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 7 21l5-4 5 4Z" fill="currentColor"/></svg>';
     this.compassOffer = button;
     this.tools.append(button);
+  }
+
+  /** Show a floor (the route preview's floor chips use this). */
+  showFloor(levelId: string): void {
+    const scene = this.scene;
+    if (!scene) return;
+    this.browsing = levelId === scene.levelId ? null : levelId;
+    this.update(scene);
+  }
+
+  /** "Viewing Floor 2 · you're on Ground [Back]" whenever the shown floor isn't yours. */
+  private updateFloorNote(scene: MapScene, levelId: string): void {
+    const away = levelId !== scene.youLevel;
+    this.floorNote.hidden = !away;
+    if (!away) return;
+    const back = h(
+      'button',
+      {
+        type: 'button',
+        onClick: () => {
+          const current = this.scene;
+          if (!current) return;
+          this.browsing = current.youLevel === current.levelId ? null : current.youLevel;
+          this.update(current);
+        },
+      },
+      tr('map.back-to-floor'),
+    );
+    this.floorNote.replaceChildren(
+      h(
+        'span',
+        {},
+        tr('map.viewing', { floor: this.levelName(levelId), you: this.levelName(scene.youLevel) }),
+      ),
+      back,
+    );
+    // Measured now: the panel on top (search bar, tall lift banner…) may have just changed.
+    requestAnimationFrame(() => {
+      this.floorNote.style.top = `${Math.round(this.insets().top + 10)}px`;
+    });
   }
 
   /** Route overview: frame the whole route on the floor being shown. */

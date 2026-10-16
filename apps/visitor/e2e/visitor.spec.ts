@@ -403,3 +403,33 @@ test('Google-style details: Save + Saved tab, Walk / Step-free tabs, Exit and ar
   await page.getByRole('tab', { name: /Saved/ }).click();
   await expect(page.locator('.tab-saved')).toContainText('Radiology');
 });
+
+test('floors: colour per floor, "viewing another floor" note, floor chips, lift tile', async ({
+  page,
+}) => {
+  await page.goto('/?at=G-MAIN');
+  const map = page.getByRole('img', { name: /^Map of / });
+  await expect(map).toHaveClass(/lvl-teal/); // Ground is teal
+  await expect(page.locator('.map .entry-bar')).not.toHaveCount(0); // ways in and out, in green
+
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Radiology/ })
+    .click();
+  await page.getByRole('button', { name: 'Directions' }).click();
+  // The floor chips in the preview show that floor's part of the route.
+  await page.getByRole('button', { name: 'Map of Floor 2' }).click();
+  await expect(map).toHaveAccessibleName('Map of Floor 2');
+  await expect(map).toHaveClass(/lvl-violet/);
+  const note = page.locator('.floor-note');
+  await expect(note).toContainText('Viewing Floor 2 · you are on Ground');
+  await note.getByRole('button', { name: 'Back' }).click();
+  await expect(map).toHaveAccessibleName('Map of Ground');
+  await expect(note).toBeHidden();
+
+  // The lift step: a big tile with the floor to press.
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  for (let i = 0; i < 2; i++) await iAmHere(page).click();
+  await expect(page.locator('.banner .floor-tile')).toHaveText('2');
+  await expect(page.locator('.banner')).toContainText('Press 2 in the lift');
+});

@@ -10,7 +10,7 @@ import type { Child } from './dom';
 import { h, replace } from './dom';
 import type { IconName } from './icons';
 import { icon } from './icons';
-import { MapView } from './map-view';
+import { MapView, shortName } from './map-view';
 
 export interface ViewContext {
   readonly state: State;
@@ -968,10 +968,19 @@ function banner(step: Step, index: number, next: Step | undefined, sign: boolean
     h(
       'div',
       { class: 'banner-main', 'aria-hidden': 'true' },
-      h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
+      step.kind === 'ride'
+        ? // Lifts and stairs: the floor to go to, big, in that floor's colour.
+          h(
+            'div',
+            { class: `floor-tile lvl-${step.levelColor}` },
+            icon(step.icon),
+            h('b', {}, shortName(step.levelName)),
+          )
+        : h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
       h(
         'div',
         { class: 'grow' },
+        h('span', { class: `floor-chip lvl-${step.levelColor}` }, step.levelName),
         h(
           'p',
           { class: 'step-title' },
@@ -979,6 +988,14 @@ function banner(step: Step, index: number, next: Step | undefined, sign: boolean
           step.meters > 0 && h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
         ),
         sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
+        step.kind === 'ride' &&
+          h(
+            'p',
+            { class: 'route-line press' },
+            step.icon === 'lift'
+              ? tr('step.press', { floor: shortName(step.levelName) })
+              : tr('step.get-off', { floor: step.levelName }),
+          ),
         (step.from || step.to) &&
           h(
             'p',
@@ -1123,7 +1140,17 @@ function previewView(ctx: ViewContext): HTMLElement {
         ...floors
           .flatMap((s, i) => [
             i > 0 ? h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→') : null,
-            floorBadge(s.levelName, s.levelColor, buildingOf(ctx.state, s.target)),
+            // Tap a floor to see that part of the route.
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'floor-btn',
+                'aria-label': tr('map.label', { floor: s.levelName }),
+                onClick: () => mapView?.showFloor(s.levelId),
+              },
+              floorBadge(s.levelName, s.levelColor, buildingOf(ctx.state, s.target)),
+            ),
           ])
           .filter((c): c is HTMLElement => c !== null),
       ),

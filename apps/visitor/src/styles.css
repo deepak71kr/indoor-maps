@@ -2254,3 +2254,185 @@ html.big-text .map text {
     right: 16px;
   }
 }
+
+/* ================================================================================
+ * Floors: each floor in its own colour (walls, room outlines, switcher), green ways in
+ * and out, a "viewing another floor" note, a fade on floor change, ride tiles.
+ * --lvl comes from the floor's .lvl-* class on the map svg.
+ * ================================================================================ */
+.map-svg {
+  --wall: color-mix(in srgb, var(--lvl) 75%, #263238);
+}
+.map-svg .floor {
+  stroke: var(--wall);
+  stroke-width: 3;
+}
+.map-svg .room {
+  stroke: color-mix(in srgb, var(--lvl) 55%, var(--m-wall));
+  stroke-width: 1.6;
+}
+.map-svg .wall,
+.map-svg .lift,
+.map-svg .stairs,
+.map-svg .void {
+  stroke: color-mix(in srgb, var(--lvl) 60%, var(--m-wall));
+}
+.map-svg .building {
+  stroke: var(--wall);
+  stroke-width: 2.5;
+}
+.map-svg .shade {
+  fill: color-mix(in srgb, var(--lvl) 18%, transparent);
+}
+.map .entry-bar {
+  stroke: #1e8e3e;
+  stroke-width: 5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.map .entrance rect {
+  fill: #1e8e3e;
+  stroke: #fff;
+}
+.map .entrance text {
+  fill: #fff;
+  font-size: 10.5px;
+}
+.map-svg.swap .plan,
+.map-svg.swap .overlay {
+  animation: floor-in 0.28s ease-out;
+}
+@keyframes floor-in {
+  from {
+    opacity: 0.35;
+  }
+}
+
+/* Floor switcher: a stripe in each floor's colour, the shown floor filled with it,
+   a blue route mark on floors the route uses, a red pin on the destination floor. */
+.floors button {
+  width: 48px;
+  height: 44px;
+  box-shadow: inset 4px 0 0 var(--lvl);
+}
+.floors button.on {
+  background: var(--lvl);
+  color: #fff;
+}
+.floors button.route::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  bottom: 6px;
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+.floors button.dest::before {
+  content: '📍';
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 10px;
+  width: auto;
+  height: auto;
+  background: none;
+}
+.floors button.on.route::before {
+  background: #fff;
+}
+
+/* "Viewing Floor 2 · you are on Ground  [Back]" */
+.floor-note {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 120px);
+  padding: 6px 6px 6px 14px;
+  border-radius: 999px;
+  background: #323232;
+  color: #fff;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow);
+}
+.floor-note span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.floor-note button {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  color: #202124;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (min-width: 900px) {
+  .floor-note {
+    left: calc(50% + 200px);
+    max-width: calc(100% - 560px);
+  }
+}
+
+/* Banner: the floor of this instruction; rides get a big floor tile. */
+.banner .floor-chip {
+  float: right;
+  margin: 2px 0 0 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--lvl);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.floor-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--lvl);
+  box-shadow: inset 0 0 0 4px var(--lvl);
+}
+.floor-tile .icon {
+  width: 18px;
+  height: 18px;
+  margin-bottom: -6px;
+}
+.floor-tile b {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.banner .route-line.press {
+  font-weight: 700;
+}
+.floor-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.floor-btn span.floor {
+  box-shadow: 0 0 0 2px transparent;
+}
+.floor-btn:hover span.floor,
+.floor-btn:focus-visible span.floor {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--lvl);
+}
+.floor-note[hidden] {
+  display: none;
+}
