@@ -808,3 +808,60 @@
 .trip .banner .route-line.sign {
   display: none;
 }
+
+/* ================================================================================
+ * The step card (2026-10-18): one card at the bottom — the direction, then
+ * "Reached …"; tapping it shows the next direction in the same place. No clock.
+ * ================================================================================ */
+.trip .sheet {
+  max-height: 210px;
+  gap: 8px;
+}
+.trip .sheet .banner {
+  margin: 0 -4px;
+  border: none;
+  border-radius: 14px;
+  box-shadow: none;
+  background: var(--surface-2);
+}
+.trip .trip-bar {
+  gap: 8px;
+}
+.trip .reached {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border-radius: 999px;
+  font-size: 1rem;
+}
+.trip .reached > :last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trip .more-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.trip .reached.near {
+  animation: near-glow 1.6s ease-in-out infinite;
+}
+/* A new step: the card's content fades up in place (calm, no sideways jump). */
+.screen.step-in .banner-main,
+.screen.step-in .then {
+  animation: step-up 0.28s ease-out;
+}
+@keyframes step-up {
+  from {
+    translate: 0 6px;
+    opacity: 0;
+  }
+}

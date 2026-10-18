@@ -10,7 +10,7 @@ import { amenityChips } from '../app/search';
 import { currentNode, tripStats, walkMinutes } from '../app/state';
 import { h, replace } from './dom';
 import { icon } from './icons';
-import { shortName } from './map-view';
+import { shortName, shortPlace } from './map-view';
 import type { ViewContext } from './parts';
 import {
   mapView,
@@ -24,14 +24,6 @@ import {
   showRouteOverview,
   roundButton,
 } from './parts';
-
-/** "10:42": when the visitor arrives if they leave now. */
-function arrivalTime(minutes: number): string {
-  return new Date(Date.now() + minutes * 60_000).toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 /** A short tick when a checkpoint is confirmed (only while sound is on). */
 function tick(): void {
@@ -90,19 +82,20 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
   const step = steps[index];
   if (!step) return h('section');
   const total = steps.length - 1; // the last one is the arrival message
-  const { minutes, meters } = tripStats(steps, index);
-  // Lifts and stairs: the pill says where you should be ("I'm on Floor 2").
-  const pill = button(
-    step.kind === 'ride' ? tr('step.here-floor', { floor: step.levelName }) : tr('step.here'),
+  // One thing at a time: what to do now, and one button that says where you should be when
+  // it is done ("Reached Reception desk"). Tapping it shows the next direction right here.
+  const place = step.kind === 'ride' ? step.levelName : step.to ? shortPlace(step.to) : '';
+  const reached = button(
+    place ? tr('step.reached', { place }) : tr('step.here'),
     () => {
       navigator.vibrate?.(15);
       if (voiceOn()) tick();
       ctx.dispatch({ type: 'confirm' });
     },
-    'btn primary go here-pill',
+    'btn primary go reached',
     'check',
   );
-  glowWhenNear(pill, index, step.meters);
+  glowWhenNear(reached, index, step.meters);
   const toggleMenu = (e: Event) => {
     const sheet = (e.currentTarget as HTMLElement).closest<HTMLElement>('.sheet');
     if (!sheet) return;
@@ -113,6 +106,11 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
 
   return mapScreen(ctx, `trip lvl-${step.levelColor}`, {
     top: [
+      notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
+      notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
+    ],
+    sheet: [
+      // The step card: the direction, then "Reached …" right under it.
       banner(
         step,
         index,
@@ -121,11 +119,6 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
         floorBadgeText(step.levelName, buildingOf(ctx.state, step.target)),
         total,
       ),
-      notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
-      notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
-    ],
-    sheet: [
-      // One row, all within thumb reach: Exit, time (opens the menu), "I'm here".
       h(
         'div',
         { class: 'trip-bar nav-bar' },
@@ -141,25 +134,21 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
           icon('close'),
           h('span', { class: 'sr-only' }, tr('step.exit')),
         ),
+        reached,
         h(
           'button',
           {
             type: 'button',
-            class: 'grow trip-info',
+            class: 'more-x',
             'aria-label': tr('step.list'),
+            title: tr('step.list'),
             'aria-expanded': 'false',
             onClick: toggleMenu,
           },
-          h('span', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
-          h(
-            'span',
-            { class: 'trip-sub' },
-            `${tr('step.m', { m: meters })} · ${arrivalTime(minutes)}`,
-          ),
+          icon('list'),
         ),
-        pill,
       ),
-      // The menu (tap the time or pull the bar up): everything else, and every step.
+      // The menu (⋯ or pull the card up): everything else, and every step.
       h(
         'div',
         { class: 'trip-menu' },

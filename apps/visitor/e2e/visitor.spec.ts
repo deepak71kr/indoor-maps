@@ -14,8 +14,8 @@ async function slowPhone(page: Page): Promise<void> {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 }
 
-// "I'm here", or "I'm on Floor 2" on a lift or stairs step.
-const iAmHere = (page: Page) => page.getByRole('button', { name: /^I'm (here|on )/ });
+// "Reached Reception desk", "Reached Floor 2" (lift or stairs), or "I'm here".
+const iAmHere = (page: Page) => page.getByRole('button', { name: /^(Reached |I'm here)/ });
 
 /** Taps "I'm here" until the Arrived screen. */
 async function walkToTheEnd(page: Page): Promise<void> {
@@ -408,7 +408,6 @@ test('Google-style details: Walk / Step-free tabs, Exit and arrival time', async
 
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('button', { name: 'End route' })).toHaveText('Exit');
-  await expect(page.locator('.trip-sub')).toHaveText(/\d+ m · \d{1,2}:\d{2}/);
   await page.getByRole('button', { name: 'End route' }).click();
 });
 

@@ -45,6 +45,7 @@ export const ui = {
   'step.to': 'Route to {place}',
   'step.here': "I'm here",
   'step.here-floor': "I'm on {floor}",
+  'step.reached': 'Reached {place}',
   'step.lost': "I'm lost",
   'step.back': 'Back',
   'step.end': 'End route',

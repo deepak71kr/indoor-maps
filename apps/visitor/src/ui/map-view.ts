@@ -807,19 +807,12 @@ export class MapView {
     const from = site.graph.levels.find((l) => l.id === fromId);
     if (!to || !from) return;
     const owner = to.building ?? from.building;
-    const plates = site.graph.levels.filter(
+    const floors = site.graph.levels.filter(
       (l) => l.building === undefined || l.building === owner,
     );
     const up = to.rank > from.rank;
     if (ghost && extras) {
-      extras.playFloorChange(
-        this.el,
-        this.svg,
-        ghost,
-        plates.map((l) => ({ name: shortName(l.name), color: l.color })),
-        plates.indexOf(from),
-        plates.indexOf(to),
-      );
+      extras.playFloorChange(this.el, this.svg, ghost, floors.indexOf(from), floors.indexOf(to));
     }
     this.floorToast.className = `floor-toast show lvl-${to.color}`;
     this.floorToast.textContent = `${up ? '↑' : '↓'} ${this.levelName(toId)}`;
@@ -1232,7 +1225,8 @@ export class MapView {
     );
 
     // A new route or leg draws itself along the way; a new destination pin drops in.
-    const sig = `${levelId}|${path.join()}|${at}|${legEnd}`;
+    // Only a new route (or floor) draws itself; passing a checkpoint just recolours the line.
+    const sig = `${levelId}|${path.join()}`;
     if (sig !== this.routeSig && !reducedMotion()) {
       for (const line of this.routeLayer.querySelectorAll<SVGPolylineElement>('.ahead, .casing')) {
         line.setAttribute('pathLength', '1');

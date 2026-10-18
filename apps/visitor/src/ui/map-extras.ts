@@ -1,8 +1,7 @@
 /**
- * The floor change, shown as a building's floors stacked like plates (about 0.75 s):
- * the map tilts back, the old floor slides away (down when going up), the new floor comes in
- * from its place in the stack, and the map lies flat again. Plain CSS 3D through the Web
- * Animations API: no library, nothing to download. Skipped when the phone asks for less motion.
+ * The floor change, shown as a zoom through the building: going up, the floor you were on
+ * drops away and the new one comes down to you; going down, the other way. Web Animations
+ * API, no library. Skipped when the phone asks for less motion.
  *
  * Also the map key. Both load just after the first screen: only needed later.
  */
@@ -12,74 +11,38 @@ import { CATEGORY, tr } from '../app/i18n';
 import { h } from './dom';
 import './map-extras.css';
 
-export interface Plate {
-  readonly name: string;
-  readonly color: string;
-}
-
-const DURATION = 750;
-const EASE = 'cubic-bezier(0.3, 0.7, 0.2, 1)';
-const TILT = 'rotateX(52deg) scale(0.74)';
+const DURATION = 620;
+const EASE = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
 
 /**
  * Plays the change on `host` (the map box): `ghost` is a copy of the old floor as it looked,
- * `svg` already shows the new floor; `plates` are the building's floors from the bottom up.
+ * `svg` already shows the new floor. Going up, the old floor shrinks away below you and the
+ * new one settles down from above (bigger, closer); going down, the other way round — like
+ * looking down a building's floors from a lift.
  */
 export function playFloorChange(
   host: HTMLElement,
   svg: SVGSVGElement,
   ghost: SVGSVGElement,
-  plates: readonly Plate[],
   from: number,
   to: number,
 ): void {
   const up = to > from;
-  const gap = 18; // % of the map height between two floors in the stack
-  const away = `${up ? '' : '-'}${gap * 3}%`;
-  const comeFrom = `${up ? '-' : ''}${gap * 3}%`;
-
-  // The other floors, as thin coloured plates above and below.
-  const stack = h(
-    'div',
-    { class: 'floor-plates', 'aria-hidden': 'true' },
-    ...plates.map((p, i) =>
-      h(
-        'div',
-        {
-          class: `plate lvl-${p.color}${i === to ? ' to' : ''}`,
-          style: `--y:${(to - i) * gap}%`,
-        },
-        h('span', {}, p.name),
-      ),
-    ),
-  );
   ghost.classList.add('floor-ghost');
   ghost.removeAttribute('role');
   ghost.setAttribute('aria-hidden', 'true');
-  // The plates lie behind the map; the old floor's copy on top of it as it slides away.
-  host.prepend(stack);
   host.append(ghost);
-
-  stack.animate(
-    [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }],
-    {
-      duration: DURATION,
-      easing: 'ease-in-out',
-    },
-  ).onfinish = () => stack.remove();
   ghost.animate(
     [
-      { transform: 'none', opacity: 1 },
-      { transform: `translateY(0) ${TILT}`, opacity: 1, offset: 0.35 },
-      { transform: `translateY(${away}) ${TILT}`, opacity: 0 },
+      { transform: 'scale(1)', opacity: 1 },
+      { transform: `scale(${up ? 0.78 : 1.25})`, opacity: 0 },
     ],
-    { duration: DURATION, easing: EASE, fill: 'forwards' },
+    { duration: DURATION * 0.8, easing: EASE, fill: 'forwards' },
   ).onfinish = () => ghost.remove();
   svg.animate(
     [
-      { transform: `translateY(${comeFrom}) ${TILT}`, opacity: 0 },
-      { transform: `translateY(0) ${TILT}`, opacity: 1, offset: 0.65 },
-      { transform: 'none', opacity: 1 },
+      { transform: `scale(${up ? 1.22 : 0.8})`, opacity: 0 },
+      { transform: 'scale(1)', opacity: 1 },
     ],
     { duration: DURATION, easing: EASE },
   );
