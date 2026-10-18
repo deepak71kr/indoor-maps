@@ -55,8 +55,12 @@ interface Pin {
   readonly id?: string;
   /** The "you" beam: turns with the phone's compass when there is a live heading. */
   readonly live?: boolean;
-  /** A label that runs along a north–south road: fitted to the road's length, turned. */
-  vertical?: boolean;
+  /**
+   * A road or footpath name runs along it: `run` is [start, end, across] of the band, the
+   * name must fit its length, and `upright` keeps the text from reading upside down.
+   */
+  readonly run?: readonly [Point, Point, Point];
+  readonly upright?: boolean;
 }
 
 /** Collision ranks: you, next checkpoint, destination, checkpoint names, entrances, rooms, corridors. */
@@ -472,9 +476,7 @@ export class MapView {
       if (shape.kind === 'floor' || shape.kind === 'wall' || !texts[0]) continue;
       const lock = room?.visibility === 'locked' ? '🔒 ' : '';
       const cls = room ? `label cat-${room.category}` : `label k-${shape.kind}`;
-      const bounds = boundsOf(shapePoints(shape));
-      const upright =
-        shape.kind === 'road' && !!bounds && bounds.maxY - bounds.minY > bounds.maxX - bounds.minX;
+      const run = shape.kind === 'road' || shape.kind === 'path' ? bandRun(shape) : undefined;
       this.addLabel(
         labelPoint(shape),
         texts.filter(Boolean).map((t) => lock + t),
@@ -483,12 +485,11 @@ export class MapView {
         OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'room',
         room ? roomIcon(room, CATEGORY[room.category].emoji) : shapeIcon(shape),
       );
-      if (upright) {
-        const pin = this.pins[this.pins.length - 1];
-        if (pin) {
-          pin.vertical = true;
-          (pin as { angle?: number }).angle = -90;
-        }
+      const pin = run && this.pins.pop();
+      if (pin && run) {
+        const [a, b] = run;
+        const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+        this.pins.push({ ...pin, run, angle, upright: true });
       }
     }
     this.addEntranceArrows(nodes);
@@ -1159,7 +1160,9 @@ export class MapView {
         continue;
       }
       const angle = pin.live && this.liveHeading !== null ? this.liveHeading : pin.angle;
-      const turn = angle === undefined ? '' : ` rotate(${(angle - rot).toFixed(1)})`;
+      let deg = angle === undefined ? 0 : angle - rot;
+      if (pin.upright) deg = (((deg + 90) % 360) + 360) % 360 >= 180 ? deg + 180 : deg;
+      const turn = angle === undefined ? '' : ` rotate(${deg.toFixed(1)})`;
       pin.el.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})${turn}`);
       const fade = pin.tier ? o[pin.tier] : 1;
       const opacity = fade > 0.98 ? '' : fade.toFixed(2);
@@ -1235,11 +1238,17 @@ export class MapView {
   /** Longest text that fits inside the room as drawn right now; none if the room is tiny. */
   private fitLabel(pin: Pin, hidden: boolean): void {
     if (!pin.fit) return;
-    const box = boundsOf(pin.fit.box.map((p) => this.project(p)));
-    const across = box ? box.maxX - box.minX : 0;
-    const along = box ? box.maxY - box.minY : 0;
-    const width = (pin.vertical ? along : across) - 6;
-    const height = pin.vertical ? across : along;
+    let width: number;
+    let height: number;
+    if (pin.run) {
+      const [a, b, c] = pin.run.map((p) => this.project(p)) as [Point, Point, Point];
+      width = Math.hypot(b.x - a.x, b.y - a.y) - 6;
+      height = Math.hypot(c.x - b.x, c.y - b.y);
+    } else {
+      const box = boundsOf(pin.fit.box.map((p) => this.project(p)));
+      width = box ? box.maxX - box.minX - 6 : 0;
+      height = box ? box.maxY - box.minY : 0;
+    }
     // The room's icon: above the name in a tall room, beside it in a low one, hidden if tiny.
     const ico = pin.el.querySelector<SVGGElement>('.ico');
     const roomy = !!ico && height >= ICON_ROOM_PX;
@@ -1251,7 +1260,7 @@ export class MapView {
     const label = pin.el.firstElementChild as SVGTextElement;
     if (label.textContent !== (text ?? '')) label.textContent = text ?? '';
     // Road names sit on the road itself, so a thin road is enough room.
-    const minHeight = pin.el.classList.contains('k-road') ? 7 : 16;
+    const minHeight = pin.run ? 5 : 16;
     pin.el.style.display = text && height >= minHeight && !hidden ? '' : 'none';
     if (ico) {
       const half = ((text?.length ?? 0) * CHAR_PX) / 2;
@@ -1540,6 +1549,19 @@ function campusShapes(site: Site): Shape[] {
 }
 
 /** Icons for outlines that are not rooms (parking, lifts…), Google-style. */
+/** A four-corner band (a road or path): [start, end, across] along its longer side. */
+function bandRun(shape: Shape): [Point, Point, Point] | undefined {
+  const p = shapePoints(shape);
+  if (p.length !== 4) return undefined;
+  const [a, b, c, d] = p as [Point, Point, Point, Point];
+  const side = (u: Point, v: Point) => Math.hypot(v.x - u.x, v.y - u.y);
+  // Through the middle of the band, so the name sits on the road, not its edge.
+  const mid = (u: Point, v: Point): Point => ({ x: (u.x + v.x) / 2, y: (u.y + v.y) / 2 });
+  return side(a, b) >= side(b, c)
+    ? [mid(a, d), mid(b, c), { x: mid(b, c).x + (c.x - b.x), y: mid(b, c).y + (c.y - b.y) }]
+    : [mid(b, a), mid(c, d), { x: mid(c, d).x + (d.x - c.x), y: mid(c, d).y + (d.y - c.y) }];
+}
+
 function shapeIcon(shape: Shape): string | undefined {
   switch (shape.kind) {
     case 'parking':

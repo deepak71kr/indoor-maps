@@ -770,6 +770,11 @@ select {
   stroke: #b4bcc6;
   stroke-width: 1;
 }
+.shape.path {
+  fill: #f3efe6;
+  stroke: #d8cfbf;
+  stroke-width: 1;
+}
 .shape.green {
   fill: rgb(76 175 80 / 0.25);
   stroke: rgb(76 175 80 / 0.6);

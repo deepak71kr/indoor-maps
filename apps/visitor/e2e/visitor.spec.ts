@@ -300,7 +300,8 @@ test('big campus (stress test): opens fast, finds a lab, walks through floors', 
   await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   expect(Date.now() - started).toBeLessThan(8_000);
   const map = page.getByRole('img', { name: /^Map of / });
-  await expect(map.getByText('Main Building', { exact: true })).toBeVisible();
+  // Zoomed out, the Main Building is small: its name may show as initials.
+  await expect(map.getByText(/^(Main Building|MB)$/).first()).toBeVisible();
 
   await page.getByRole('searchbox').fill('digital library');
   await page.getByRole('button', { name: /Digital library/ }).click();

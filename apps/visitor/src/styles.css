@@ -2668,3 +2668,15 @@ html.big-text .map text {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* Footpaths (2026-10-18): narrow, warm paving, under the roads' weight. */
+.map .path {
+  fill: #f4efe4;
+  stroke: #ddd3c1;
+  stroke-width: 0.8;
+}
+.map .k-path > text {
+  fill: #8a7a5c;
+  font-size: 9px;
+  font-style: italic;
+}

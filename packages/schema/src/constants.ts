@@ -77,7 +77,8 @@ export const AMENITY_KINDS = [
  *
  * Outdoors (Phase 10 — campus view), drawn on a shared level:
  * - `building`: a building footprint; linked to a `buildings[]` entry for its name and floors.
- * - `road`: roads and paved paths.  `green`: lawns, gardens.  `parking`: parking areas.
+ * - `road`: roads.  `path`: footpaths (narrow, walk only).  `green`: lawns, gardens.
+ * - `parking`: parking areas.
  * - `water`: lakes, ponds, swimming pools.  `tree`: one tree (a small outline, drawn round).
  */
 export const SHAPE_KINDS = [
@@ -89,6 +90,7 @@ export const SHAPE_KINDS = [
   'wall',
   'building',
   'road',
+  'path',
   'green',
   'parking',
   'water',
@@ -99,6 +101,7 @@ export const SHAPE_KINDS = [
 export const OUTDOOR_SHAPE_KINDS: ReadonlySet<string> = new Set([
   'building',
   'road',
+  'path',
   'green',
   'parking',
   'water',

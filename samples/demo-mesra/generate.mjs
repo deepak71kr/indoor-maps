@@ -2,7 +2,9 @@
  * Generates samples/demo-mesra/map.json — a big demo campus loosely inspired by a large Indian
  * engineering college (BIT Mesra-style): main building, departments, lecture halls, library,
  * hostels, mess and canteens, medical centre, sports, swimming pool, quarters, roads, lawns,
- * a lake and trees. It is a fictional layout for testing, not a real map of any campus.
+ * a lake and trees, winding roads and footpaths. The Main Building and its twin follow the
+ * founder's sketches (images/map-demo-1.png, map-demo-2.png). It is a fictional layout for
+ * testing, not a real map of any campus.
  *
  *   node samples/demo-mesra/generate.mjs
  *
@@ -53,37 +55,154 @@ function edge(a, b, kind) {
 const rect = (x, y, w, h) => [x, y, x + w, y, x + w, y + h, x, y + h].map(r1);
 const shape = (level, kind, pts, extra = {}) => level.shapes.push({ kind, pts, ...extra });
 
-// ---------------------------------------------------------------- roads
-const H = [
-  { id: 'A', y: 560, x0: 60, x1: 840, w: 10, name: 'Gate Road' },
-  { id: 'B', y: 380, x0: 60, x1: 840, w: 10, name: 'Academic Avenue' },
-  { id: 'C', y: 200, x0: 60, x1: 840, w: 10, name: 'Hostel Road' },
-  { id: 'D', y: 175, x0: 750, x1: 890, w: 8, name: 'Girls Hostel Lane' },
-];
-const V = [
-  { id: 'M', x: 450, y0: 120, y1: 695, w: 14, name: 'Main Avenue' },
-  { id: 'W', x: 150, y0: 60, y1: 660, w: 10, name: 'West Road' },
-  { id: 'E', x: 750, y0: 40, y1: 640, w: 10, name: 'East Road' },
-];
-const CROSSING_NAMES = {
-  'A:M': 'Gate Circle (fountain)',
-  'B:M': 'Library Chowk (clock tower)',
-  'C:M': 'Hostel Chowk (tea stall)',
-  'A:W': 'West Junction (bus stop)',
-  'B:W': 'Sports Junction (scoreboard)',
-  'C:W': 'Pool Corner',
-  'A:E': 'Quarters Junction (letter box)',
-  'B:E': 'Auditorium Junction (notice board)',
-  'C:E': 'Dispensary Junction (red cross sign)',
-  'D:E': 'Girls Hostel Gate',
+// ---------------------------------------------------------------- roads and footpaths
+/**
+ * Roads and footpaths are lines through named spots; a spot shared by two roads is where
+ * they meet. Roads bend and run at angles like a real campus that grew over the years.
+ * Buildings join the nearest point of their road with a short footpath.
+ */
+const SPOT = {
+  gate: [640, 890, 'Main Gate (security cabin)', 'entrance'],
+  gateCircle: [640, 800, 'Gate Circle (fountain)'],
+  libChowk: [600, 560, 'Library Chowk (clock tower)'],
+  acadChowk: [610, 430, 'Academic Chowk (notice board)'],
+  hostelChowk: [660, 300, 'Hostel Chowk (tea stall)'],
+  flagPost: [720, 40, 'Flag post, north end of Main Avenue'],
+  westJn: [300, 760, 'West Junction (bus stop)'],
+  templeEnd: [90, 640, 'West end of Gate Road'],
+  eastJn: [920, 740, 'East Junction (letter box)'],
+  dispJn: [1060, 470, 'Dispensary Junction (red cross sign)'],
+  colonyJn: [1050, 300, 'Staff Colony Junction'],
+  backGate: [1030, 60, 'Back Gate', 'entrance'],
+  qNW: [305, 310, 'Quad north-west corner'],
+  qNE: [415, 310, 'Quad north-east corner'],
+  qMW: [305, 420, 'Quad west gate'],
+  qME: [415, 420, 'Quad east gate'],
+  qSW: [305, 530, 'Quad south-west corner'],
+  qSE: [415, 530, 'Quad south-east corner'],
+  sportsJn: [200, 400, 'Sports Junction (scoreboard)'],
+  hostelJn: [900, 220, 'Hostel Junction'],
+  ghGate: [300, 150, 'Girls Hostel Gate'],
 };
-for (const r of H)
-  shape(ground, 'road', rect(r.x0, r.y - r.w / 2, r.x1 - r.x0, r.w), { label: r.name });
-for (const r of V)
-  shape(ground, 'road', rect(r.x - r.w / 2, r.y0, r.w, r.y1 - r.y0), { label: r.name });
+/**
+ * `via`: spot names, [x, y] bends ([x, y, name] where visitors turn), or { on, at } — a point
+ * on a road listed earlier.
+ */
+const ROADS = [
+  {
+    id: 'main',
+    name: 'Main Avenue',
+    w: 14,
+    via: [
+      'gate',
+      'gateCircle',
+      [620, 690],
+      'libChowk',
+      'acadChowk',
+      'hostelChowk',
+      [700, 180],
+      'flagPost',
+    ],
+  },
+  {
+    id: 'gateW',
+    name: 'Gate Road',
+    w: 10,
+    via: ['gateCircle', [520, 790], 'westJn', [150, 700], 'templeEnd'],
+  },
+  {
+    id: 'east',
+    name: 'East Road',
+    w: 10,
+    via: ['gateCircle', [780, 790], 'eastJn', [1040, 640], 'dispJn', 'colonyJn', 'backGate'],
+    // Closed for works (to test detours): drawn red on the map, every route goes around it.
+    closed: [1],
+  },
+  { id: 'quad', name: 'Quad Road', w: 8, via: ['qNW', 'qNE', 'qME', 'qSE', 'qSW', 'qMW', 'qNW'] },
+  { id: 'quadMid', name: 'Quad Middle Road', w: 8, via: ['qMW', 'qME'] },
+  { id: 'acad', name: 'Academic Avenue', w: 10, via: ['qME', [510, 430], 'acadChowk'] },
+  { id: 'lib', name: 'Library Road', w: 8, via: ['qSE', [500, 560], 'libChowk'] },
+  { id: 'sports', name: 'Sports Road', w: 8, via: ['qMW', 'sportsJn', [90, 380]] },
+  { id: 'college', name: 'College Road', w: 10, via: ['westJn', [305, 640], 'qSW'] },
+  {
+    id: 'hostel',
+    name: 'Hostel Road',
+    w: 10,
+    via: ['hostelChowk', [780, 270], 'hostelJn', 'colonyJn'],
+  },
+  {
+    id: 'hostelW',
+    name: 'Girls Hostel Road',
+    w: 8,
+    via: [
+      'hostelChowk',
+      [540, 250, 'Library Lane corner (bench)'],
+      [430, 200],
+      'ghGate',
+      [180, 120],
+    ],
+  },
+  {
+    id: 'dept',
+    name: 'Department Road',
+    w: 8,
+    via: ['acadChowk', [760, 420], [900, 430], 'dispJn'],
+  },
+  { id: 'colony', name: 'Staff Colony Road', w: 8, via: ['eastJn', [1000, 800], [1150, 810]] },
+  {
+    id: 'workshop',
+    name: 'Workshop Road',
+    w: 8,
+    via: ['sportsJn', [170, 300, 'Workshop Road bend (tool shed)'], [120, 260]],
+  },
+  // Footpaths: shortcuts across lawns and along the lake.
+  {
+    id: 'lawnPath',
+    name: 'Central Lawn path',
+    w: 3,
+    path: true,
+    via: [
+      { on: 'college', at: [305, 600] },
+      [385, 615, 'Lawn path crossing (stone bench)'],
+      { on: 'lib', at: [450, 545] },
+    ],
+  },
+  {
+    id: 'lakeWalk',
+    name: 'Lake Walk',
+    w: 3,
+    path: true,
+    via: [
+      { on: 'main', at: [604, 588] },
+      [690, 588],
+      [875, 588],
+      [940, 590],
+      { on: 'east', at: [1048, 590] },
+    ],
+  },
+  {
+    id: 'libLane',
+    name: 'Library Lane',
+    w: 3,
+    path: true,
+    via: [
+      { on: 'hostelW', at: [540, 250, 'Library Lane corner (bench)'] },
+      { on: 'quad', at: [415, 312] },
+    ],
+  },
+  {
+    id: 'gatePath',
+    name: 'Gate footpath',
+    w: 3,
+    path: true,
+    via: [
+      { on: 'main', at: [640, 850] },
+      [560, 840, 'Gate footpath bend (bicycle stand)'],
+      { on: 'gateW', at: [500, 787] },
+    ],
+  },
+];
 
-/** Stops along each road: crossings, ends, and where building paths join. */
-const stops = new Map([...H, ...V].map((r) => [r.id, []]));
 const pointIds = new Map();
 function roadPoint(x, y, landmark, kind = 'junction') {
   const key = `${r1(x)},${r1(y)}`;
@@ -94,39 +213,123 @@ function roadPoint(x, y, landmark, kind = 'junction') {
   } else if (landmark && !n.landmark) n.landmark = landmark;
   return n;
 }
-for (const h of H) {
-  for (const v of V) {
-    if (v.x < h.x0 || v.x > h.x1 || h.y < v.y0 || h.y > v.y1) continue;
-    const n = roadPoint(v.x, h.y, CROSSING_NAMES[`${h.id}:${v.id}`]);
-    stops.get(h.id).push(n);
-    stops.get(v.id).push(n);
-  }
-}
-const mainGate = roadPoint(450, 695, 'Main Gate (security cabin)', 'entrance');
-stops.get('M').push(mainGate);
-const backGate = roadPoint(750, 40, 'Back Gate', 'entrance');
-stops.get('E').push(backGate);
-stops.get('M').push(roadPoint(450, 120, 'Flag post, north end of Main Avenue'));
-for (const h of H) {
-  if (h.id === 'D') continue;
-  stops.get(h.id).push(roadPoint(h.x0, h.y, `West end of ${h.name}`));
-  stops.get(h.id).push(roadPoint(h.x1, h.y, `East end of ${h.name}`));
-}
-stops.get('D').push(roadPoint(890, 175, 'End of Girls Hostel Lane'));
-stops.get('W').push(roadPoint(150, 60, 'North end of West Road'));
-stops.get('W').push(roadPoint(150, 660, 'South end of West Road'));
-stops.get('E').push(roadPoint(750, 640, 'South end of East Road'));
-qr.push({ code: 'MAIN-GATE', node: mainGate.id, facing: 0 });
-qr.push({ code: 'BACK-GATE', node: backGate.id, facing: 180 });
 
-/** Where a building's path meets its road (perpendicular), as a named stop. */
+/** A band `w` wide along a → b (ends stretched so bends join), first side along the line. */
+function band(a, b, w) {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+  const n = { x: -u.y * (w / 2), y: u.x * (w / 2) };
+  const s = { x: a.x - (u.x * w) / 2, y: a.y - (u.y * w) / 2 };
+  const e = { x: b.x + (u.x * w) / 2, y: b.y + (u.y * w) / 2 };
+  return [
+    s.x + n.x,
+    s.y + n.y,
+    e.x + n.x,
+    e.y + n.y,
+    e.x - n.x,
+    e.y - n.y,
+    s.x - n.x,
+    s.y - n.y,
+  ].map(r1);
+}
+
+/** Lines that dots can be added to later (roads, corridors): each keeps its stops in order. */
+function lineNet() {
+  const segs = [];
+  const nearest = (p, keep = () => true) => {
+    let best = null;
+    for (const seg of segs) {
+      if (!keep(seg)) continue;
+      const dx = seg.b.x - seg.a.x;
+      const dy = seg.b.y - seg.a.y;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p.x - seg.a.x) * dx + (p.y - seg.a.y) * dy) / len2));
+      const q = { x: seg.a.x + dx * t, y: seg.a.y + dy * t };
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      if (!best || d < best.d) best = { seg, t, q, d, len: Math.sqrt(len2) };
+    }
+    return best;
+  };
+  return {
+    segs,
+    line(a, b, extra = {}) {
+      segs.push({
+        a,
+        b,
+        stops: [
+          { t: 0, n: a },
+          { t: 1, n: b },
+        ],
+        ...extra,
+      });
+    },
+    /** The dot on the nearest line closest to `p` (an existing end within 2 m, else new). */
+    attach(p, make, keep) {
+      const hit = nearest(p, keep);
+      if (hit.t * hit.len < 2) return hit.seg.a;
+      if ((1 - hit.t) * hit.len < 2) return hit.seg.b;
+      const near = hit.seg.stops.find((s) => Math.abs(s.t - hit.t) * hit.len < 2);
+      if (near) return near.n;
+      const n = make(hit.q);
+      hit.seg.stops.push({ t: hit.t, n });
+      return n;
+    },
+    /** Walking lines along every line, through its stops in order. */
+    finish(kind) {
+      for (const seg of segs) {
+        const sorted = [...seg.stops].sort((x, y) => x.t - y.t);
+        const before = edges.length;
+        for (let i = 1; i < sorted.length; i++) edge(sorted[i - 1].n, sorted[i].n, kind);
+        if (seg.closed) for (let k = before; k < edges.length; k++) edges[k].tags = ['closed'];
+      }
+    },
+  };
+}
+
+const roadNet = lineNet();
+const onRoad = (roadId) => (seg) => seg.road === roadId;
+for (const road of ROADS) {
+  const points = road.via.map((v) => {
+    if (typeof v === 'string') {
+      const [x, y, landmark, kind] = SPOT[v];
+      return roadPoint(x, y, landmark, kind);
+    }
+    if (Array.isArray(v)) return roadPoint(v[0], v[1], v[2], 'corner');
+    const [x, y] = v.at;
+    return roadNet.attach(
+      { x, y },
+      (q) => roadPoint(q.x, q.y, `Where ${road.name} meets the road`),
+      onRoad(v.on),
+    );
+  });
+  let longest = 0;
+  for (let i = 1; i < points.length; i++) {
+    const len = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    if (len > points[longest]?.len || i === 1) longest = i;
+    points[i].len = len;
+  }
+  for (let i = 1; i < points.length; i++) {
+    roadNet.line(points[i - 1], points[i], { road: road.id, closed: road.closed?.includes(i - 1) });
+    shape(ground, road.path ? 'path' : 'road', band(points[i - 1], points[i], road.w), {
+      ...(i === longest && { label: road.name }),
+    });
+  }
+  for (const p of points) delete p.len;
+}
+const mainGate = pointIds.get('640,890');
+qr.push({ code: 'MAIN-GATE', node: mainGate.id, facing: 0 });
+qr.push({ code: 'BACK-GATE', node: pointIds.get('1030,60').id, facing: 180 });
+
+/** A building's way in, joined to the nearest point of its road by a short footpath. */
 function joinRoad(roadId, entrance, buildingName) {
-  const h = H.find((r) => r.id === roadId);
-  const v = V.find((r) => r.id === roadId);
-  const at = h ? roadPoint(entrance.x, h.y) : roadPoint(v.x, entrance.y);
+  const at = roadNet.attach(
+    entrance,
+    (q) => roadPoint(q.x, q.y, `Path to ${buildingName}`),
+    onRoad(roadId),
+  );
   if (!at.landmark) at.landmark = `Path to ${buildingName}`;
-  stops.get(roadId).push(at);
   edge(at, entrance, 'outdoor');
+  shape(ground, 'path', band(entrance, at, 2.5));
 }
 
 // ---------------------------------------------------------------- buildings
@@ -447,6 +650,184 @@ function singleRoom(b) {
   joinRoad(road, door, name);
 }
 
+/**
+ * A square block as the founder drew the Main Building (images/map-demo-1.png): rooms round
+ * the edge, two staircases and two rooms in the middle, a ring corridor with a cross
+ * corridor, washrooms and water dispensers in the corners, four ways in, and numbered
+ * checkpoints (QR stickers 1–11). Every floor has the same plan. Sketch units run 0–40
+ * across (north up); `scale` turns them into meters.
+ */
+const SKETCH = {
+  // Corridor dots and their names.
+  dots: {
+    A: [7.8, 0.6, 'Exit 1 lobby'],
+    B: [7.8, 6, 'north-west corner'],
+    C: [31.5, 6, 'north-east corner'],
+    D: [31.5, 0.6, 'Entrance lobby'],
+    E: [7.8, 23, 'west cross corridor'],
+    F: [18, 23, 'centre crossing'],
+    G: [31.5, 23, 'east cross corridor'],
+    M: [7.8, 30, 'Exit 2 lobby'],
+    H: [7.8, 35.4, 'south-west corner'],
+    I: [18, 35.4, 'south crossing'],
+    J: [31.5, 35.4, 'south-east corner'],
+    K: [31.5, 39.4, 'Entry lobby'],
+  },
+  corridors: ['AB', 'BC', 'CD', 'BE', 'EM', 'MH', 'EF', 'FG', 'CG', 'FI', 'GJ', 'HI', 'IJ', 'JK'],
+  // Rooms in naming order: 01–07, then halls I, II, III. [u0, v0, u1, v1], door [u, v].
+  rooms: [
+    { n: '01', r: [9.5, 0, 16.3, 5], d: [12.9, 5] },
+    { n: '02', r: [16.3, 0, 23.2, 5], d: [19.75, 5] },
+    { n: '03', r: [23.2, 0, 30, 5], d: [26.6, 5] },
+    { n: '04', r: [33.5, 6.5, 40, 17.5], d: [33.5, 12] },
+    { n: '05', r: [33.5, 17.5, 40, 28.5], d: [33.5, 23] },
+    { n: '06', r: [12.9, 15.9, 18.4, 21.9], d: [15.6, 21.9] },
+    { n: '07', r: [18.4, 15.9, 24.9, 21.9], d: [21.6, 21.9] },
+    { n: '-I', r: [0, 21, 6.2, 28.5], d: [6.2, 24.75] },
+    { n: '-II', r: [0, 7, 6.2, 13], d: [6.2, 10] },
+    { n: '-III', r: [0, 13, 6.2, 21], d: [6.2, 17] },
+  ],
+  washrooms: [
+    { r: [0, 0, 6, 7], d: [6, 4], label: 'Washroom 1' },
+    { r: [35.5, 31, 40, 40], d: [35.5, 33], label: 'Washroom 2' },
+  ],
+  water: [
+    { r: [33.5, 0, 40, 5], at: [31.5, 2.5] },
+    { r: [0, 31, 5, 40], at: [7.8, 36] },
+  ],
+  stairs: [
+    { r: [18.2, 8, 25.9, 15], stop: [22, 8], label: 'Stairs 1' },
+    { r: [21.4, 24, 29.3, 31.2], stop: [21.4, 27.5], label: 'Stairs 2' },
+  ],
+  // Ways in on the ground floor: wall point, the corridor dot inside, QR facing.
+  doors: [
+    { key: 'entry', label: 'Entry', at: [31.5, 40], inside: 'K', facing: 0, code: 'ENT' },
+    { key: 'entrance', label: 'Entrance', at: [31.5, 0], inside: 'D', facing: 180, code: 'N' },
+    { key: 'exit1', label: 'Exit 1', at: [7.8, 0], inside: 'A', facing: 180, code: 'X1' },
+    { key: 'exit2', label: 'Exit 2', at: [0, 30], inside: 'M', facing: 90, code: 'X2' },
+  ],
+  // Checkpoint stickers 1–11 as drawn: a corridor dot, or a point on a corridor.
+  checkpoints: ['K', 'H', 'M', [22, 35.4], 'G', [13, 23], 'B', [15, 6], 'A', 'D', 'C'],
+};
+
+function sketchBuilding(b) {
+  const { id, name, code, x, y, scale = 1.5, floors = 3, names, roads } = b;
+  const size = 40 * scale;
+  const P = (u, v) => ({ x: x + u * scale, y: y + v * scale });
+  const box = ([u0, v0, u1, v1]) => {
+    const a = P(u0, v0);
+    const c = P(u1, v1);
+    return rect(a.x, a.y, c.x - a.x, c.y - a.y);
+  };
+  buildings.push({ id, name });
+  shape(ground, 'building', rect(x, y, size, size), { building: id });
+  const stairs = SKETCH.stairs.map((s, i) => ({
+    id: `${id}-stairs-${i + 1}`,
+    kind: 'stairs',
+    name: `${name} ${s.label.toLowerCase()}`,
+    stops: {},
+  }));
+
+  for (let f = 0; f < floors; f++) {
+    const lvlId = f === 0 ? 'G' : `${id}${f}`;
+    let level = ground;
+    if (f > 0) {
+      level = {
+        id: lvlId,
+        name: `Floor ${f}`,
+        ord: f,
+        color: FLOOR_COLORS[f % FLOOR_COLORS.length],
+        building: id,
+        shapes: [],
+      };
+      levels.push(level);
+    }
+    shape(level, 'floor', rect(x, y, size, size));
+    const floorName = f === 0 ? 'Ground' : `Floor ${f}`;
+    const tag = f === 0 ? 'G' : String(f);
+    const nid = (s) => `${id}-${tag}-${s}`.toLowerCase();
+
+    // Corridors.
+    const dots = {};
+    for (const [k, [u, v, label]] of Object.entries(SKETCH.dots)) {
+      const p = P(u, v);
+      dots[k] = node(nid(k), lvlId, p.x, p.y, 'junction', `${name} ${label}, ${floorName}`);
+    }
+    const net = lineNet();
+    for (const [a, c] of SKETCH.corridors) net.line(dots[a], dots[c]);
+    let extra = 0;
+    const onCorridor = (u, v, landmark) =>
+      net.attach(P(u, v), (q) => node(nid(`c${++extra}`), lvlId, q.x, q.y, 'junction', landmark));
+
+    // Rooms and their doors.
+    SKETCH.rooms.forEach((slot, i) => {
+      const spec = names[f][i];
+      const roomId = nid(`r${slot.n.replace('-', 'h')}`);
+      shape(level, 'room', box(slot.r), { room: roomId });
+      const dp = P(...slot.d);
+      const door = node(`${roomId}-d`, lvlId, dp.x, dp.y, 'door', spec.name);
+      edge(onCorridor(...slot.d, `Outside ${spec.name}`), door);
+      rooms.push({
+        id: roomId,
+        name: spec.name,
+        number: `${tag}${slot.n}`,
+        category: spec.category,
+        doors: [door.id],
+        ...(spec.locked && { visibility: 'locked' }),
+      });
+    });
+    SKETCH.washrooms.forEach((w, i) => {
+      shape(level, 'room', box(w.r), { label: w.label });
+      const at = onCorridor(...w.d, `Outside ${w.label.toLowerCase()}`);
+      amenities.push({ id: nid(`wc${i + 1}`), kind: 'toilet', node: at.id, name: w.label });
+    });
+    SKETCH.water.forEach((w, i) => {
+      shape(level, 'room', box(w.r), { label: 'Water' });
+      const at = onCorridor(...w.at, `By the water dispenser`);
+      amenities.push({
+        id: nid(`water${i + 1}`),
+        kind: 'water',
+        node: at.id,
+        name: 'Water dispenser',
+      });
+    });
+    SKETCH.stairs.forEach((s, i) => {
+      shape(level, 'stairs', box(s.r), { label: s.label });
+      const sp = P(...s.stop);
+      const stop = node(
+        nid(`stairs${i + 1}`),
+        lvlId,
+        sp.x,
+        sp.y,
+        'stairs-stop',
+        `${name} ${s.label.toLowerCase()}`,
+      );
+      const landing = onCorridor(...s.stop, `${name} ${s.label.toLowerCase()}, ${floorName}`);
+      edge(stop, landing);
+      stairs[i].stops[lvlId] = stop.id;
+    });
+    // Checkpoint stickers (every floor), then the corridor lines.
+    SKETCH.checkpoints.forEach((c, i) => {
+      const at =
+        typeof c === 'string' ? dots[c] : onCorridor(...c, `${name} corridor, ${floorName}`);
+      qr.push({ code: `${code}-${tag}-${i + 1}`, node: at.id, facing: 0 });
+    });
+    net.finish();
+
+    // Ways in (ground floor).
+    if (f === 0) {
+      for (const d of SKETCH.doors) {
+        const p = P(...d.at);
+        const door = node(`${id}-${d.key}`, 'G', p.x, p.y, 'entrance', `${name} ${d.label}`);
+        edge(door, dots[d.inside]);
+        joinRoad(roads[d.key], door, `${name} ${d.label}`);
+        qr.push({ code: `${code}-${d.code}`, node: door.id, facing: d.facing });
+      }
+    }
+  }
+  connectors.push(...stairs);
+}
+
 // Room name lists ------------------------------------------------------------------------
 const cycle = (list) => (floor, count) =>
   Array.from({ length: count }, (_, i) => list(floor, i)).filter(Boolean);
@@ -473,85 +854,30 @@ const list = (perFloor) => cycle((f, i) => perFloor[f]?.[i] ?? null);
 const r = (name, category, locked) => ({ name, category, ...(locked && { locked: true }) });
 
 // The campus -----------------------------------------------------------------------------
-const DEPARTMENTS = [
-  {
-    id: 'cse',
-    name: 'CSE Department',
-    code: 'CSE',
-    x: 175,
-    y: 215,
-    labs: ['Computer', 'Networks', 'AI & ML', 'Software', 'Database'],
-  },
-  {
-    id: 'ece',
-    name: 'ECE Department',
-    code: 'ECE',
-    x: 315,
-    y: 215,
-    labs: ['Electronics', 'VLSI', 'Communication', 'Embedded Systems', 'Signal Processing'],
-  },
-  {
-    id: 'me',
-    name: 'Mechanical Department',
-    code: 'ME',
-    x: 470,
-    y: 215,
-    floors: 2,
-    labs: ['Workshop', 'Thermal', 'CAD', 'Robotics', 'Fluid Mechanics'],
-  },
-  {
-    id: 'ce',
-    name: 'Civil Department',
-    code: 'CE',
-    x: 610,
-    y: 215,
-    floors: 2,
-    labs: ['Surveying', 'Concrete', 'Soil Mechanics', 'Hydraulics', 'Transport'],
-  },
-];
-for (const d of DEPARTMENTS) {
-  corridorBuilding({
-    ...d,
-    sideDoors: true,
-    w: 120,
-    h: 50,
-    floors: d.floors ?? 3,
-    entrance: 'N',
-    road: 'C',
-    rooms: dept(d.code, d.labs),
-  });
-}
-corridorBuilding({
+// Not a grid: the academic quad (Main Building and its twin) sits west of a bending Main
+// Avenue, hostels spread out to the north-east, workshops and sports far to the west.
+
+const hall = (name, category = 'classroom', locked = false) => r(name, category, locked);
+sketchBuilding({
   id: 'mb',
-  sideDoors: true,
   name: 'Main Building',
   code: 'MB',
-  x: 190,
-  y: 400,
-  w: 220,
-  h: 80,
-  floors: 3,
-  entrance: 'N',
-  road: 'B',
-  rooms: list([
+  x: 330,
+  y: 330,
+  roads: { entry: 'quadMid', entrance: 'quad', exit1: 'quad', exit2: 'quad' },
+  // Per floor: rooms 01–07, then halls I, II, III (images/map-demo-1.png).
+  names: [
     [
       r('Admission office', 'admin'),
       r('Accounts section', 'billing'),
       r('Registrar office', 'admin'),
       r('Exam section', 'admin'),
       r('Fee counter', 'billing'),
-      r('Scholarship cell', 'admin'),
-      r('Student welfare', 'admin'),
-      r('Records room', 'staff', true),
       r('Help desk', 'admin'),
-      r('Visitors lounge', 'other'),
-      r('Dispatch section', 'office'),
-      r('Photocopy room', 'other'),
-      r('Stores', 'staff', true),
-      r('Security room', 'staff', true),
-      r('Bank extension counter', 'billing'),
-      r('Lost and found', 'other'),
-      r('Training room', 'classroom'),
+      r('Records room', 'staff', true),
+      hall('Training room'),
+      hall('Visitors lounge', 'other'),
+      hall('Scholarship cell', 'admin'),
     ],
     [
       r("Director's office", 'office', true),
@@ -560,51 +886,140 @@ corridorBuilding({
       r('Board room', 'office'),
       r('Conference room', 'office'),
       r('Placement cell', 'admin'),
-      r('Alumni office', 'admin'),
-      r('International relations', 'admin'),
-      r('IQAC office', 'office'),
-      r('Research cell', 'office'),
-      r('Legal cell', 'office'),
-      r('Committee room', 'office'),
       r('PA office', 'office'),
-      r('Waiting lounge', 'other'),
-      r('Printing room', 'other'),
-      r('Archive', 'staff', true),
-      r('Pantry', 'food'),
+      hall('Committee room', 'office'),
+      hall('Waiting lounge', 'other'),
+      hall('IQAC office', 'office'),
     ],
     [
-      r('Senate hall', 'classroom'),
       r('Language lab', 'lab'),
-      r('Training & placement hall', 'classroom'),
-      r('Interview room 1', 'office'),
-      r('Interview room 2', 'office'),
-      r('Interview room 3', 'office'),
-      r('Mathematics department', 'office'),
-      r('Physics department', 'office'),
-      r('Chemistry department', 'office'),
       r('Physics lab', 'lab'),
       r('Chemistry lab', 'lab'),
-      r('Humanities department', 'office'),
-      r('Management department', 'office'),
-      r('MBA classroom 1', 'classroom'),
-      r('MBA classroom 2', 'classroom'),
-      r('Case study room', 'classroom'),
-      r('Store room', 'staff', true),
+      hall('Senate hall'),
+      hall('Training & placement hall'),
+      r('Interview room 1', 'office'),
+      r('Interview room 2', 'office'),
+      hall('Mathematics department', 'office'),
+      hall('Physics department', 'office'),
+      hall('MBA classroom 1'),
     ],
-  ]),
+  ],
 });
+// Its twin just south, across Quad Middle Road (images/map-demo-2.png).
+sketchBuilding({
+  id: 'sb',
+  name: 'Science Block',
+  code: 'SB',
+  x: 330,
+  y: 450,
+  roads: { entry: 'quad', entrance: 'quadMid', exit1: 'quadMid', exit2: 'quad' },
+  names: [
+    [
+      r('Biology lab', 'lab'),
+      r('Microbiology lab', 'lab'),
+      r('Biotech lab', 'lab'),
+      r('Instrument room', 'staff', true),
+      r('Science office', 'admin'),
+      hall('Seminar room'),
+      r('Chemical store', 'staff', true),
+      hall('Lecture room G-I'),
+      hall('Lecture room G-II'),
+      hall('Lecture room G-III'),
+    ],
+    [
+      r('Statistics lab', 'lab'),
+      r('Computer centre', 'lab'),
+      r('Electronics lab', 'lab'),
+      hall('Classroom 104'),
+      hall('Classroom 105'),
+      r('Faculty room', 'office'),
+      hall('Tutorial room'),
+      hall('Lecture room 1-I'),
+      hall('Lecture room 1-II'),
+      hall('Lecture room 1-III'),
+    ],
+    [
+      r('Research lab 1', 'lab'),
+      r('Research lab 2', 'lab'),
+      r('Research lab 3', 'lab'),
+      r('Science conference room', 'office'),
+      r('Science library corner', 'library'),
+      r('Research scholars room', 'office'),
+      r('Store room', 'staff', true),
+      hall('Lecture room 2-I'),
+      hall('Lecture room 2-II'),
+      hall('Lecture room 2-III'),
+    ],
+  ],
+});
+
+const DEPARTMENTS = [
+  {
+    id: 'cse',
+    name: 'CSE Department',
+    code: 'CSE',
+    x: 680,
+    y: 445,
+    entrance: 'N',
+    road: 'dept',
+    labs: ['Computer', 'Networks', 'AI & ML', 'Software', 'Database'],
+  },
+  {
+    id: 'ece',
+    name: 'ECE Department',
+    code: 'ECE',
+    x: 880,
+    y: 450,
+    w: 50,
+    h: 120,
+    entrance: 'N',
+    road: 'dept',
+    labs: ['Electronics', 'VLSI', 'Communication', 'Embedded Systems', 'Signal Processing'],
+  },
+  {
+    id: 'me',
+    name: 'Mechanical Department',
+    code: 'ME',
+    x: 60,
+    y: 180,
+    floors: 2,
+    entrance: 'S',
+    road: 'workshop',
+    labs: ['Workshop', 'Thermal', 'CAD', 'Robotics', 'Fluid Mechanics'],
+  },
+  {
+    id: 'ce',
+    name: 'Civil Department',
+    code: 'CE',
+    x: 120,
+    y: 560,
+    floors: 2,
+    entrance: 'E',
+    road: 'college',
+    labs: ['Surveying', 'Concrete', 'Soil Mechanics', 'Hydraulics', 'Transport'],
+  },
+];
+for (const d of DEPARTMENTS) {
+  corridorBuilding({
+    w: 120,
+    h: 50,
+    floors: 3,
+    sideDoors: true,
+    ...d,
+    rooms: dept(d.code, d.labs),
+  });
+}
 corridorBuilding({
   id: 'lhc',
-  sideDoors: true,
   name: 'Lecture Hall Complex',
   code: 'LH',
-  x: 175,
-  y: 300,
-  w: 260,
-  h: 55,
+  x: 650,
+  y: 600,
+  w: 200,
+  h: 50,
   floors: 2,
-  entrance: 'S',
-  road: 'B',
+  entrance: 'W',
+  road: 'main',
   rooms: cycle((f, i) =>
     i === 0 && f === 0
       ? r('LHC office', 'admin')
@@ -616,13 +1031,13 @@ corridorBuilding({
   sideDoors: true,
   name: 'Central Library',
   code: 'LIB',
-  x: 480,
-  y: 400,
+  x: 450,
+  y: 340,
   w: 130,
   h: 60,
   floors: 2,
-  entrance: 'N',
-  road: 'B',
+  entrance: 'S',
+  road: 'acad',
   rooms: list([
     [
       r('Issue & return counter', 'library'),
@@ -666,13 +1081,13 @@ corridorBuilding({
   id: 'aud',
   name: 'Auditorium',
   code: 'AUD',
-  x: 640,
-  y: 400,
+  x: 450,
+  y: 460,
   w: 90,
   h: 70,
   floors: 1,
   entrance: 'N',
-  road: 'B',
+  road: 'acad',
   rooms: list([
     [
       r('Main hall', 'other'),
@@ -692,13 +1107,13 @@ corridorBuilding({
   sideDoors: true,
   name: 'Central Mess',
   code: 'MESS',
-  x: 470,
-  y: 300,
+  x: 700,
+  y: 330,
   w: 110,
   h: 55,
   floors: 1,
-  entrance: 'S',
-  road: 'B',
+  entrance: 'N',
+  road: 'hostel',
   rooms: list([
     [
       r('Dining hall A', 'food'),
@@ -718,13 +1133,13 @@ corridorBuilding({
   id: 'fc',
   name: 'Food Court',
   code: 'FC',
-  x: 600,
-  y: 305,
+  x: 470,
+  y: 600,
   w: 80,
   h: 50,
   floors: 1,
-  entrance: 'S',
-  road: 'B',
+  entrance: 'N',
+  road: 'lib',
   rooms: list([
     [
       r('South Indian counter', 'food'),
@@ -741,13 +1156,13 @@ corridorBuilding({
   id: 'nc',
   name: 'Night Canteen',
   code: 'NC',
-  x: 650,
-  y: 115,
+  x: 930,
+  y: 130,
   w: 60,
   h: 60,
   floors: 1,
   entrance: 'S',
-  road: 'C',
+  road: 'hostel',
   rooms: list([
     [
       r('Snacks counter', 'food'),
@@ -762,13 +1177,13 @@ corridorBuilding({
   id: 'med',
   name: 'Medical Centre (Dispensary)',
   code: 'MED',
-  x: 775,
-  y: 215,
+  x: 1080,
+  y: 440,
   w: 90,
   h: 50,
   floors: 2,
   entrance: 'W',
-  road: 'E',
+  road: 'east',
   rooms: list([
     [
       r('OPD reception', 'opd'),
@@ -792,48 +1207,58 @@ corridorBuilding({
     ],
   ]),
 });
-for (let i = 0; i < 5; i++) {
-  const x = i < 3 ? 170 + i * 90 : 470 + (i - 3) * 90;
+// Hostels: spread out, each on its own patch (x, y, the side facing its road, the road).
+const HOSTELS = [
+  [740, 110, 'S', 'hostel'],
+  [830, 80, 'S', 'hostel'],
+  [1080, 80, 'W', 'east'],
+  [1090, 270, 'W', 'east'],
+  [600, 40, 'E', 'main'],
+];
+HOSTELS.forEach(([x, y, entrance, road], i) =>
   corridorBuilding({
     id: `h${i + 1}`,
     name: `Hostel ${i + 1}`,
     code: `H${i + 1}`,
     x,
-    y: 50,
+    y,
     w: 60,
     h: 125,
     floors: 3,
-    entrance: 'S',
-    road: 'C',
+    entrance,
+    road,
     rooms: hostel(`Hostel ${i + 1}`),
-  });
-}
-for (let i = 0; i < 2; i++) {
+  }),
+);
+[
+  [330, 20],
+  [220, 5],
+].forEach(([x, y], i) =>
   corridorBuilding({
     id: `gh${i + 1}`,
     name: `Girls Hostel ${i + 1}`,
     code: `GH${i + 1}`,
-    x: 770 + i * 62,
-    y: 40,
+    x,
+    y,
     w: 56,
     h: 110,
     floors: 3,
     entrance: 'S',
-    road: 'D',
+    road: 'hostelW',
     rooms: hostel(`Girls Hostel ${i + 1}`),
-  });
-}
+  }),
+);
 corridorBuilding({
   id: 'sports',
   name: 'Sports Complex',
   code: 'SPC',
   x: 40,
-  y: 300,
+  y: 410,
   w: 85,
   h: 60,
   floors: 2,
-  entrance: 'E',
-  road: 'W',
+  entrance: 'N',
+  road: 'sports',
   rooms: list([
     [
       r('Badminton court', 'sports'),
@@ -859,13 +1284,13 @@ corridorBuilding({
   id: 'pool',
   name: 'Aquatic Centre',
   code: 'AQ',
-  x: 40,
-  y: 255,
+  x: 140,
+  y: 420,
   w: 85,
   h: 35,
   floors: 1,
-  entrance: 'E',
-  road: 'W',
+  entrance: 'N',
+  road: 'sports',
   rooms: list([
     [
       r('Swimming pool entry', 'sports'),
@@ -881,13 +1306,13 @@ corridorBuilding({
   sideDoors: true,
   name: 'Shopping Complex',
   code: 'SC',
-  x: 220,
-  y: 588,
+  x: 400,
+  y: 690,
   w: 100,
   h: 40,
   floors: 1,
-  entrance: 'N',
-  road: 'A',
+  entrance: 'S',
+  road: 'gateW',
   rooms: list([
     [
       r('Stationery shop', 'other'),
@@ -907,13 +1332,13 @@ corridorBuilding({
   id: 'bank',
   name: 'Bank & Post Office',
   code: 'BK',
-  x: 340,
-  y: 588,
+  x: 530,
+  y: 700,
   w: 60,
   h: 36,
   floors: 1,
-  entrance: 'N',
-  road: 'A',
+  entrance: 'E',
+  road: 'main',
   rooms: list([
     [
       r('Bank branch', 'billing'),
@@ -926,16 +1351,15 @@ corridorBuilding({
 });
 corridorBuilding({
   id: 'guest',
-  sideDoors: true,
   name: 'Guest House',
   code: 'GHS',
-  x: 620,
-  y: 588,
+  x: 1080,
+  y: 640,
   w: 90,
   h: 44,
   floors: 2,
-  entrance: 'N',
-  road: 'A',
+  entrance: 'W',
+  road: 'east',
   rooms: cycle((f, i) =>
     f === 0 && i === 0
       ? r('Guest house reception', 'admin')
@@ -944,32 +1368,37 @@ corridorBuilding({
         : r(`Guest room ${f}${String(i).padStart(2, '0')}`, 'hostel'),
   ),
 });
-for (let i = 0; i < 4; i++) {
+[
+  [960, 830, 70, 'N'],
+  [1060, 830, 70, 'N'],
+  [1040, 740, 70, 'S'],
+  [1130, 735, 60, 'S'],
+].forEach(([x, y, w, entrance], i) =>
   corridorBuilding({
     id: `sq${i + 1}`,
     name: `Staff Quarters ${'ABCD'[i]}`,
     code: `SQ${'ABCD'[i]}`,
-    x: 775,
-    y: 400 + i * 58,
-    w: 70,
+    x,
+    y,
+    w,
     h: 40,
     floors: 2,
-    entrance: 'W',
-    road: 'E',
+    entrance,
+    road: 'colony',
     rooms: cycle((f, i2) => r(`Quarter ${'ABCD'[i]}-${f}${i2 + 1}`, 'staff')),
-  });
-}
+  }),
+);
 corridorBuilding({
   id: 'sec',
   name: 'Security & Visitor Centre',
   code: 'SEC',
-  x: 395,
-  y: 630,
+  x: 660,
+  y: 840,
   w: 48,
   h: 30,
   floors: 1,
-  entrance: 'E',
-  road: 'M',
+  entrance: 'W',
+  road: 'main',
   rooms: list([
     [
       r('Visitor pass desk', 'admin'),
@@ -983,24 +1412,24 @@ singleRoom({
   id: 'temple',
   name: 'Campus Temple',
   code: 'TMP',
-  x: 100,
-  y: 590,
+  x: 40,
+  y: 600,
   w: 34,
   h: 34,
   entrance: 'E',
-  road: 'W',
+  road: 'gateW',
   category: 'other',
 });
 singleRoom({
   id: 'sub',
   name: 'Electrical Substation',
   code: 'ESS',
-  x: 775,
-  y: 300,
+  x: 1100,
+  y: 540,
   w: 40,
   h: 30,
   entrance: 'W',
-  road: 'E',
+  road: 'east',
   category: 'utility',
   locked: true,
 });
@@ -1008,12 +1437,12 @@ singleRoom({
   id: 'pump',
   name: 'Water Pump House',
   code: 'PMP',
-  x: 160,
-  y: 470,
+  x: 250,
+  y: 440,
   w: 20,
   h: 20,
-  entrance: 'E',
-  road: 'W',
+  entrance: 'N',
+  road: 'sports',
   category: 'utility',
   locked: true,
 });
@@ -1021,12 +1450,12 @@ singleRoom({
   id: 'atm',
   name: 'ATM Kiosk',
   code: 'ATM',
-  x: 470,
-  y: 520,
+  x: 590,
+  y: 760,
   w: 16,
   h: 14,
   entrance: 'E',
-  road: 'M',
+  road: 'main',
   category: 'billing',
 });
 
@@ -1045,89 +1474,84 @@ amenities.push({ id: 'sports-aed', kind: 'aed', node: 'sports-ent' });
 amenities.push({
   id: 'mb-help',
   kind: 'help-desk',
-  node: 'mb-ent',
+  node: 'mb-entry',
   name: 'Main Building reception',
 });
 amenities.push({ id: 'lib-charging', kind: 'charging', node: 'lib-ent' });
 
-// ---------------------------------------------------------------- road lines
-for (const [roadId, list2] of stops) {
-  const h = H.find((x) => x.id === roadId);
-  const sorted = [...new Map(list2.map((n) => [n.id, n])).values()].sort((a, b) =>
-    h ? a.x - b.x : a.y - b.y,
-  );
-  for (let i = 1; i < sorted.length; i++) edge(sorted[i - 1], sorted[i], 'outdoor');
-}
-
-// A road closed for works (to test detours): West Road from Sports Junction south to the
-// Water Pump House path. Drawn red on the map; every route goes around it.
-{
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  for (const e of edges) {
-    const a = byId.get(e.a);
-    const b = byId.get(e.b);
-    if (!a || !b || a.x !== 150 || b.x !== 150) continue;
-    if (Math.min(a.y, b.y) >= 380 && Math.max(a.y, b.y) <= 480) e.tags = ['closed'];
-  }
-}
+// ---------------------------------------------------------------- walking lines on roads
+roadNet.finish('outdoor');
 
 // ---------------------------------------------------------------- green, water, parking, trees
 const green = (x, y, w, h, label) =>
   shape(ground, 'green', rect(x, y, w, h), label ? { label } : {});
-green(190, 495, 220, 55, 'Main Lawn');
-green(10, 60, 125, 120, 'Football Ground');
-green(10, 400, 125, 150, 'Cricket Ground');
-green(470, 470, 160, 82);
-green(160, 270, 10, 25);
-green(890 - 30, 560, 30, 70, 'Herbal Garden');
-shape(ground, 'water', rect(480, 478, 140, 60), { label: 'Campus Lake' });
-shape(ground, 'water', rect(40, 215, 85, 32), { label: 'Swimming Pool' });
-shape(ground, 'parking', rect(470, 590, 120, 80), { label: 'Main Parking' });
-shape(ground, 'parking', rect(155, 640, 55, 40), { label: 'Two-wheeler Parking' });
-shape(ground, 'parking', rect(650, 40, 75, 60), { label: 'Hostel Parking' });
-shape(ground, 'parking', rect(720, 470, 30, 70), { label: 'Staff Parking' });
-shape(ground, 'building', rect(840, 300, 18, 18), { label: 'Water Tank' });
+green(311, 316, 98, 98);
+green(311, 426, 98, 98);
+green(320, 560, 130, 110, 'Central Lawn');
+green(20, 20, 150, 95, 'Football Ground');
+green(10, 480, 100, 100, 'Cricket Ground');
+green(690, 505, 150, 70);
+green(960, 330, 60, 80, 'Herbal Garden');
+green(560, 470, 30, 70);
+green(190, 230, 90, 60, 'Workshop Yard');
+shape(ground, 'water', rect(700, 512, 130, 56), { label: 'Campus Lake' });
+shape(ground, 'water', rect(140, 462, 85, 30), { label: 'Swimming Pool' });
+shape(ground, 'parking', rect(680, 690, 110, 70), { label: 'Main Parking' });
+shape(ground, 'parking', rect(320, 690, 60, 40), { label: 'Two-wheeler Parking' });
+shape(ground, 'parking', rect(830, 290, 70, 50), { label: 'Hostel Parking' });
+shape(ground, 'building', rect(1170, 300, 18, 18), { label: 'Water Tank' });
 
-// Trees: avenues along the main roads, rows around lawns and grounds (deterministic).
+// Trees: avenues along the bigger roads, rows round lawns and grounds (deterministic).
 let seed = 7;
 const rand = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const inside = (pts, x, y) => {
+  let hit = false;
+  for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+    const [xi, yi, xj, yj] = [pts[i], pts[i + 1], pts[j], pts[j + 1]];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+};
 const busy = (x, y) =>
   ground.shapes.some((s) => {
-    if (!['building', 'water', 'parking', 'road'].includes(s.kind)) return false;
-    const xs = s.pts.filter((_, i) => i % 2 === 0);
-    const ys = s.pts.filter((_, i) => i % 2 === 1);
-    return (
-      x > Math.min(...xs) - 3 &&
-      x < Math.max(...xs) + 3 &&
-      y > Math.min(...ys) - 3 &&
-      y < Math.max(...ys) + 3
-    );
+    if (!['building', 'water', 'parking', 'road', 'path'].includes(s.kind)) return false;
+    // Roads and paths: the band itself plus a little space either side.
+    return [
+      [0, 0],
+      [3, 0],
+      [-3, 0],
+      [0, 3],
+      [0, -3],
+    ].some(([dx, dy]) => inside(s.pts, x + dx, y + dy));
   });
 const tree = (x, y, rad = 2.5) => {
   if (busy(x, y)) return;
-  const pts = [];
-  for (let k = 0; k < 6; k++) {
-    const a = (Math.PI / 3) * k;
-    pts.push(r1(x + rad * Math.cos(a)), r1(y + rad * Math.sin(a)));
-  }
-  shape(ground, 'tree', pts);
+  // Four points are enough: the map draws every tree as a circle in its outline's box.
+  shape(ground, 'tree', [x - rad, y, x, y - rad, x + rad, y, x, y + rad].map(r1));
 };
-for (let y = 130; y < 690; y += 18) {
-  tree(438, y);
-  tree(462, y);
-}
-for (const h of [H[0], H[1], H[2]]) {
-  for (let x = h.x0 + 10; x < h.x1; x += 22) {
-    tree(x, h.y - 10);
-    tree(x + 11, h.y + 10);
+for (const seg of roadNet.segs) {
+  const road = ROADS.find((x) => x.id === seg.road);
+  if (!road || road.w < 10) continue;
+  const len = Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y);
+  const u = { x: (seg.b.x - seg.a.x) / len, y: (seg.b.y - seg.a.y) / len };
+  const off = road.w / 2 + 5;
+  for (let s = 12; s < len - 10; s += 32) {
+    const p = { x: seg.a.x + u.x * s, y: seg.a.y + u.y * s };
+    tree(p.x - u.y * off, p.y + u.x * off);
+    tree(p.x + u.y * off + u.x * 10, p.y - u.x * off + u.y * 10);
   }
 }
-for (let x = 195; x < 410; x += 16) tree(x, 498 + rand() * 4);
-for (let x = 14; x < 135; x += 14) {
-  tree(x, 63);
-  tree(x, 547);
-}
-for (let i = 0; i < 40; i++) tree(472 + rand() * 156, 541 + rand() * 9, 2 + rand());
+for (let x = 325; x < 445; x += 16) tree(x, 663 + rand() * 3);
+for (let x = 24; x < 170; x += 14) tree(x, 117);
+for (let i = 0; i < 16; i++) tree(692 + rand() * 146, 570 + rand() * 4, 2 + rand());
+for (let i = 0; i < 12; i++) tree(962 + rand() * 56, 332 + rand() * 76, 2 + rand());
+
+// Draw order: ground cover first, then roads and paths, then buildings, trees on top.
+const LAYER = { green: 0, water: 1, parking: 1, road: 2, path: 3, tree: 5 };
+ground.shapes = ground.shapes
+  .map((s, i) => ({ s, i }))
+  .sort((a, b) => (LAYER[a.s.kind] ?? 4) - (LAYER[b.s.kind] ?? 4) || a.i - b.i)
+  .map(({ s }) => s);
 
 // ---------------------------------------------------------------- write
 const map = {
