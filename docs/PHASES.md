@@ -453,6 +453,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): text above the blur; no metres.** The map is three layers in one picture (`.map-canvas`, role img): the plan, the focus blur, and names / pins / route markers on their own svg (`.map-labels`) above it, so the blur never touches text. The blur is at 40% of before (1.2 px, a lighter wash) with a 36 px clear margin round the building. Distances are hidden for now (step card, step lists, preview, room card); the data keeps them. The step card shows checkpoint details in full, wrapping to a second line.
 
+**Follow-up (2026-10-18): checkpoint names in full on the map.** The next checkpoint's tag (and every checkpoint tag in the preview) shows the landmark's full name, every word, wrapping onto more lines (about 24 letters each) instead of being shortened.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

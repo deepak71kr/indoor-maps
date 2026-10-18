@@ -723,6 +723,32 @@ export class MapView {
   }
 
   /**
+   * A name tag that keeps every word: long names wrap onto more lines (about 24 letters
+   * each) instead of being cut. Its bottom line sits at `bottom` above the pin; returns the
+   * box the label takes (for decluttering).
+   */
+  private wrapTag(g: SVGGElement, text: string, bottom: number): NonNullable<Pin['box']> {
+    const lines: string[] = [];
+    for (const word of text.split(' ')) {
+      const last = lines[lines.length - 1];
+      if (last !== undefined && (last + ' ' + word).length <= 24)
+        lines[lines.length - 1] = last + ' ' + word;
+      else lines.push(word);
+    }
+    const LINE = 14;
+    const width = Math.max(...lines.map((l) => l.length)) * 6.4 + 16;
+    const height = lines.length * LINE + 6;
+    const top = bottom + 10 - height;
+    g.append(s('rect', { x: -width / 2, y: top, width, height, rx: Math.min(10, height / 2) }));
+    const label = s('text', {});
+    lines.forEach((line, i) =>
+      label.append(s('tspan', { x: 0, y: top + 3 + LINE * (i + 1) - 3 }, line)),
+    );
+    g.append(label);
+    return { w: width, h: height, dy: top + height / 2 };
+  }
+
+  /**
    * Small drawing details that make a plan read as a building: a door's swing (a quarter
    * circle into the room) and the treads of each staircase. Shown from close-up zoom.
    */
@@ -1123,10 +1149,8 @@ export class MapView {
 
     // Name tags: the next checkpoint (blue), the destination (red), and in the preview every
     // checkpoint, so the visitor can match the map with what they see in the corridor.
-    const nameOf = (id: string) => {
-      const node = site.graph.nodes.get(id);
-      return node?.landmark ? shortPlace(node.landmark) : undefined;
-    };
+    // The checkpoint's full name, every word: "Reception desk (blue board), Lift A lobby".
+    const nameOf = (id: string) => site.graph.nodes.get(id)?.landmark;
     if (next === null) {
       scene.checkpoints.forEach((id) => {
         const text = id !== last && id !== scene.here ? nameOf(id) : undefined;
@@ -1134,7 +1158,7 @@ export class MapView {
           marker(
             id,
             'tag cp-name',
-            (g) => ({ w: this.tag(g, text, 0, -20), h: 20, dy: -20 }),
+            (g) => this.wrapTag(g, text, -20),
             undefined,
             undefined,
             RANK.cp,
@@ -1147,7 +1171,7 @@ export class MapView {
       (g) => {
         g.append(s('circle', { class: 'pulse', r: 15 }), s('circle', { r: 7 }));
         const text = next ? nameOf(next) : undefined;
-        return text ? { w: this.tag(g, text, 0, -26), h: 20, dy: -26 } : undefined;
+        return text ? this.wrapTag(g, text, -26) : undefined;
       },
       undefined,
       undefined,
