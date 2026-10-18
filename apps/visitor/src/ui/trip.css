@@ -973,3 +973,20 @@
     opacity: 0;
   }
 }
+
+/* The step's details are shown in full (wrapping to a second line), not cut with "…". */
+.trip .sheet {
+  max-height: 230px;
+}
+.trip .banner .route-line,
+.trip .banner .step-title,
+.trip .banner .then .grow {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.trip .banner .route-line {
+  display: block;
+  line-height: 1.3;
+}

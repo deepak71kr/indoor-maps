@@ -117,7 +117,7 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
     'true',
   );
   await expect(map).toHaveAccessibleName('Map of Floor 2');
-  await expect(page.locator('.map > .map-svg:not(.floor-ghost) .dest')).toBeVisible();
+  await expect(page.locator('.map-labels .dest')).toBeVisible();
 
   // Taking the lift brings the map to the visitor's new floor by itself.
   for (let i = 0; i < 3; i++) await iAmHere(page).click();

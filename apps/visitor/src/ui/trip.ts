@@ -244,7 +244,6 @@ function stepList(steps: readonly Step[], current: number): HTMLElement {
           s.kind === 'walk' && s.to ? h('small', {}, ` → ${s.to}`) : null,
           s.via ? h('small', { class: 'via' }, tr('step.via', { place: s.via })) : null,
         ),
-        s.meters > 0 ? h('small', {}, tr('step.m', { m: s.meters })) : null,
       ),
     ),
   );
@@ -474,13 +473,7 @@ function banner(
         h(
           'div',
           { class: 'grow' },
-          h(
-            'p',
-            { class: 'step-title' },
-            h('span', { class: 'grow' }, step.title),
-            step.meters > 0 &&
-              h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
-          ),
+          h('p', { class: 'step-title' }, h('span', { class: 'grow' }, step.title)),
           sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
           step.kind === 'ride'
             ? h(
@@ -538,7 +531,7 @@ function banner(
 export function previewView(ctx: ViewContext): HTMLElement {
   const { site, steps, target, position } = ctx.state;
   if (!site) return h('section');
-  const { minutes, meters } = tripStats(steps, 0);
+  const { minutes } = tripStats(steps, 0);
   const startName =
     (position && site.graph.nodes.get(position.node)?.landmark) ?? position?.node ?? '';
   const checkpoints = steps.length - 1;
@@ -620,12 +613,7 @@ export function previewView(ctx: ViewContext): HTMLElement {
         h(
           'div',
           { class: 'grow trip-info' },
-          h(
-            'p',
-            { class: 'eta' },
-            h('strong', {}, tr('step.min', { min: minutes })),
-            ` (${tr('step.m', { m: meters })})`,
-          ),
+          h('p', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
           h(
             'p',
             { class: 'trip-sub' },
@@ -690,7 +678,6 @@ export function previewView(ctx: ViewContext): HTMLElement {
               s.kind === 'walk' && s.to ? h('small', {}, ` → ${s.to}`) : null,
               s.via ? h('small', { class: 'via' }, tr('step.via', { place: s.via })) : null,
             ),
-            s.meters > 0 ? h('small', {}, tr('step.m', { m: s.meters })) : null,
           ),
         ),
       ),

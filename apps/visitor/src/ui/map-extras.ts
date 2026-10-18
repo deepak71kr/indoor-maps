@@ -22,7 +22,7 @@ const EASE = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
  */
 export function playFloorChange(
   host: HTMLElement,
-  svg: SVGSVGElement,
+  layers: readonly Element[],
   ghost: SVGSVGElement,
   from: number,
   to: number,
@@ -41,13 +41,15 @@ export function playFloorChange(
     { duration: 300, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
   ).onfinish = () => ghost.remove();
   // …then zoom into the new one (from a little above when going up, below when going down).
-  svg.animate(
-    [
-      { transform: `scale(0.62) translateY(${up ? -8 : 8}%)`, opacity: 0 },
-      { transform: 'scale(1) translateY(0)', opacity: 1 },
-    ],
-    { duration: DURATION - 160, delay: 200, easing: EASE, fill: 'backwards' },
-  );
+  for (const layer of layers) {
+    layer.animate(
+      [
+        { transform: `scale(0.62) translateY(${up ? -8 : 8}%)`, opacity: 0 },
+        { transform: 'scale(1) translateY(0)', opacity: 1 },
+      ],
+      { duration: DURATION - 160, delay: 200, easing: EASE, fill: 'backwards' },
+    );
+  }
   // A tiny buzz on phones that have it, so the change is felt too.
   navigator.vibrate?.(12);
 }

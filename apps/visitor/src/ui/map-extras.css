@@ -161,7 +161,7 @@
 }
 /* The blur outside the building takes a hint of the building's colour. */
 .map .focus-veil {
-  background: color-mix(in srgb, var(--b, #f8f9fa) 8%, rgb(248 249 250 / 0.45));
+  background: color-mix(in srgb, var(--b, #f8f9fa) 6%, rgb(248 249 250 / 0.2));
   transition:
     opacity 0.35s,
     background-color 0.45s;

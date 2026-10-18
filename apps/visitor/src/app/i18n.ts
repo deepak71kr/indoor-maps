@@ -74,7 +74,7 @@ export const ui = {
   'step.press': 'Press {floor} in the lift',
   'step.get-off': 'Get off at {floor}',
   'place.copied': 'Link copied ✓',
-  'place.from-you': '{min} min ({m} m) from you',
+  'place.from-you': '{min} min from you',
   'place.no-route': 'No route from here with the current settings',
   'place.locked': 'Staff only — the route ends at the door',
   'place.close': 'Close',

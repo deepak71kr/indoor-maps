@@ -232,6 +232,9 @@ export class MapView {
   private readonly placeChip: HTMLElement;
   /** A frame round the map in the floor's colour while you look at a floor not your own. */
   private readonly frame: HTMLElement;
+  /** The plan, the blur over it, and the labels on top: one picture (role img). */
+  private readonly canvas: HTMLElement;
+  private readonly labels: SVGSVGElement;
   /** The building in focus (zoomed into, or whose floor is shown); its floors fill the switcher. */
   private looking: string | null = null;
   private colours: Map<string, string> | null = null;
@@ -281,7 +284,10 @@ export class MapView {
     const world = s('g');
     world.append(this.plan, this.routeLayer);
     this.overlay = s('g', { class: 'overlay' });
-    this.svg = s('svg', { class: 'map-svg', role: 'img' });
+    this.svg = s('svg', { class: 'map-svg' });
+    // Names, pins and the route's markers sit on their own layer above the focus blur,
+    // so the blur softens the surroundings but never the text.
+    this.labels = s('svg', { class: 'map-labels', 'aria-hidden': 'true' });
     // The "beam" in front of the blue dot fades out, like Google Maps.
     const defs = s('defs');
     defs.innerHTML =
@@ -290,7 +296,8 @@ export class MapView {
       '<stop offset="1" stop-color="#1a73e8" stop-opacity="0"/></radialGradient>';
     this.scaleBar = s('g', { class: 'scale' });
     this.scaleBar.append(s('path'), s('text', { x: 4, y: -9 }));
-    this.svg.append(defs, world, this.overlay, this.scaleBar);
+    this.svg.append(defs, world, this.scaleBar);
+    this.labels.append(this.overlay);
 
     this.floors = h('div', { class: 'floors', role: 'group', 'aria-label': tr('map.floor') });
     this.compass = h('button', {
@@ -376,9 +383,11 @@ export class MapView {
       zoom,
     );
     this.el = h('div', { class: 'map' });
+    // One picture for screen readers and tests: the plan, the blur and the labels.
+    this.canvas = h('div', { class: 'map-canvas', role: 'img' });
+    this.canvas.append(this.svg, this.focusVeil, this.labels);
     this.el.append(
-      this.svg,
-      this.focusVeil,
+      this.canvas,
       this.frame,
       this.keyPanel,
       this.floorNote,
@@ -473,9 +482,10 @@ export class MapView {
     const nodes = [...site.graph.nodes.values()].filter((n) => n.level === levelId);
     const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
     const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
-    this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
+    this.canvas.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
     // Each floor in its own colour: walls and the floor itself follow --lvl (styles.css).
     this.svg.setAttribute('class', `map-svg lvl-${level?.color ?? 'slate'}`);
+    this.canvas.className = `map-canvas lvl-${level?.color ?? 'slate'}`;
     if (changing && before) this.floorChanged(site, before.id, levelId, ghost);
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
     this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
@@ -812,7 +822,13 @@ export class MapView {
     );
     const up = to.rank > from.rank;
     if (ghost && extras) {
-      extras.playFloorChange(this.el, this.svg, ghost, floors.indexOf(from), floors.indexOf(to));
+      extras.playFloorChange(
+        this.canvas,
+        [this.svg, this.labels],
+        ghost,
+        floors.indexOf(from),
+        floors.indexOf(to),
+      );
     }
     this.floorToast.className = `floor-toast show lvl-${to.color}`;
     this.floorToast.textContent = `${up ? '↑' : '↓'} ${this.levelName(toId)}`;
@@ -1480,7 +1496,7 @@ export class MapView {
       x: corners.reduce((sum, q) => sum + q.x, 0) / corners.length,
       y: corners.reduce((sum, q) => sum + q.y, 0) / corners.length,
     };
-    const MARGIN = 18;
+    const MARGIN = 36;
     const hole = corners
       .map((q, i) => {
         const len = Math.hypot(q.x - mid.x, q.y - mid.y) || 1;
