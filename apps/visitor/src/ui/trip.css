@@ -865,3 +865,46 @@
     opacity: 0;
   }
 }
+
+/* One card (2026-10-18): direction and a small "✓ Reached" in one row; ✕ · floor · ☰ in
+   a slim footer under the progress bar. */
+.trip .sheet {
+  max-height: 168px;
+}
+.trip .card-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 8px;
+}
+.trip .card-row .banner-main {
+  flex: 1;
+  min-width: 0;
+}
+.trip .reached {
+  flex: none;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  gap: 6px;
+}
+.trip .card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px;
+}
+.trip .card-foot .floor-chip {
+  margin: 0;
+}
+.trip .card-foot .exit-x,
+.trip .card-foot .more-x {
+  width: 34px;
+  height: 34px;
+}
+.trip .card-foot .exit-x .icon,
+.trip .card-foot .more-x .icon {
+  width: 18px;
+  height: 18px;
+}

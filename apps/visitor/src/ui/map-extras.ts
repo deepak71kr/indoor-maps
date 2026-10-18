@@ -32,19 +32,21 @@ export function playFloorChange(
   ghost.removeAttribute('role');
   ghost.setAttribute('aria-hidden', 'true');
   host.append(ghost);
+  // Zoom out of the floor you were on…
   ghost.animate(
     [
       { transform: 'scale(1)', opacity: 1 },
-      { transform: `scale(${up ? 0.78 : 1.25})`, opacity: 0 },
+      { transform: `scale(0.62) translateY(${up ? 8 : -8}%)`, opacity: 0 },
     ],
-    { duration: DURATION * 0.8, easing: EASE, fill: 'forwards' },
+    { duration: 300, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
   ).onfinish = () => ghost.remove();
+  // …then zoom into the new one (from a little above when going up, below when going down).
   svg.animate(
     [
-      { transform: `scale(${up ? 1.22 : 0.8})`, opacity: 0 },
-      { transform: 'scale(1)', opacity: 1 },
+      { transform: `scale(0.62) translateY(${up ? -8 : 8}%)`, opacity: 0 },
+      { transform: 'scale(1) translateY(0)', opacity: 1 },
     ],
-    { duration: DURATION, easing: EASE },
+    { duration: DURATION - 160, delay: 200, easing: EASE, fill: 'backwards' },
   );
   // A tiny buzz on phones that have it, so the change is felt too.
   navigator.vibrate?.(12);

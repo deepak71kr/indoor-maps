@@ -85,15 +85,21 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
   // One thing at a time: what to do now, and one button that says where you should be when
   // it is done ("Reached Reception desk"). Tapping it shows the next direction right here.
   const place = step.kind === 'ride' ? step.levelName : step.to ? shortPlace(step.to) : '';
-  const reached = button(
-    place ? tr('step.reached', { place }) : tr('step.here'),
-    () => {
-      navigator.vibrate?.(15);
-      if (voiceOn()) tick();
-      ctx.dispatch({ type: 'confirm' });
+  // A small "✓ Reached" inside the card (its full name says where: "Reached Reception desk").
+  const reached = h(
+    'button',
+    {
+      type: 'button',
+      class: 'btn primary go reached',
+      'aria-label': place ? tr('step.reached', { place }) : tr('step.here'),
+      onClick: () => {
+        navigator.vibrate?.(15);
+        if (voiceOn()) tick();
+        ctx.dispatch({ type: 'confirm' });
+      },
     },
-    'btn primary go reached',
-    'check',
+    icon('check'),
+    place ? tr('step.reached-short') : tr('step.here'),
   );
   glowWhenNear(reached, index, step.meters);
   const toggleMenu = (e: Event) => {
@@ -110,7 +116,7 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
       notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
     ],
     sheet: [
-      // The step card: the direction, then "Reached …" right under it.
+      // One card: the direction with "✓ Reached" beside it; ✕ and the menu in its footer.
       banner(
         step,
         index,
@@ -118,10 +124,7 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
         index === 0 && ctx.state.position?.facing !== undefined,
         floorBadgeText(step.levelName, buildingOf(ctx.state, step.target)),
         total,
-      ),
-      h(
-        'div',
-        { class: 'trip-bar nav-bar' },
+        reached,
         h(
           'button',
           {
@@ -134,7 +137,6 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
           icon('close'),
           h('span', { class: 'sr-only' }, tr('step.exit')),
         ),
-        reached,
         h(
           'button',
           {
@@ -148,7 +150,7 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
           icon('list'),
         ),
       ),
-      // The menu (⋯ or pull the card up): everything else, and every step.
+      // The menu (☰ or pull the card up): everything else, and every step.
       h(
         'div',
         { class: 'trip-menu' },
@@ -391,6 +393,9 @@ function banner(
   sign: boolean,
   floorLabel = step.levelName,
   total = 0,
+  action: HTMLElement | null = null,
+  exit: HTMLElement | null = null,
+  more: HTMLElement | null = null,
 ): HTMLElement {
   // "Then …" only when the next move comes right after this one.
   const soon = next && next.kind !== 'arrive' && step.meters > 0 && step.meters < 12;
@@ -402,45 +407,50 @@ function banner(
     total > 0 && h('p', { class: 'sr-only' }, tr('step.of', { n: index + 1, total })),
     h(
       'div',
-      { class: 'banner-main', 'aria-hidden': 'true' },
-      step.kind === 'ride'
-        ? // Lifts and stairs: the floor to go to, in that floor's colour.
-          h(
-            'div',
-            { class: `floor-tile lvl-${step.levelColor}` },
-            icon(step.icon),
-            h('b', {}, shortName(step.levelName)),
-          )
-        : h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
+      { class: 'card-row' },
       h(
         'div',
-        { class: 'grow' },
-        h(
-          'p',
-          { class: 'step-title' },
-          h('span', { class: 'grow' }, step.title),
-          step.meters > 0 && h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
-        ),
-        sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
+        { class: 'banner-main', 'aria-hidden': 'true' },
         step.kind === 'ride'
-          ? h(
-              'p',
-              { class: 'route-line press' },
-              step.icon === 'lift'
-                ? tr('step.press', { floor: shortName(step.levelName) })
-                : tr('step.get-off', { floor: step.levelName }),
+          ? // Lifts and stairs: the floor to go to, in that floor's colour.
+            h(
+              'div',
+              { class: `floor-tile lvl-${step.levelColor}` },
+              icon(step.icon),
+              h('b', {}, shortName(step.levelName)),
             )
-          : (step.from || step.to) &&
-              h(
+          : h('div', { class: 'step-icon' }, icon(step.icon, 'icon huge')),
+        h(
+          'div',
+          { class: 'grow' },
+          h(
+            'p',
+            { class: 'step-title' },
+            h('span', { class: 'grow' }, step.title),
+            step.meters > 0 &&
+              h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
+          ),
+          sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
+          step.kind === 'ride'
+            ? h(
                 'p',
-                { class: 'route-line' },
-                step.from ? tr('step.from', { place: '' }) : null,
-                step.from ? h('b', {}, step.from) : null,
-                step.to ? h('span', { class: 'arrow' }, ' → ') : null,
-                step.to ? h('b', {}, step.to) : null,
-              ),
+                { class: 'route-line press' },
+                step.icon === 'lift'
+                  ? tr('step.press', { floor: shortName(step.levelName) })
+                  : tr('step.get-off', { floor: step.levelName }),
+              )
+            : (step.from || step.to) &&
+                h(
+                  'p',
+                  { class: 'route-line' },
+                  step.from ? tr('step.from', { place: '' }) : null,
+                  step.from ? h('b', {}, step.from) : null,
+                  step.to ? h('span', { class: 'arrow' }, ' → ') : null,
+                  step.to ? h('b', {}, step.to) : null,
+                ),
+        ),
       ),
-      h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
+      action,
     ),
     soon &&
       h(
@@ -450,13 +460,21 @@ function banner(
         icon(next.icon),
         h('span', { class: 'grow' }, next.title),
       ),
-    // How far along the trip: a thin bar under the card.
+    // How far along the trip: a thin bar, then ✕ · floor · ☰ in a slim footer.
     total > 0 &&
       h(
         'div',
         { class: 'step-progress', 'aria-hidden': 'true' },
         h('i', { style: { width: `${Math.round(((index + 1) / total) * 100)}%` } }),
       ),
+    h(
+      'div',
+      { class: 'card-foot' },
+      exit,
+      h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
+      h('span', { class: 'grow' }),
+      more,
+    ),
   );
 }
 

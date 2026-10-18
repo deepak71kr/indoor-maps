@@ -447,6 +447,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): one step card; floor change as a depth zoom.** Walking shows one card at the bottom: the direction (arrow tile, instruction, metres, landmark line, floor chip, progress bar) and right under it one button that says where you should be when it is done — "✓ Reached Reception desk", "✓ Reached Floor 2" on lifts and stairs. Tapping it shows the next direction in the same place (its content fades up). No minutes or arrival clock; the step's metres stay. ✕ ends the route, ⋯ opens the menu (Back, I'm lost, whole route, Path blocked?, sound, steps). The top of the map stays clear. Passing a checkpoint no longer redraws the route line (only a new route does). The floor change is now a depth zoom: going up, the old floor shrinks away below and the new one settles from above; going down, the reverse (the tilted plates are gone).
 
+**Follow-up (2026-10-18): one card, zoom out / zoom in.** The step card and its button are one piece: the direction with a small "✓ Reached" beside it (its full name says where: "Reached Reception desk"), then a progress bar and a slim footer (✕ · floor · ☰). The floor change zooms out of the old floor and then into the new one (a little from above when going up, from below when going down).
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
