@@ -1489,6 +1489,19 @@ amenities.push({
 });
 amenities.push({ id: 'lib-charging', kind: 'charging', node: 'lib-ent' });
 
+// Popular places, shown first to new visitors (the first room with each name).
+for (const name of [
+  'Admission office',
+  'Fee counter',
+  'Exam section',
+  'Help desk',
+  'Reading hall',
+  'OPD reception',
+]) {
+  const room = rooms.find((x) => x.name === name);
+  if (room) room.popular = true;
+}
+
 // ---------------------------------------------------------------- walking lines on roads
 roadNet.finish('outdoor');
 

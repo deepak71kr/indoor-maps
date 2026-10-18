@@ -7,6 +7,7 @@ import {
   searchAmenities,
   searchSpots,
   searchBuildings,
+  popularPlaces,
 } from '../app/search';
 import { currentNode } from '../app/state';
 import { h, replace } from './dom';
@@ -225,6 +226,11 @@ function chooseView(ctx: ViewContext): HTMLElement {
     h('span', { class: 'logo', 'aria-hidden': 'true' }, icon('arrive')),
     roundButton('back', tr('search.back'), closeSearch, 'back'),
     search,
+    voiceSearch((text) => {
+      search.value = text;
+      setSearching(true);
+      showResults(text);
+    }),
     ctx.scan ? roundButton('qr', tr('scan'), ctx.scan, 'scan') : null,
   );
 
@@ -275,6 +281,8 @@ function chooseView(ctx: ViewContext): HTMLElement {
       h(
         'div',
         { class: 'tab-explore' },
+        welcomeCard(ctx),
+        welcomed(site.map.site.id) ? null : popularGrid(ctx, here),
         h(
           'p',
           { class: 'here' },
@@ -294,6 +302,7 @@ function chooseView(ctx: ViewContext): HTMLElement {
           stepFreeToggle(ctx),
           bigTextToggle(),
         ),
+        welcomed(site.map.site.id) ? popularGrid(ctx, here) : null,
         h('p', { class: 'tip' }, icon('search'), tr('choose.tap-hint')),
         recentList(ctx),
         places,
@@ -302,6 +311,132 @@ function chooseView(ctx: ViewContext): HTMLElement {
     extra: [h('div', { class: 'search-page' }, heading, results)],
   });
   return screen;
+}
+
+// ---------- first visit: a welcome, popular places, voice search ----------
+
+const WELCOME_KEY = 'im.welcome';
+
+function welcomed(siteId: string): boolean {
+  try {
+    return localStorage.getItem(`${WELCOME_KEY}.${siteId}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Remembers that this phone has seen the welcome on this site (main.ts: also on a trip). */
+export function markWelcomed(siteId: string): void {
+  try {
+    localStorage.setItem(`${WELCOME_KEY}.${siteId}`, '1');
+  } catch {
+    // No storage: the welcome shows again next time; harmless.
+  }
+}
+
+/**
+ * The first time a phone opens a site: who they are with, and how to find a place
+ * (popular places below, or search — spelling needn't be exact). Gone once dismissed or
+ * once they start a trip.
+ */
+function welcomeCard(ctx: ViewContext): HTMLElement | null {
+  const site = ctx.state.site;
+  if (!site || welcomed(site.map.site.id)) return null;
+  const card = h(
+    'div',
+    { class: 'welcome', role: 'note' },
+    h('p', { class: 'welcome-title' }, tr('welcome.title', { site: site.map.site.name })),
+    h('p', { class: 'welcome-text' }, tr('welcome.text')),
+    roundButton(
+      'close',
+      tr('welcome.close'),
+      () => {
+        markWelcomed(site.map.site.id);
+        card.remove();
+      },
+      'welcome-close',
+    ),
+  );
+  return card;
+}
+
+/** Big buttons for the places new visitors look for most (the map marks them popular). */
+function popularGrid(ctx: ViewContext, here: string | null): HTMLElement | null {
+  const site = ctx.state.site;
+  if (!site) return null;
+  const places = popularPlaces(site, (c) => CATEGORY[c].label, here);
+  if (places.length === 0) return null;
+  return h(
+    'section',
+    { class: 'popular', 'aria-label': tr('popular.title') },
+    h('h2', {}, tr('popular.title')),
+    h(
+      'div',
+      { class: 'popular-grid' },
+      ...places.map((r) => {
+        const content = document.createDocumentFragment();
+        content.append(
+          h(
+            'span',
+            { class: `poi cat-${r.room.category}`, 'aria-hidden': 'true' },
+            roomIcon(r.room, CATEGORY[r.room.category].emoji),
+          ),
+          h('span', { class: 'popular-name' }, r.room.name),
+        );
+        return button(
+          content,
+          () => ctx.dispatch({ type: 'show-place', roomId: r.room.id }),
+          'popular-btn',
+        );
+      }),
+    ),
+  );
+}
+
+interface Recognition {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+/**
+ * 🎤 in the search bar: say the place instead of typing it (the phone's own speech engine;
+ * many Android phones do it offline). Hidden where the browser can't.
+ */
+function voiceSearch(onText: (text: string) => void): HTMLElement | null {
+  const w = window as unknown as Record<string, (new () => Recognition) | undefined>;
+  const Engine = w['SpeechRecognition'] ?? w['webkitSpeechRecognition'];
+  if (!Engine) return null;
+  let listening: Recognition | null = null;
+  const mic = roundButton(
+    'mic',
+    tr('search.voice'),
+    () => {
+      if (listening) {
+        listening.stop();
+        return;
+      }
+      const rec = new Engine();
+      rec.lang = navigator.language || 'en-IN';
+      rec.interimResults = false;
+      rec.onresult = (e) => {
+        const text = e.results[0]?.[0]?.transcript ?? '';
+        if (text) onText(text);
+      };
+      rec.onend = () => {
+        listening = null;
+        mic.classList.remove('on');
+      };
+      listening = rec;
+      mic.classList.add('on');
+      rec.start();
+    },
+    'mic',
+  );
+  return mic;
 }
 
 function recentList(ctx: ViewContext): HTMLElement | null {

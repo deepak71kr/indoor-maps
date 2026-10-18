@@ -309,6 +309,18 @@ function RoomProps({ store, doc, room }: Props & { room: Room }) {
         />
         Staff only 🔒 (shown, but visitors are told to ask at the door)
       </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={room.popular === true}
+          onChange={(e) =>
+            set('Popular place', {
+              popular: (e.target as HTMLInputElement).checked ? true : null,
+            })
+          }
+        />
+        Popular place ⭐ (shown first to new visitors)
+      </label>
       <div class="field">
         <span>Doors</span>
         <ul class="plain">

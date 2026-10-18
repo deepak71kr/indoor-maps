@@ -13,6 +13,43 @@ export interface RoomResult {
   readonly score?: number;
 }
 
+/** Kinds of room a first-time visitor most often comes for, when a map marks none popular. */
+const LIKELY: readonly Room['category'][] = [
+  'emergency',
+  'opd',
+  'admin',
+  'billing',
+  'pharmacy',
+  'library',
+  'food',
+];
+
+/**
+ * "Popular places" for new visitors: the rooms the map marks popular, nearest first; on a map
+ * without any, one room of each kind visitors most often look for.
+ */
+export function popularPlaces(
+  site: Site,
+  categoryLabel: (c: Room['category']) => string,
+  near?: string | null,
+  limit = 6,
+): RoomResult[] {
+  const all = searchRooms(site, '', categoryLabel);
+  const marked = all.filter((r) => r.room.popular);
+  const here = near ? site.graph.nodes.get(near) : undefined;
+  const away = (r: RoomResult) => {
+    const n = site.graph.nodes.get(r.room.doors[0] ?? '');
+    return here && n
+      ? Math.hypot(n.x - here.x, n.y - here.y) + (n.level === here.level ? 0 : 200)
+      : 0;
+  };
+  if (marked.length > 0) return marked.sort((a, b) => away(a) - away(b)).slice(0, limit);
+  return LIKELY.flatMap((c) => {
+    const found = all.filter((r) => r.room.category === c && r.room.visibility !== 'locked');
+    return found.sort((a, b) => away(a) - away(b)).slice(0, 1);
+  }).slice(0, limit);
+}
+
 /** Below this a place is not shown as a match. */
 const MIN_SCORE = 0.5;
 

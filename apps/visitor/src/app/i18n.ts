@@ -22,6 +22,12 @@ export const ui = {
   'choose.nearest': 'Nearest',
   'choose.all': 'All places',
   'choose.results': 'Results',
+  'popular.title': 'Popular places',
+  'welcome.title': 'Welcome to {site} 👋',
+  'welcome.text':
+    'New here? Pick a place below, or search for any room — spelling needn’t be exact.',
+  'welcome.close': 'Got it',
+  'search.voice': 'Search by voice',
   'choose.none': 'No matching places.',
   'choose.none-for': 'Nothing found for “{query}”. Try another word, or ask at the help desk.',
   'choose.close': 'No exact match for “{query}”. Closest places:',

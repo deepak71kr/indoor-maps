@@ -153,21 +153,21 @@
     { "id": "stairs-east", "kind": "stairs", "name": "East staircase", "stops": { "G": "G-ST", "1": "1-ST", "2": "2-ST" } }
   ],
   "rooms": [
-    { "id": "billing", "name": "Billing counter", "number": "G01", "category": "billing", "doors": ["G-N18"] },
-    { "id": "canteen", "name": "Canteen", "number": "G02", "category": "food", "doors": ["G-S18"] },
-    { "id": "pharmacy", "name": "Pharmacy", "number": "G03", "category": "pharmacy", "doors": ["G-N30"] },
+    { "id": "billing", "name": "Billing counter", "number": "G01", "category": "billing", "doors": ["G-N18"], "popular": true },
+    { "id": "canteen", "name": "Canteen", "number": "G02", "category": "food", "doors": ["G-S18"], "popular": true },
+    { "id": "pharmacy", "name": "Pharmacy", "number": "G03", "category": "pharmacy", "doors": ["G-N30"], "popular": true },
     { "id": "xray", "name": "X-Ray", "number": "G04", "category": "diagnostics", "doors": ["G-N42"] },
     { "id": "blood-bank", "name": "Blood bank", "number": "G05", "category": "lab", "doors": ["G-S42"] },
-    { "id": "emergency", "name": "Emergency", "number": "G06", "category": "emergency", "doors": ["G-SW", "G-ENT2"] },
+    { "id": "emergency", "name": "Emergency", "number": "G06", "category": "emergency", "doors": ["G-SW", "G-ENT2"], "popular": true },
 
-    { "id": "opd-101", "name": "General Medicine", "number": "101", "category": "opd", "doors": ["1-N18"] },
+    { "id": "opd-101", "name": "General Medicine", "number": "101", "category": "opd", "doors": ["1-N18"], "popular": true },
     { "id": "opd-102", "name": "Orthopaedics", "number": "102", "category": "opd", "doors": ["1-S18"] },
     { "id": "opd-103", "name": "ENT", "number": "103", "category": "opd", "doors": ["1-N30"] },
     { "id": "opd-104", "name": "Paediatrics", "number": "104", "category": "opd", "doors": ["1-N42"] },
     { "id": "opd-105", "name": "Eye", "number": "105", "category": "opd", "doors": ["1-SW"] },
     { "id": "sample-lab", "name": "Sample collection", "number": "106", "category": "lab", "doors": ["1-S42"] },
 
-    { "id": "radiology", "name": "Radiology", "number": "201", "category": "diagnostics", "doors": ["2-N18", "2-N30"] },
+    { "id": "radiology", "name": "Radiology", "number": "201", "category": "diagnostics", "doors": ["2-N18", "2-N30"], "popular": true },
     { "id": "mri", "name": "MRI", "number": "202", "category": "diagnostics", "doors": ["2-N42"] },
     { "id": "pathology", "name": "Pathology lab", "number": "203", "category": "lab", "doors": ["2-S18"] },
     { "id": "ct-scan", "name": "CT scan", "number": "204", "category": "diagnostics", "doors": ["2-S42"] },

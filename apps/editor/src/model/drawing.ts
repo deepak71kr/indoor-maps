@@ -212,6 +212,8 @@ export type RoomPatch = Partial<Pick<Room, 'name' | 'category'>> & {
   readonly visibility?: Room['visibility'] | null;
   /** An emoji; `null` goes back to the one picked from the name. */
   readonly icon?: string | null;
+  /** `true` lists it under "Popular places" for new visitors; `null` removes that. */
+  readonly popular?: true | null;
 };
 
 export function updateRoom(doc: MapFile, roomId: string, patch: RoomPatch): MapFile {

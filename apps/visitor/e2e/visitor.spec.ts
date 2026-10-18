@@ -77,7 +77,10 @@ test('second visit works in airplane mode', async ({ page, context }) => {
 
 test('an unfinished trip survives closing the browser', async ({ page }) => {
   await page.goto('/?at=G-MAIN');
-  await page.getByRole('button', { name: /Radiology/ }).click();
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Radiology/ })
+    .click();
   await page.getByRole('button', { name: 'Start' }).click();
   await iAmHere(page).click();
   await expect(page.getByText('Step 2 of 5')).toBeVisible();
@@ -97,7 +100,10 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   await expect(map.getByText('You are here')).toBeVisible();
   await expect(map.getByText('Pharmacy', { exact: true })).toBeVisible(); // room names from the plan
 
-  await page.getByRole('button', { name: /Radiology/ }).click();
+  await page
+    .locator('.places')
+    .getByRole('button', { name: /Radiology/ })
+    .click();
   await page.getByRole('button', { name: 'Start' }).click();
   await expect(page.locator('.map .route .ahead')).not.toHaveCount(0);
   await expect(map.getByText('↑ Floor 2')).toBeVisible(); // where the route leaves this floor
@@ -142,6 +148,12 @@ test('Google Maps layout: full-screen map, search bar, bottom sheet / side panel
   const map = page.getByRole('img', { name: /^Map of / });
   const sheet = page.locator('.sheet');
   await expect(map).toBeVisible();
+
+  // First visit on this phone: a welcome and the popular places; "Got it" puts them away.
+  await expect(page.getByRole('note')).toContainText('Welcome to Demo Hospital');
+  await expect(page.getByRole('region', { name: 'Popular places' })).toContainText('Emergency');
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.getByRole('note')).toHaveCount(0);
 
   // Phone: the map fills the screen; search bar on top, sheet at the bottom.
   const mapBox = await map.boundingBox();

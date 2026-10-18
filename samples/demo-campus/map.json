@@ -180,11 +180,11 @@
     { "id": "stairs-lib", "kind": "stairs", "name": "Library stairs", "stops": { "G": "G-LIB-ST", "L1": "L1-ST" } }
   ],
   "rooms": [
-    { "id": "admission", "name": "Admission office", "number": "ADM-01", "category": "admin", "doors": ["G-ADM-ADMS"] },
-    { "id": "fees", "name": "Fees counter", "number": "ADM-02", "category": "billing", "doors": ["G-ADM-FEES"] },
-    { "id": "principal", "name": "Principal's office", "number": "ADM-03", "category": "office", "doors": ["G-ADM-PRIN"], "visibility": "locked" },
+    { "id": "admission", "name": "Admission office", "number": "ADM-01", "category": "admin", "doors": ["G-ADM-ADMS"], "popular": true },
+    { "id": "fees", "name": "Fees counter", "number": "ADM-02", "category": "billing", "doors": ["G-ADM-FEES"], "popular": true },
+    { "id": "principal", "name": "Principal's office", "number": "ADM-03", "category": "office", "doors": ["G-ADM-PRIN"], "visibility": "locked", "popular": true },
     { "id": "seminar", "name": "Seminar hall", "number": "A-G01", "category": "classroom", "doors": ["G-A-SEM"] },
-    { "id": "exam", "name": "Exam cell", "number": "A-G02", "category": "admin", "doors": ["G-A-EXAM"] },
+    { "id": "exam", "name": "Exam cell", "number": "A-G02", "category": "admin", "doors": ["G-A-EXAM"], "popular": true },
     { "id": "physics", "name": "Physics lab", "number": "A-101", "category": "lab", "doors": ["A1-PHY"] },
     { "id": "chem", "name": "Chemistry lab", "number": "A-102", "category": "lab", "doors": ["A1-CHEM"] },
     { "id": "staffroom", "name": "Staff room", "number": "A-103", "category": "staff", "doors": ["A1-STAFF"], "visibility": "locked" },
@@ -192,7 +192,7 @@
     { "id": "a202", "name": "Classroom 202", "number": "A-202", "category": "classroom", "doors": ["A2-202"] },
     { "id": "hod", "name": "HOD office", "number": "A-203", "category": "office", "doors": ["A2-HOD"] },
     { "id": "complab", "name": "Computer lab", "number": "A-204", "category": "lab", "doors": ["A2-CLAB"] },
-    { "id": "reading", "name": "Reading hall", "number": "L-G01", "category": "other", "doors": ["G-LIB-READ"] },
+    { "id": "reading", "name": "Reading hall", "number": "L-G01", "category": "other", "doors": ["G-LIB-READ"], "popular": true },
     { "id": "digital", "name": "Digital library", "number": "L-101", "category": "other", "doors": ["L1-DIG"] }
   ],
   "amenities": [

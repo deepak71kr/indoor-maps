@@ -107,6 +107,8 @@ export const RoomSchema = z.strictObject({
   visibility: z.enum(VISIBILITIES).optional(),
   /** An emoji for the map and lists (e.g. "💻"); without it one is picked from the name. */
   icon: z.string().trim().min(1).max(8).optional(),
+  /** Shown first to new visitors ("Popular places": admission, fees, emergency…). */
+  popular: z.literal(true).optional(),
 });
 
 export const AmenitySchema = z.strictObject({

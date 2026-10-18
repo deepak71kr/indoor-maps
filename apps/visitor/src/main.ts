@@ -14,7 +14,14 @@ import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
 import { registerServiceWorker, saveMap } from './infra/offline';
 import { installIcons } from './ui/icons';
-import { applyTextSize, loadTripScreens, offerCompass, setLiveHeading, view } from './ui/views';
+import {
+  applyTextSize,
+  loadTripScreens,
+  offerCompass,
+  setLiveHeading,
+  view,
+  markWelcomed,
+} from './ui/views';
 import { CALIBRATE_WINDOW_MS, northOffset, toMapHeading } from './app/heading';
 import { startCompass } from './infra/compass';
 import './styles.css';
@@ -52,6 +59,7 @@ function render(): void {
   lastStep = step;
   if (state.screen.name !== lastScreen) {
     lastScreen = state.screen.name;
+    if (state.screen.name === 'navigate' && state.site) markWelcomed(state.site.map.site.id);
     window.scrollTo(0, 0);
     root.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
   }
