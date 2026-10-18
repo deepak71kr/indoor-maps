@@ -88,10 +88,10 @@
   --c: #e8590c;
 }
 .cat-admin {
-  --c: #546e7a;
+  --c: #5e35b1;
 }
 .cat-office {
-  --c: #6d4c41;
+  --c: #0288d1;
 }
 .cat-classroom {
   --c: #8e24aa;
@@ -103,16 +103,16 @@
   --c: #00838f;
 }
 .cat-library {
-  --c: #3949ab;
+  --c: #8d6e63;
 }
 .cat-hostel {
   --c: #ad1457;
 }
 .cat-sports {
-  --c: #2e7d32;
+  --c: #43a047;
 }
 .cat-utility {
-  --c: #f57f17;
+  --c: #f9a825;
 }
 
 /* ---------- Base ---------- */
@@ -439,7 +439,6 @@ span.floor {
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   padding: calc(10px + env(safe-area-inset-top)) 12px 0;
   pointer-events: none;
 }
@@ -459,11 +458,8 @@ span.floor {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 52px;
   padding: 0 4px 0 14px;
   border-radius: 26px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
 }
 .searchbar input[type='search'] {
   flex: 1;
@@ -512,7 +508,6 @@ span.floor {
   flex: none;
   border: none;
   background: var(--surface);
-  box-shadow: var(--shadow);
   color: var(--text);
 }
 
@@ -529,7 +524,6 @@ span.floor {
 .floors {
   display: flex;
   flex-direction: column;
-  border-radius: 10px;
   background: var(--surface);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -539,8 +533,6 @@ span.floor {
 }
 .floors button {
   position: relative;
-  width: 44px;
-  height: 42px;
   border: none;
   background: none;
   font: inherit;
@@ -553,8 +545,6 @@ span.floor {
   border-top: 1px solid var(--line);
 }
 .floors button.on {
-  background: var(--blue-soft);
-  color: var(--blue);
   font-weight: 700;
 }
 /* The visitor's own floor carries a small blue dot. */
@@ -571,13 +561,9 @@ span.floor {
 .map-btn {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
   padding: 0;
   border: none;
-  border-radius: 50%;
   background: var(--surface);
-  box-shadow: var(--shadow);
   color: var(--muted);
   cursor: pointer;
 }
@@ -608,7 +594,6 @@ span.floor {
   padding: 0 16px calc(14px + env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: 16px 16px 0 0;
   background: var(--surface);
   box-shadow: var(--shadow-up);
   transition: max-height 0.25s ease;
@@ -644,13 +629,6 @@ span.floor {
   margin: 0;
 }
 
-/* Home sheet: "You are at …", "Where to?", all places. */
-.choose .sheet {
-  max-height: 34dvh;
-}
-.choose .sheet.open {
-  max-height: 82dvh;
-}
 .you-dot {
   flex: none;
   width: 14px;
@@ -706,12 +684,7 @@ span.floor {
   display: grid;
   place-items: center;
   flex: none;
-  width: 40px;
-  height: 40px;
   border-radius: 50%;
-  font-size: 1.2rem;
-  background: color-mix(in srgb, var(--c, var(--muted)) 16%, var(--surface));
-  border: 2px solid color-mix(in srgb, var(--c, var(--muted)) 45%, transparent);
 }
 
 /* Search page: full screen while typing, the search bar stays on top. */
@@ -734,7 +707,6 @@ span.floor {
 }
 .searching .searchbar {
   box-shadow: none;
-  background: var(--surface-2);
 }
 .searching .searchbar .logo {
   display: none;
@@ -750,19 +722,12 @@ span.floor {
 .banner {
   margin: 0;
   overflow: hidden;
-  border-radius: 14px;
-  background: var(--nav);
-  color: #fff;
-  box-shadow: var(--shadow);
 }
 .then {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 8px 14px;
-  font-size: 0.875rem;
-  background: rgb(0 0 0 / 0.2);
 }
 .then .icon {
   width: 18px;
@@ -775,7 +740,6 @@ span.floor {
 }
 .trip .sheet {
   max-height: 60dvh;
-  gap: 12px;
 }
 .round.end {
   background: color-mix(in srgb, var(--red) 12%, var(--surface));
@@ -924,8 +888,6 @@ span.floor {
   stroke-width: 2.5;
 }
 .map .room {
-  fill: color-mix(in srgb, var(--c, var(--m-wall)) 13%, var(--m-room));
-  stroke: color-mix(in srgb, var(--c, var(--m-wall)) 40%, var(--m-wall));
   stroke-width: 1.5;
 }
 .map .lift,
@@ -962,8 +924,6 @@ span.floor {
 /* Campus: roads, lawns, parking, building footprints. */
 .map .road {
   fill: var(--m-road);
-  stroke: var(--m-road-edge);
-  stroke-width: 1.5;
 }
 .map .green {
   fill: var(--m-green);
@@ -1011,15 +971,9 @@ span.floor {
 }
 .map .route .casing {
   stroke: var(--m-route-edge);
-  stroke-width: 10;
 }
 .map .route .ahead {
   stroke: var(--m-route);
-}
-.map .route .walked {
-  stroke: var(--m-wall);
-  stroke-width: 5;
-  stroke-dasharray: 0.1 9;
 }
 
 /* Labels: dark text with a white halo; room names in their category color. */
@@ -1038,16 +992,10 @@ span.floor {
   font-weight: 700;
 }
 
-.map .ico circle {
-  fill: var(--c, #5f6368);
-  stroke: #fff;
-  stroke-width: 2;
-}
 .map .k-parking .ico circle {
   fill: #1a73e8;
 }
 .map .ico text {
-  font-size: 11px;
   stroke: none;
 }
 .map .k-green > text {
@@ -1181,7 +1129,6 @@ span.floor {
   height: 22px;
   border-radius: 50%;
   border: 2px solid var(--blue);
-  color: var(--blue);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -1221,7 +1168,6 @@ span.floor {
   stroke-width: 2.5;
 }
 .map .cp text {
-  font-size: 10px;
   font-weight: 700;
   fill: var(--m-route);
   stroke: none;
@@ -1298,14 +1244,6 @@ span.floor {
   fill: var(--m-route);
   font-size: 10px;
 }
-.map .entrance rect {
-  fill: #e6f4ea;
-  stroke: #188038;
-}
-.map .entrance text {
-  fill: #137333;
-  font-size: 10px;
-}
 .map .spot circle {
   fill: var(--m-wall);
 }
@@ -1380,7 +1318,6 @@ span.floor {
   padding-right: 16px;
 }
 .steps li.now .num {
-  background: var(--blue);
   color: #fff;
 }
 .map .room.selected {
@@ -1434,13 +1371,6 @@ html.big-text .map text {
   font-size: 13px;
 }
 
-/* Search bar: a soft colourful ring. */
-.searchbar {
-  border: 2px solid transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(90deg, #4285f4, #34a853, #fbbc04, #ea4335) border-box;
-}
 .searching .searchbar {
   background: var(--surface-2);
   border-color: var(--blue);
@@ -1450,10 +1380,6 @@ html.big-text .map text {
 .top .chip,
 .chip {
   --chip: var(--c, var(--blue));
-  background: color-mix(in srgb, var(--chip) 14%, var(--surface));
-  color: color-mix(in srgb, var(--chip) 80%, var(--text));
-  border: 1.5px solid color-mix(in srgb, var(--chip) 35%, transparent);
-  font-weight: 600;
 }
 .chip.a-toilet {
   --chip: #1a73e8;
@@ -1467,32 +1393,10 @@ html.big-text .map text {
 .chip.a-help {
   --chip: #e65100;
 }
-.top .chip {
-  box-shadow: 0 1px 3px rgb(60 64 67 / 0.25);
-}
 
 /* "You are at" as a friendly coloured card. */
 .sheet .here {
   padding: 10px 12px;
-  border-radius: 14px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--blue) 14%, var(--surface)),
-    var(--surface)
-  );
-  border-left: 5px solid var(--blue);
-}
-
-/* Place rows: a coloured stripe in the category colour, bigger icons. */
-.place {
-  border-left: 4px solid color-mix(in srgb, var(--c, var(--line)) 70%, transparent);
-  padding-left: 10px;
-}
-.poi {
-  width: 44px;
-  height: 44px;
-  font-size: 1.35rem;
-  background: color-mix(in srgb, var(--c, var(--muted)) 22%, var(--surface));
 }
 
 /* Large-text switch. */
@@ -1514,7 +1418,6 @@ html.big-text .map text {
 /* Direction banner: the colour of the move (green on, purple left, orange right…). */
 .banner {
   --move: var(--go);
-  background: linear-gradient(135deg, var(--move), color-mix(in srgb, var(--move) 75%, #000));
 }
 .banner.move-left,
 .banner.move-slight-left {
@@ -1534,20 +1437,14 @@ html.big-text .map text {
 
 /* The one button that matters while walking: big and green. */
 .btn.go {
-  min-height: 60px;
-  font-size: 1.2rem;
   font-weight: 700;
   background: var(--go);
   border-color: var(--go);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--go) 70%, #000);
 }
 .btn.go .icon {
   width: 26px;
   height: 26px;
   stroke-width: 3;
-}
-.btn.primary:not(.go) {
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--blue) 70%, #000);
 }
 
 /* Step list: coloured number badges. */
@@ -1567,7 +1464,6 @@ html.big-text .map text {
 
 /* A livelier map: stronger room colours, greener grass, bluer water, a bolder route. */
 .map .room {
-  fill: color-mix(in srgb, var(--c, var(--m-wall)) 22%, var(--m-room));
   stroke: color-mix(in srgb, var(--c, var(--m-wall)) 55%, var(--m-wall));
 }
 .map {
@@ -1633,15 +1529,6 @@ html.big-text .map text {
 .map .works text {
   font-size: 11px;
   stroke: none;
-}
-/* Room icons: a white badge with a ring in the category colour, so the emoji reads clearly. */
-.map .ico circle {
-  fill: #fff;
-  stroke: var(--c, #5f6368);
-  stroke-width: 2.5;
-}
-.map .ico text {
-  font-size: 13px;
 }
 
 /* Re-center pill (text) once the visitor moves the map while walking. */
@@ -1759,23 +1646,11 @@ html.big-text .map text {
 .map-svg {
   --wall: color-mix(in srgb, var(--lvl) 75%, #263238);
 }
-.map-svg .floor {
-  stroke: var(--wall);
-  stroke-width: 3;
-}
-.map-svg .room {
-  stroke: color-mix(in srgb, var(--lvl) 55%, var(--m-wall));
-  stroke-width: 1.6;
-}
 .map-svg .wall,
 .map-svg .lift,
 .map-svg .stairs,
 .map-svg .void {
   stroke: color-mix(in srgb, var(--lvl) 60%, var(--m-wall));
-}
-.map-svg .building {
-  stroke: var(--wall);
-  stroke-width: 2.5;
 }
 .map-svg .shade {
   fill: color-mix(in srgb, var(--lvl) 18%, transparent);
@@ -1795,17 +1670,6 @@ html.big-text .map text {
   font-size: 10.5px;
 }
 
-/* Floor switcher: a stripe in each floor's colour, the shown floor filled with it,
-   a blue route mark on floors the route uses, a red pin on the destination floor. */
-.floors button {
-  width: 48px;
-  height: 44px;
-  box-shadow: inset 4px 0 0 var(--lvl);
-}
-.floors button.on {
-  background: var(--lvl);
-  color: #fff;
-}
 .floors button.route::before {
   content: '';
   position: absolute;
@@ -1920,9 +1784,6 @@ html.big-text .map text {
 /* Sheet: quieter, shorter on the home screen so the map stays open. */
 .sheet {
   border-radius: 20px 20px 0 0;
-}
-.choose .sheet {
-  max-height: 30dvh;
 }
 .sheet .here {
   background: var(--surface-2);
@@ -2039,22 +1900,8 @@ html.big-text .map text {
   height: 40px;
 }
 
-/* Walls by importance: the building's outer wall strong (floor colour), room walls thin,
-   corridors white, rooms almost white with a hint of their category. */
-.map-svg .floor {
-  fill: #fff;
-  stroke: var(--wall);
-  stroke-width: 3.5;
-}
-.map-svg .room {
-  fill: color-mix(in srgb, var(--c, #9aa3ad) 8%, #f7f8fa);
-  stroke: color-mix(in srgb, var(--lvl) 30%, #cfd5dd);
-  stroke-width: 1;
-}
 .map-svg .lift,
 .map-svg .stairs {
-  fill: #eef0f3;
-  stroke: color-mix(in srgb, var(--lvl) 35%, #bfc6cf);
   stroke-width: 1;
   stroke-dasharray: none;
 }
@@ -2070,15 +1917,6 @@ html.big-text .map text {
   stroke: #b7bec7;
 }
 
-/* Raised buildings and calm campus ground. */
-.map-svg .building {
-  fill: #eef0f4;
-  stroke: color-mix(in srgb, var(--lvl) 40%, #b9c0ca);
-  stroke-width: 1.5;
-}
-.map .shade.tall {
-  fill: rgb(60 64 67 / 0.16);
-}
 .map .road {
   stroke: #cdd4de;
   stroke-width: 1.5;
@@ -2102,16 +1940,6 @@ html.big-text .map text {
   font-style: italic;
 }
 
-/* ================================================================================
- * Colour per place (2026-10-18): every building and every room its own soft colour
- * (neighbours never match, set from map-view's TINTS), each floor tinted in its own
- * colour, and a floor change that rises or drops in with the floor's name.
- * ================================================================================ */
-.map-svg .room {
-  fill: var(--rf, #f4f5f7);
-  stroke: var(--rw, #c5ccd6);
-  stroke-width: 1.4;
-}
 .map-svg .room.locked {
   fill: #eceef1;
   stroke: #b7bec7;
@@ -2123,9 +1951,7 @@ html.big-text .map text {
 }
 /* The floor itself: a light wash of the floor's colour, its outer wall in full colour. */
 .map-svg .floor {
-  fill: color-mix(in srgb, var(--lvl) 6%, #fff);
   stroke: var(--lvl);
-  stroke-width: 4;
 }
 .map-svg .lift,
 .map-svg .stairs {
@@ -2137,22 +1963,13 @@ html.big-text .map text {
 
 .map .floor-toast {
   position: absolute;
-  left: 50%;
-  top: 38%;
-  translate: -50% 0;
-  padding: 8px 18px;
   border-radius: 999px;
   background: var(--lvl);
   color: #fff;
   font-weight: 700;
-  font-size: 1.05rem;
   box-shadow: 0 4px 14px rgb(16 24 40 / 0.2);
   pointer-events: none;
   opacity: 0;
-  scale: 0.9;
-  transition:
-    opacity 0.25s,
-    scale 0.25s;
 }
 .map .floor-toast.show {
   opacity: 1;
@@ -2176,46 +1993,8 @@ html.big-text .map text {
   transform-origin: 50% 50%;
   backface-visibility: hidden;
 }
-.map .floor-ghost {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
+
 /* The building's floors as plates, tilted like the map while it changes floor. */
-.map .floor-plates {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.map .plate {
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 34%;
-  height: 32%;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--lvl) 10%, transparent);
-  border: 2px solid color-mix(in srgb, var(--lvl) 55%, transparent);
-  transform: translateY(var(--y)) rotateX(52deg) scale(0.74);
-}
-.map .plate span {
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  translate: -100% -50%;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--lvl);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.map .plate.to {
-  border-width: 3px;
-  background: color-mix(in srgb, var(--lvl) 18%, transparent);
-}
 
 /* "↑ Floor 2" just left of the switcher, in the floor's colour. */
 .map .floor-toast {
@@ -2284,25 +2063,7 @@ html.big-text .map text {
 }
 
 /* Where you come out on the new floor: two rings spreading from the lift or stairs. */
-.map .arrive-pulse circle {
-  fill: none;
-  stroke: var(--lvl);
-  stroke-width: 3;
-  animation: arrive 1.2s ease-out 2;
-}
-.map .arrive-pulse .late {
-  animation-delay: 0.4s;
-}
-@keyframes arrive {
-  from {
-    r: 6px;
-    opacity: 1;
-  }
-  to {
-    r: 34px;
-    opacity: 0;
-  }
-}
+
 .floor-note {
   transition: opacity 0.25s;
 }
@@ -2342,7 +2103,6 @@ html.big-text .map text {
   opacity: 0.45;
 }
 .map-svg .room.selected {
-  stroke: var(--rw, var(--blue));
   stroke-width: 3;
   filter: drop-shadow(0 3px 5px rgb(16 24 40 / 0.25));
 }
@@ -2537,4 +2297,39 @@ html.big-text .map text {
 }
 .map .next .pulse {
   r: 12px;
+}
+
+/* ================================================================================
+ * Focus and colour coding (2026-10-18): the outside of the building you look at is
+ * blurred; rooms coloured by what they are; roads by size; a map key.
+ * ================================================================================ */
+.map .focus-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: rgb(248 249 250 / 0.45);
+  -webkit-backdrop-filter: blur(3px) saturate(0.6);
+  backdrop-filter: blur(3px) saturate(0.6);
+  transition: opacity 0.35s;
+}
+.map .focus-veil.on {
+  opacity: 1;
+}
+/* Rooms: the colour of what they are (labs, food, offices…), in two shades for neighbours. */
+.map-svg .room {
+  fill: color-mix(in srgb, var(--c, #9aa3ad) var(--shade, 16%), #fff);
+  stroke: color-mix(in srgb, var(--c, #9aa3ad) 55%, #fff);
+}
+.map-svg .room.selected {
+  stroke: var(--c, var(--blue));
+}
+/* Roads: main roads warm yellow (Google's arterials), lanes a quiet grey, footpaths beige. */
+.map-svg .road.major {
+  fill: #fde9a8;
+  stroke: #e8c75a;
+}
+.map-svg .road.minor {
+  fill: #f1f3f5;
+  stroke: #d5dae1;
 }

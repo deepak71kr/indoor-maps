@@ -181,6 +181,16 @@ const ROADS = [
     ],
   },
   {
+    id: 'lakeLane',
+    name: 'Lake lane',
+    w: 3,
+    path: true,
+    via: [
+      { on: 'dept', at: [670, 426] },
+      { on: 'lakeWalk', at: [670, 588] },
+    ],
+  },
+  {
     id: 'libLane',
     name: 'Library Lane',
     w: 3,

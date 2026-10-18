@@ -26,10 +26,10 @@ import { OUTDOOR_SHAPE_KINDS } from '@innermap/schema';
 import { CATEGORY, tr } from '../app/i18n';
 import type { MapScene } from '../app/map-scene';
 import { h } from './dom';
-import type * as FloorStack from './floor-stack';
+import type * as MapExtras from './map-extras';
 
-/** The floor-change animation loads just after the first screen (it is only needed later). */
-let floorStack: typeof FloorStack | null = null;
+/** The floor-change animation and the map key load just after the first screen. */
+let extras: typeof MapExtras | null = null;
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 interface View {
@@ -221,6 +221,13 @@ export class MapView {
   private placed = false;
   private readonly floorToast: HTMLElement;
   private readonly floorThumb: HTMLElement;
+  /** Blurs everything outside the building being looked at (a clip-path hole for it). */
+  private readonly focusVeil: HTMLElement;
+  private readonly keyPanel: HTMLElement;
+  private readonly keyButton: HTMLElement;
+  /** On a building's own floor: its footprint (the veil's hole). */
+  private focusShape: Shape | null = null;
+  private veilKey = '';
   private toastTimer = 0;
   private width = 0;
   private height = 0;
@@ -330,15 +337,40 @@ export class MapView {
       zoomButton(tr('map.zoom-in'), '+', 2),
       zoomButton(tr('map.zoom-out'), '−', 0.5),
     );
-    this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview, zoom);
     this.floorNote = h('div', { class: 'floor-note', role: 'status', hidden: true });
     this.floorToast = h('div', { class: 'floor-toast', 'aria-hidden': 'true' });
     this.floorThumb = h('span', { class: 'floor-thumb', 'aria-hidden': 'true' });
+    this.focusVeil = h('div', { class: 'focus-veil', 'aria-hidden': 'true' });
+    this.keyPanel = h('div', { class: 'map-key', hidden: true });
+    const keyButton = h('button', {
+      type: 'button',
+      class: 'map-btn key',
+      'aria-label': tr('map.key'),
+      title: tr('map.key'),
+      'aria-expanded': 'false',
+      onClick: () => {
+        this.keyPanel.hidden = !this.keyPanel.hidden;
+        keyButton.setAttribute('aria-expanded', String(!this.keyPanel.hidden));
+        if (!this.keyPanel.hidden) this.fillKey();
+      },
+    });
+    keyButton.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><path d="M14 17h6"/></svg>';
+    this.keyButton = keyButton;
+    this.tools = h(
+      'div',
+      { class: 'map-tools' },
+      this.floors,
+      this.compass,
+      this.overview,
+      this.keyButton,
+      zoom,
+    );
     this.el = h('div', { class: 'map' });
-    this.el.append(this.svg, this.floorNote, this.floorToast);
+    this.el.append(this.svg, this.focusVeil, this.keyPanel, this.floorNote, this.floorToast);
     this.listen();
     setTimeout(() => {
-      void import('./floor-stack').then((module) => (floorStack = module));
+      void import('./map-extras').then((module) => (extras = module));
     }, 0);
   }
 
@@ -365,6 +397,8 @@ export class MapView {
     if (key !== this.framed && this.width > 0) {
       this.framed = key;
       this.moved = false;
+      // A glide still running from a flick would mark the map as moved again: stop it now.
+      cancelAnimationFrame(this.fling);
       // Next frame: the new screen (search bar, sheet…) is on the page by then, so the route
       // can be framed in the part of the map they leave visible.
       cancelAnimationFrame(this.framing);
@@ -411,9 +445,7 @@ export class MapView {
     const changing = this.placed && !!before && before.id !== levelId;
     // A copy of the old floor as it looks now, for the floor-change animation.
     const ghost =
-      changing && floorStack && !reducedMotion()
-        ? (this.svg.cloneNode(true) as SVGSVGElement)
-        : null;
+      changing && extras && !reducedMotion() ? (this.svg.cloneNode(true) as SVGSVGElement) : null;
     this.shownBefore = levelId;
     this.shownLevel = levelId;
     this.plan.replaceChildren();
@@ -434,6 +466,12 @@ export class MapView {
     this.roomCenters = new Map();
     this.campus = this.footprints.length > 0;
 
+    this.focusShape =
+      level?.building !== undefined
+        ? (campusShapes(site).find((x) => x.kind === 'building' && x.building === level.building) ??
+          null)
+        : null;
+    if (!this.keyPanel.hidden) this.fillKey(level?.shapes ?? []);
     // On a building's own floor, the campus around it, faded, so the visitor sees where it is.
     if (level?.building !== undefined) {
       for (const shape of campusShapes(site)) {
@@ -444,7 +482,7 @@ export class MapView {
     }
 
     if (shapes.length > 0) {
-      const tints = tintShapes(shapes);
+      const tints = tintShapes(shapes, rooms);
       // A soft shadow under buildings and floors lifts them off the ground (no filters: cheap).
       for (const shape of shapes) {
         if (shape.kind !== 'floor' && shape.kind !== 'building') continue;
@@ -456,14 +494,14 @@ export class MapView {
           class: raised ? 'shade tall' : 'shade in',
           points: flat(shapePoints(shape)),
           transform: raised ? 'translate(0.4 2.6)' : 'translate(0.5 0.7)',
-          ...(raised && tint && { style: `--rw:${tint[1]}` }),
+          ...(raised && tint && { style: tint }),
         });
         this.plan.append(shade);
       }
       for (const shape of shapes) {
         const el = this.shapeEl(shape, rooms);
         const tint = tints.get(shape);
-        if (tint) el.setAttribute('style', `--rf:${tint[0]};--rw:${tint[1]}`);
+        if (tint) el.setAttribute('style', tint);
         if (shape.kind === 'room' && shape.room) {
           this.roomEls.set(shape.room, el);
           this.roomCenters.set(shape.room, labelPoint(shape));
@@ -611,9 +649,13 @@ export class MapView {
       }
     }
     const room = shape.room ? rooms.get(shape.room) : undefined;
+    // Roads by size: main roads (wide) in warm yellow, lanes (narrow) quieter.
+    const run = shape.kind === 'road' ? bandRun(shape) : undefined;
+    const width = run ? Math.hypot(run[2].x - run[1].x, run[2].y - run[1].y) : 0;
+    const size = width >= 12 ? ' major' : width > 0 && width <= 8.5 ? ' minor' : '';
     const cls = room
       ? `room cat-${room.category}${room.visibility === 'locked' ? ' locked' : ''}`
-      : shape.kind;
+      : shape.kind + size;
     return s('polygon', { class: cls + inside, points });
   }
 
@@ -752,8 +794,8 @@ export class MapView {
       (l) => l.building === undefined || l.building === owner,
     );
     const up = to.rank > from.rank;
-    if (ghost && floorStack) {
-      floorStack.playFloorChange(
+    if (ghost && extras) {
+      extras.playFloorChange(
         this.el,
         this.svg,
         ghost,
@@ -788,7 +830,7 @@ export class MapView {
     const arrive = this.scene?.path
       .map((id) => site.graph.nodes.get(id))
       .find((n) => n?.level === toId && (n.kind === 'lift-stop' || n.kind === 'stairs-stop'));
-    if (arrive && !this.browsing) {
+    if (arrive && !this.browsing && extras) {
       const g = s('g', { class: 'arrive-pulse' });
       g.append(s('circle', { r: 10 }), s('circle', { r: 10, class: 'late' }));
       this.overlay.append(g);
@@ -1385,6 +1427,7 @@ export class MapView {
     }
     this.declutter(placedAt);
     this.drawScaleBar(scale);
+    this.drawVeil(o.in);
     const arrow = this.compass.firstElementChild as SVGElement | null;
     arrow?.setAttribute('style', `transform:rotate(${-rot}deg)`);
     this.compass.setAttribute('aria-label', tr(this.northUp ? 'map.facing-up' : 'map.north-up'));
@@ -1394,6 +1437,50 @@ export class MapView {
     this.compass.dataset['north'] = String(Math.abs(rot) < 1 || Math.abs(rot - 360) < 1);
     // Filled blue while the map follows the route; outlined once the visitor moved it away.
     this.locate.setAttribute('aria-pressed', String(!this.moved));
+  }
+
+  /**
+   * Looking inside a building — on one of its floors, or zoomed into it on the ground — the
+   * rest of the map is blurred and softened, so the building is what you see.
+   */
+  private drawVeil(inside: number): void {
+    let focus = this.focusShape;
+    if (!focus && this.campus && inside > 0.55) {
+      const middle = this.unproject({ x: this.width / 2, y: this.height / 2 });
+      focus = this.footprints.find((f) => containsPoint(f, middle)) ?? null;
+    }
+    if (!focus) {
+      if (this.veilKey) {
+        this.veilKey = '';
+        this.focusVeil.classList.remove('on');
+      }
+      return;
+    }
+    const hole = shapePoints(focus)
+      .map((p, i) => {
+        const q = this.project(p);
+        return `${i ? 'L' : 'M'}${q.x.toFixed(0)} ${q.y.toFixed(0)}`;
+      })
+      .join('');
+    const path = `path(evenodd, 'M0 0H${this.width}V${this.height}H0Z${hole}Z')`;
+    if (path === this.veilKey) return;
+    this.veilKey = path;
+    this.focusVeil.style.clipPath = path;
+    this.focusVeil.classList.add('on');
+  }
+
+  /** The map key: what the colours on this floor mean (built by the lazy extras). */
+  private fillKey(
+    shapes = this.scene?.site.map.levels.find((l) => l.id === this.shownLevel)?.shapes ?? [],
+  ): void {
+    const site = this.scene?.site;
+    if (!site) return;
+    if (extras) this.keyPanel.replaceChildren(...extras.buildKey(site, shapes));
+    else
+      void import('./map-extras').then((module) => {
+        extras = module;
+        this.fillKey(shapes);
+      });
   }
 
   /** Hide less important labels that would cover more important ones (greedy, by rank). */
@@ -1833,8 +1920,58 @@ const TINTS: ReadonlyArray<readonly [string, string]> = [
   ['#fae3f4', '#c160ab'],
 ];
 
-function tintShapes(shapes: readonly Shape[]): Map<Shape, readonly [string, string]> {
-  const list = shapes.filter((x) => x.kind === 'room' || x.kind === 'building');
+/** Rooms drawn without a room entry, coloured by what their label says. */
+const LABEL_COLOURS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/toilet|wash ?room|wc/i, '#00838f'],
+  [/water/i, '#1e6fd9'],
+];
+
+/**
+ * Inline style per shape: buildings get their own colour pair; rooms are coloured by what
+ * they are (their category's colour), and two touching rooms of the same kind get two
+ * shades of it, so the colour means something and neighbours still stand apart.
+ */
+function tintShapes(
+  shapes: readonly Shape[],
+  rooms: ReadonlyMap<string, Room>,
+): Map<Shape, string> {
+  const pairs = tintPairs(shapes.filter((x) => x.kind === 'building'));
+  const out = new Map<Shape, string>();
+  for (const [shape, [bg, wall]] of pairs) out.set(shape, `--rf:${bg};--rw:${wall}`);
+  const roomShapes = shapes.filter((x) => x.kind === 'room');
+  const boxes = roomShapes.map((x) => boundsOf(shapePoints(x)));
+  const alt: boolean[] = [];
+  roomShapes.forEach((shape, i) => {
+    const room = shape.room ? rooms.get(shape.room) : undefined;
+    if (!room) {
+      const colour = LABEL_COLOURS.find(([test]) => test.test(shape.label ?? ''))?.[1];
+      if (colour) out.set(shape, `--c:${colour}`);
+      return;
+    }
+    const a = boxes[i];
+    const sameNear = roomShapes.some((other, j) => {
+      const b = boxes[j];
+      return (
+        j < i &&
+        !alt[j] &&
+        !!a &&
+        !!b &&
+        other.room !== undefined &&
+        rooms.get(other.room)?.category === room.category &&
+        a.minX <= b.maxX + 1.5 &&
+        b.minX <= a.maxX + 1.5 &&
+        a.minY <= b.maxY + 1.5 &&
+        b.minY <= a.maxY + 1.5
+      );
+    });
+    alt[i] = sameNear;
+    if (sameNear) out.set(shape, '--shade:28%');
+  });
+  return out;
+}
+
+function tintPairs(shapes: readonly Shape[]): Map<Shape, readonly [string, string]> {
+  const list = shapes;
   const boxes = list.map((x) => boundsOf(shapePoints(x)));
   const touch = (i: number, j: number) => {
     const a = boxes[i];

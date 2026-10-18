@@ -3,8 +3,14 @@
  * the map tilts back, the old floor slides away (down when going up), the new floor comes in
  * from its place in the stack, and the map lies flat again. Plain CSS 3D through the Web
  * Animations API: no library, nothing to download. Skipped when the phone asks for less motion.
+ *
+ * Also the map key. Both load just after the first screen: only needed later.
  */
+import type { Site } from '@innermap/core';
+import type { Room, Shape } from '@innermap/schema';
+import { CATEGORY, tr } from '../app/i18n';
 import { h } from './dom';
+import './map-extras.css';
 
 export interface Plate {
   readonly name: string;
@@ -79,4 +85,29 @@ export function playFloorChange(
   );
   // A tiny buzz on phones that have it, so the change is felt too.
   navigator.vibrate?.(12);
+}
+
+/** The map key's contents: the kinds of room on this floor, then roads, paths, lawns. */
+export function buildKey(site: Site, shapes: readonly Shape[]): HTMLElement[] {
+  const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
+  const seen = new Set<Room['category']>();
+  for (const shape of shapes) {
+    const room = shape.room ? rooms.get(shape.room) : undefined;
+    if (room) seen.add(room.category);
+  }
+  const item = (cls: string, text: string) =>
+    h('li', {}, h('i', { class: cls, 'aria-hidden': 'true' }), text);
+  const kinds = new Set(shapes.map((x) => x.kind));
+  return [
+    h('p', { class: 'key-title' }, tr('map.key')),
+    h(
+      'ul',
+      {},
+      ...[...seen].map((c) => item(`sw cat-${c}`, CATEGORY[c].label)),
+      kinds.has('road') ? item('sw road-major', tr('map.key-main-road')) : null,
+      kinds.has('road') ? item('sw road-any', tr('map.key-road')) : null,
+      kinds.has('path') ? item('sw path-any', tr('map.key-path')) : null,
+      kinds.has('green') ? item('sw green-any', tr('map.key-green')) : null,
+    ),
+  ];
 }
