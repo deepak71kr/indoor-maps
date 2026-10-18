@@ -2240,8 +2240,8 @@ html.big-text .map text {
   fill: #fff;
   font-size: 10.5px;
 }
-.map-svg.swap .plan,
-.map-svg.swap .overlay {
+.map-svg.swap:not(.swap-up, .swap-down) .plan,
+.map-svg.swap:not(.swap-up, .swap-down) .overlay {
   animation: floor-in 0.28s ease-out;
 }
 @keyframes floor-in {
@@ -2679,4 +2679,83 @@ html.big-text .map text {
   fill: #8a7a5c;
   font-size: 9px;
   font-style: italic;
+}
+
+/* ================================================================================
+ * Colour per place (2026-10-18): every building and every room its own soft colour
+ * (neighbours never match, set from map-view's TINTS), each floor tinted in its own
+ * colour, and a floor change that rises or drops in with the floor's name.
+ * ================================================================================ */
+.map-svg .room {
+  fill: var(--rf, #f4f5f7);
+  stroke: var(--rw, #c5ccd6);
+  stroke-width: 1.4;
+}
+.map-svg .room.locked {
+  fill: #eceef1;
+  stroke: #b7bec7;
+}
+.map-svg .building {
+  fill: var(--rf, #eef0f4);
+  stroke: var(--rw, #b9c0ca);
+  stroke-width: 2;
+}
+/* The floor itself: a light wash of the floor's colour, its outer wall in full colour. */
+.map-svg .floor {
+  fill: color-mix(in srgb, var(--lvl) 6%, #fff);
+  stroke: var(--lvl);
+  stroke-width: 4;
+}
+.map-svg .lift,
+.map-svg .stairs {
+  fill: color-mix(in srgb, var(--lvl) 14%, #fff);
+  stroke: color-mix(in srgb, var(--lvl) 60%, #9aa3ad);
+}
+
+/* Floor change: the new floor rises in (going up) or drops in (going down). */
+.map-svg.swap-up {
+  animation: floor-up 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.map-svg.swap-down {
+  animation: floor-down 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes floor-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+}
+@keyframes floor-down {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) scale(1.03);
+  }
+}
+.map .floor-toast {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  translate: -50% 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--lvl);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 14px rgb(16 24 40 / 0.2);
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.9;
+  transition:
+    opacity 0.25s,
+    scale 0.25s;
+}
+.map .floor-toast.show {
+  opacity: 1;
+  scale: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map .floor-toast {
+    transition: none;
+  }
 }

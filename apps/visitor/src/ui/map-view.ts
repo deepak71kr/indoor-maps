@@ -196,6 +196,8 @@ export class MapView {
 
   private scene: MapScene | null = null;
   private shownLevel = '';
+  /** The floor drawn before this one (the floor-change animation goes up or down). */
+  private shownBefore = '';
   /** A floor the visitor picked to look at; cleared when their own floor changes. */
   private browsing: string | null = null;
   /** The map stays north-up unless the visitor asks it to turn with them (compass button). */
@@ -207,6 +209,8 @@ export class MapView {
   private moved = false;
   /** False until the first frame: that one appears instantly. */
   private placed = false;
+  private readonly floorToast: HTMLElement;
+  private toastTimer = 0;
   private width = 0;
   private height = 0;
   private pins: Pin[] = [];
@@ -309,8 +313,9 @@ export class MapView {
     );
     this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview, zoom);
     this.floorNote = h('div', { class: 'floor-note', role: 'status', hidden: true });
+    this.floorToast = h('div', { class: 'floor-toast', 'aria-hidden': 'true' });
     this.el = h('div', { class: 'map' });
-    this.el.append(this.svg, this.floorNote);
+    this.el.append(this.svg, this.floorNote, this.floorToast);
     this.listen();
   }
 
@@ -387,12 +392,22 @@ export class MapView {
     const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
     const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
     this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
-    // Each floor in its own colour: walls and room outlines follow --lvl (styles.css).
+    const before = site.map.levels.find((l) => l.id === this.shownBefore);
+    this.shownBefore = levelId;
+    // Each floor in its own colour: walls and the floor itself follow --lvl (styles.css).
     this.svg.setAttribute('class', `map-svg lvl-${level?.color ?? 'slate'}`);
-    // A quick fade, so a floor change is seen, not just a jump.
-    if (this.placed && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      this.svg.classList.add('swap');
-      setTimeout(() => this.svg.classList.remove('swap'), 300);
+    // A floor change is seen, not just a jump: the new floor rises in when going up, drops in
+    // when going down, and its name shows for a moment in its colour.
+    if (this.placed && before && before.id !== levelId) {
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const up = (level?.ord ?? 0) >= before.ord;
+        this.svg.classList.add('swap', up ? 'swap-up' : 'swap-down');
+        setTimeout(() => this.svg.classList.remove('swap', 'swap-up', 'swap-down'), 450);
+      }
+      this.floorToast.className = `floor-toast show lvl-${level?.color ?? 'slate'}`;
+      this.floorToast.textContent = this.levelName(levelId);
+      clearTimeout(this.toastTimer);
+      this.toastTimer = window.setTimeout(() => this.floorToast.classList.remove('show'), 1000);
     }
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
     this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
@@ -422,8 +437,11 @@ export class MapView {
         });
         this.plan.append(shade);
       }
+      const tints = tintShapes(shapes);
       for (const shape of shapes) {
         const el = this.shapeEl(shape, rooms);
+        const tint = tints.get(shape);
+        if (tint) el.setAttribute('style', `--rf:${tint[0]};--rw:${tint[1]}`);
         if (shape.kind === 'room' && shape.room) {
           this.roomEls.set(shape.room, el);
           this.roomCenters.set(shape.room, labelPoint(shape));
@@ -1444,10 +1462,18 @@ export class MapView {
       ),
       back,
     );
-    // Measured now: the panel on top (search bar, tall lift banner…) may have just changed.
-    requestAnimationFrame(() => {
-      this.floorNote.style.top = `${Math.round(this.insets().top + 10)}px`;
-    });
+    // Measured now and once more after the screen settles: the panel on top (search bar and
+    // its chips, a tall lift banner…) may have just changed.
+    const place = () => {
+      // Below the top panel and its chip row too (the chips don't count as covering the map).
+      const bar = this.el.closest('.mapped')?.querySelector('.top');
+      const below = bar
+        ? bar.getBoundingClientRect().bottom - this.svg.getBoundingClientRect().top
+        : 0;
+      this.floorNote.style.top = `${Math.round(Math.max(this.insets().top, below) + 8)}px`;
+    };
+    requestAnimationFrame(place);
+    setTimeout(place, 250);
   }
 
   /** Route overview: frame the whole route on the floor being shown. */
@@ -1549,6 +1575,63 @@ function campusShapes(site: Site): Shape[] {
 }
 
 /** Icons for outlines that are not rooms (parking, lifts…), Google-style. */
+/**
+ * Soft colour pairs [background, wall] for rooms and buildings: each one gets its own, and
+ * shapes that touch never share one, so every room and building stands out from its
+ * neighbours. The category still shows in the room's icon.
+ */
+const TINTS: ReadonlyArray<readonly [string, string]> = [
+  ['#e3effd', '#5b9be6'],
+  ['#e0f4ea', '#43a67c'],
+  ['#fdeadb', '#e08d4c'],
+  ['#eee6fb', '#8f6fd4'],
+  ['#fde5ec', '#dc6f8e'],
+  ['#faf3d2', '#c4a227'],
+  ['#ddf3f4', '#34a6aa'],
+  ['#fde2dd', '#dd6c5e'],
+  ['#e9f1de', '#7fa24d'],
+  ['#e6e8fb', '#6c77d4'],
+  ['#f4ebdf', '#a98757'],
+  ['#fae3f4', '#c160ab'],
+];
+
+function tintShapes(shapes: readonly Shape[]): Map<Shape, readonly [string, string]> {
+  const list = shapes.filter((x) => x.kind === 'room' || x.kind === 'building');
+  const boxes = list.map((x) => boundsOf(shapePoints(x)));
+  const touch = (i: number, j: number) => {
+    const a = boxes[i];
+    const b = boxes[j];
+    const gap = 1.5; // meters: rooms across a narrow corridor count as neighbours too
+    return (
+      !!a &&
+      !!b &&
+      a.minX <= b.maxX + gap &&
+      b.minX <= a.maxX + gap &&
+      a.minY <= b.maxY + gap &&
+      b.minY <= a.maxY + gap
+    );
+  };
+  const out = new Map<Shape, readonly [string, string]>();
+  const picked: number[] = [];
+  list.forEach((shape, i) => {
+    const used = new Set<number>();
+    for (let j = 0; j < i; j++) {
+      const k = picked[j];
+      if (k !== undefined && list[j]?.kind === shape.kind && touch(i, j)) used.add(k);
+    }
+    // Start from a spot that depends on the name, so colours look mixed, not striped.
+    const key = shape.room ?? shape.building ?? '';
+    let start = 0;
+    for (const ch of key) start = (start * 31 + ch.charCodeAt(0)) % TINTS.length;
+    let k = start;
+    for (let n = 0; n < TINTS.length && used.has(k); n++) k = (k + 1) % TINTS.length;
+    picked[i] = k;
+    const tint = TINTS[k];
+    if (tint) out.set(shape, tint);
+  });
+  return out;
+}
+
 /** A four-corner band (a road or path): [start, end, across] along its longer side. */
 function bandRun(shape: Shape): [Point, Point, Point] | undefined {
   const p = shapePoints(shape);
