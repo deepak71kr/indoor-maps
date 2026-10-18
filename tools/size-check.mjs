@@ -1,15 +1,15 @@
 // Fails the build if the visitor app or a map file grows past its budget.
 // Budgets: docs/LOW_LEVEL_DESIGN.md §14 — all brotli-compressed:
-// - first screen (what index.html loads) ≤ 35 KB;
+// - first screen (what index.html loads) ≤ 50 KB (founder, 2026-10-18: "50 KB is not that big");
 // - screens loaded right after it (lazy chunks, e.g. the trip screens) ≤ 15 KB;
 // - each map file ≤ 15 KB;
-// - first visit (every app file + the largest map) ≤ 50 KB.
+// - first visit (every app file + the largest map) ≤ 65 KB.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { brotliCompressSync, constants } from 'node:zlib';
 
 const DIST = 'apps/visitor/dist';
-const SHELL_BUDGET = 35 * 1024;
+const SHELL_BUDGET = 50 * 1024;
 const MAP_BUDGET = 15 * 1024;
 const LATER_BUDGET = 15 * 1024;
 /**
@@ -19,7 +19,7 @@ const LATER_BUDGET = 15 * 1024;
  */
 const STRESS_MAPS = new Set(['maps/demo-mesra.json']);
 const STRESS_BUDGET = 40 * 1024;
-const FIRST_VISIT_BUDGET = 50 * 1024;
+const FIRST_VISIT_BUDGET = 65 * 1024;
 const COUNTED = /\.(html|js|css|svg|json|webmanifest)$/;
 
 function listFiles(dir) {

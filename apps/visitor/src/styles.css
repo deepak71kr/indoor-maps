@@ -1961,20 +1961,6 @@ html.big-text .map text {
 
 /* Floor change: the new floor rises in (going up) or drops in (going down). */
 
-.map .floor-toast {
-  position: absolute;
-  border-radius: 999px;
-  background: var(--lvl);
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 4px 14px rgb(16 24 40 / 0.2);
-  pointer-events: none;
-  opacity: 0;
-}
-.map .floor-toast.show {
-  opacity: 1;
-  scale: 1;
-}
 @media (prefers-reduced-motion: reduce) {
   .map .floor-toast {
     transition: none;
@@ -1997,27 +1983,6 @@ html.big-text .map text {
 /* The building's floors as plates, tilted like the map while it changes floor. */
 
 /* "↑ Floor 2" just left of the switcher, in the floor's colour. */
-.map .floor-toast {
-  top: 140px;
-  right: 76px;
-  left: auto;
-  translate: 0 -50%;
-  max-width: calc(100% - 110px);
-  padding: 7px 14px;
-  font-size: 0.95rem;
-  z-index: 4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  scale: 1;
-  transform: translateX(10px);
-  transition:
-    opacity 0.25s,
-    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.map .floor-toast.show {
-  transform: none;
-}
 
 /* Floor switcher: a rounded pill, the building's name on top, and a highlight in the
    shown floor's colour that slides from floor to floor. */

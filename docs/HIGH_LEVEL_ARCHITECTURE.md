@@ -372,7 +372,7 @@ flowchart LR
 | Area | Choice | Why |
 |---|---|---|
 | Language | TypeScript everywhere | One language, shared `packages/core` |
-| Visitor app | Plain TypeScript, no framework | ≤ 30–35 KB budget |
+| Visitor app | Plain TypeScript, no framework | first screen ≤ 50 KB |
 | Admin console | Preact / React | Staff use laptops; richer editor |
 | Backend | Node.js / TypeScript modular monolith | Shares routing code with the client |
 | Database | Postgres (India region) + row-level security | Customer separation enforced by the database |

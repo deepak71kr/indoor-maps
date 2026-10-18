@@ -111,3 +111,33 @@ export function buildKey(site: Site, shapes: readonly Shape[]): HTMLElement[] {
     ),
   ];
 }
+
+/** The building-and-floor chip; it slides in fresh when the building or floor changes. */
+export function placeChip(
+  el: HTMLElement,
+  info: { building: string; floor: string; color: string } | null,
+): void {
+  if (!info) {
+    el.classList.remove('on');
+    return;
+  }
+  const key = `${info.building}|${info.floor}`;
+  if (el.dataset['key'] === key && el.classList.contains('on')) return;
+  el.dataset['key'] = key;
+  el.replaceChildren(
+    h('span', { class: 'pc-dot', 'aria-hidden': 'true' }),
+    h('span', { class: 'pc-b' }, info.building),
+    h('span', { class: `pc-f lvl-${info.color}` }, info.floor),
+  );
+  el.classList.add('on');
+  el.animate(
+    [
+      { translate: '0 -8px', opacity: 0 },
+      { translate: '0 0', opacity: 1 },
+    ],
+    {
+      duration: 260,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    },
+  );
+}

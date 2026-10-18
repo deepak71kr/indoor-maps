@@ -127,7 +127,7 @@ Lost? → scan the nearest QR / type the nearest room number / "Do you see any o
 
 | Budget (compressed) | Target |
 |---|---|
-| Visitor app (code + styles + page) | ≤ 30–35 KB |
+| Visitor app first screen (code + styles + page) | ≤ 50 KB (raised from 35 KB on 2026-10-18) |
 | One floor chunk | ~2–10 KB |
 | Campus manifest | ~3–8 KB |
 | Every visit after the first | 0 KB (offline cache) |
@@ -369,7 +369,7 @@ Floor 2 + "icu-staff" layer   → staff-only shortcut
 
 1. Is **"visible but locked"** the right middle level, or should restricted rooms always be fully hidden?
 2. **Staff login:** phone OTP to start? (costs a little per SMS)
-3. **Size budget:** visitor app ≤ 35 KB + 3–10 KB per floor chunk. Agree?
+3. **Size budget:** visitor app first screen ≤ 50 KB (decided 2026-10-18; was 35 KB) + 3–10 KB per floor chunk; first visit ≤ 65 KB.
 4. **City/region** and the **first pilot site** (a college or hospital?).
 5. Founder's **skills/stack comfort** and **time per week**.
 6. **Money:** bootstrapped or raising? Any deadline (hackathon, incubator, semester)?

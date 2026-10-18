@@ -228,6 +228,13 @@ export class MapView {
   /** On a building's own floor: its footprint (the veil's hole). */
   private focusShape: Shape | null = null;
   private veilKey = '';
+  /** "Main Building · Floor 1": which building (in its colour) and floor you are looking at. */
+  private readonly placeChip: HTMLElement;
+  /** A frame round the map in the floor's colour while you look at a floor not your own. */
+  private readonly frame: HTMLElement;
+  /** The building in focus (zoomed into, or whose floor is shown); its floors fill the switcher. */
+  private looking: string | null = null;
+  private colours: Map<string, string> | null = null;
   private toastTimer = 0;
   private width = 0;
   private height = 0;
@@ -341,6 +348,8 @@ export class MapView {
     this.floorToast = h('div', { class: 'floor-toast', 'aria-hidden': 'true' });
     this.floorThumb = h('span', { class: 'floor-thumb', 'aria-hidden': 'true' });
     this.focusVeil = h('div', { class: 'focus-veil', 'aria-hidden': 'true' });
+    this.placeChip = h('div', { class: 'place-chip', role: 'status' });
+    this.frame = h('div', { class: 'map-frame', 'aria-hidden': 'true' });
     this.keyPanel = h('div', { class: 'map-key', hidden: true });
     const keyButton = h('button', {
       type: 'button',
@@ -367,7 +376,15 @@ export class MapView {
       zoom,
     );
     this.el = h('div', { class: 'map' });
-    this.el.append(this.svg, this.focusVeil, this.keyPanel, this.floorNote, this.floorToast);
+    this.el.append(
+      this.svg,
+      this.focusVeil,
+      this.frame,
+      this.keyPanel,
+      this.floorNote,
+      this.placeChip,
+      this.floorToast,
+    );
     this.listen();
     setTimeout(() => {
       void import('./map-extras').then((module) => (extras = module));
@@ -859,6 +876,7 @@ export class MapView {
     const building =
       this.building ??
       shown?.building ??
+      this.looking ??
       (scene.here ? scene.site.buildingAt(scene.here)?.id : undefined) ??
       null;
     const levels = [...scene.site.graph.levels]
@@ -1449,6 +1467,12 @@ export class MapView {
       const middle = this.unproject({ x: this.width / 2, y: this.height / 2 });
       focus = this.footprints.find((f) => containsPoint(f, middle)) ?? null;
     }
+    const looking = focus?.building ?? null;
+    if (looking !== this.looking) {
+      this.looking = looking;
+      if (this.scene) this.fillPicker(this.scene, this.shownLevel);
+      this.showPlace();
+    }
     if (!focus) {
       if (this.veilKey) {
         this.veilKey = '';
@@ -1467,6 +1491,30 @@ export class MapView {
     this.veilKey = path;
     this.focusVeil.style.clipPath = path;
     this.focusVeil.classList.add('on');
+  }
+
+  /**
+   * The building in focus, in its own colour (it eases from one building's colour to the
+   * next as you move across the campus), and the floor shown.
+   */
+  private showPlace(): void {
+    const site = this.scene?.site;
+    if (!site) return;
+    if (!this.colours) {
+      const footprints = campusShapes(site).filter((x) => x.kind === 'building');
+      this.colours = new Map(
+        [...tintPairs(footprints)].map(([shape, [, wall]]) => [shape.building ?? '', wall]),
+      );
+    }
+    const id = this.looking;
+    const building = id ? site.map.buildings?.find((b) => b.id === id) : undefined;
+    const level = site.graph.levels.find((l) => l.id === this.shownLevel);
+    const colour = id ? this.colours.get(id) : undefined;
+    if (colour) this.el.style.setProperty('--b', colour);
+    extras?.placeChip(
+      this.placeChip,
+      building && level ? { building: building.name, floor: level.name, color: level.color } : null,
+    );
   }
 
   /** The map key: what the colours on this floor mean (built by the lazy extras). */
@@ -1743,6 +1791,13 @@ export class MapView {
   private updateFloorNote(scene: MapScene, levelId: string): void {
     const away = levelId !== scene.youLevel;
     this.floorNote.hidden = !away;
+    const color = scene.site.graph.levels.find((l) => l.id === levelId)?.color ?? 'slate';
+    for (const el of [this.floorNote, this.frame]) {
+      for (const c of [...el.classList]) if (c.startsWith('lvl-')) el.classList.remove(c);
+      if (away) el.classList.add(`lvl-${color}`);
+    }
+    this.frame.classList.toggle('on', away);
+    this.showPlace();
     if (!away) return;
     const back = h(
       'button',

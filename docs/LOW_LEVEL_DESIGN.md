@@ -22,7 +22,7 @@ inner-map/
 │  ├─ schema/            # 📄 data formats + versions + converters + validation
 │  └─ ui-tokens/         # 🎨 colors, spacing, SVG icon sheet
 ├─ apps/
-│  ├─ visitor/           # 📱 ultra-light phone app (plain TS, ≤ 35 KB)
+│  ├─ visitor/           # 📱 ultra-light phone app (plain TS, first screen ≤ 50 KB)
 │  └─ admin/             # 💻 map editor + dashboard (Preact)
 ├─ services/
 │  ├─ api/               # 🏢 backend (modular monolith)
@@ -660,7 +660,9 @@ apps/visitor/src/
 | JS | ≤ 22 KB |
 | CSS | ≤ 6 KB |
 | HTML + icon sheet | ≤ 7 KB |
-| **Total app shell** | **≤ 35 KB** (CI fails above this) |
+| **First screen** (what index.html loads) | **≤ 50 KB** (CI fails above this; was 35 KB until 2026-10-18) |
+| Screens loaded right after it | ≤ 15 KB |
+| First visit (all app files + largest map) | ≤ 65 KB |
 
 ---
 
@@ -676,7 +678,7 @@ apps/visitor/src/
 | Database | Org A can't read org B, for every table | Integration tests |
 | Visitor e2e | Scan → route → lost → reroute → arrive on **2G + 4× slower CPU** | Playwright |
 | Offline | Second visit with network off still navigates | Playwright |
-| Size | App shell ≤ 35 KB, chunks within budget | CI script |
+| Size | First screen ≤ 50 KB, later chunks ≤ 15 KB, first visit ≤ 65 KB | CI script |
 
 ---
 

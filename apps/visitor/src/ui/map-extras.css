@@ -120,3 +120,124 @@
     opacity: 0;
   }
 }
+
+/* Which building and floor you are looking at: the building's colour on the left, the
+   floor in its own colour. Colours ease when you move to another building. */
+.map .place-chip {
+  position: absolute;
+  left: 12px;
+  top: calc(env(safe-area-inset-top) + 114px);
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 90px);
+  padding: 5px 6px 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--b, #9aa3ad) 12%, #fff);
+  border: 1.5px solid var(--b, #9aa3ad);
+  box-shadow: var(--shadow);
+  font-size: 0.82rem;
+  transition:
+    background-color 0.45s,
+    border-color 0.45s;
+  pointer-events: none;
+}
+.map .place-chip.on {
+  display: flex;
+}
+.place-chip .pc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--b, #9aa3ad);
+  transition: background-color 0.45s;
+}
+.place-chip .pc-b {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.place-chip .pc-f {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--lvl);
+  color: #fff;
+  font-weight: 700;
+}
+/* Looking at a floor that isn't yours: the note says so (in that floor's colour). */
+.map .floor-note:not([hidden]) ~ .place-chip {
+  display: none;
+}
+.map .floor-note[class*='lvl-'] {
+  background: var(--lvl);
+}
+.map .floor-note[class*='lvl-'] button {
+  color: var(--lvl);
+}
+/* …and a frame in that floor's colour round the whole map. */
+.map .map-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow 0.35s;
+}
+.map .map-frame.on {
+  box-shadow:
+    inset 0 0 0 4px var(--lvl),
+    inset 0 0 40px color-mix(in srgb, var(--lvl) 25%, transparent);
+}
+/* The blur outside the building takes a hint of the building's colour. */
+.map .focus-veil {
+  background: color-mix(in srgb, var(--b, #f8f9fa) 8%, rgb(248 249 250 / 0.45));
+  transition:
+    opacity 0.35s,
+    background-color 0.45s;
+}
+@media (min-width: 900px) {
+  .map .place-chip {
+    left: 416px;
+    top: 16px;
+  }
+}
+
+/* "↑ Floor 2" by the switcher (shown on a floor change, after this file has loaded). */
+.map .floor-toast {
+  position: absolute;
+  border-radius: 999px;
+  background: var(--lvl);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgb(16 24 40 / 0.2);
+  pointer-events: none;
+  opacity: 0;
+}
+.map .floor-toast.show {
+  opacity: 1;
+  scale: 1;
+}
+.map .floor-toast {
+  top: 140px;
+  right: 76px;
+  left: auto;
+  translate: 0 -50%;
+  max-width: calc(100% - 110px);
+  padding: 7px 14px;
+  font-size: 0.95rem;
+  z-index: 4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  scale: 1;
+  transform: translateX(10px);
+  transition:
+    opacity 0.25s,
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.map .floor-toast.show {
+  transform: none;
+}
