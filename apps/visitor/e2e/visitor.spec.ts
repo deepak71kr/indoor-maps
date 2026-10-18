@@ -110,13 +110,15 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
     'true',
   );
   await expect(map).toHaveAccessibleName('Map of Floor 2');
-  await expect(page.locator('.map .dest')).toBeVisible();
+  await expect(page.locator('.map > .map-svg:not(.floor-ghost) .dest')).toBeVisible();
 
   // Taking the lift brings the map to the visitor's new floor by itself.
   for (let i = 0; i < 3; i++) await iAmHere(page).click();
   await expect(page.getByText('Step 4 of 5')).toBeVisible();
   await expect(map).toHaveAccessibleName('Map of Floor 2');
 
+  // Let the floor-change animation finish (the map is tilted while it plays).
+  await expect(page.locator('.floor-ghost')).toHaveCount(0);
   // Drag the map away (the middle is free: banner on top, sheet below), then come back.
   const box = await map.boundingBox();
   if (!box) throw new Error('map not laid out');

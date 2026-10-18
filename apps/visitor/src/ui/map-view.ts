@@ -26,6 +26,11 @@ import { OUTDOOR_SHAPE_KINDS } from '@innermap/schema';
 import { CATEGORY, tr } from '../app/i18n';
 import type { MapScene } from '../app/map-scene';
 import { h } from './dom';
+import type * as FloorStack from './floor-stack';
+
+/** The floor-change animation loads just after the first screen (it is only needed later). */
+let floorStack: typeof FloorStack | null = null;
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 interface View {
   cx: number;
@@ -210,6 +215,7 @@ export class MapView {
   /** False until the first frame: that one appears instantly. */
   private placed = false;
   private readonly floorToast: HTMLElement;
+  private readonly floorThumb: HTMLElement;
   private toastTimer = 0;
   private width = 0;
   private height = 0;
@@ -314,9 +320,13 @@ export class MapView {
     this.tools = h('div', { class: 'map-tools' }, this.floors, this.compass, this.overview, zoom);
     this.floorNote = h('div', { class: 'floor-note', role: 'status', hidden: true });
     this.floorToast = h('div', { class: 'floor-toast', 'aria-hidden': 'true' });
+    this.floorThumb = h('span', { class: 'floor-thumb', 'aria-hidden': 'true' });
     this.el = h('div', { class: 'map' });
     this.el.append(this.svg, this.floorNote, this.floorToast);
     this.listen();
+    setTimeout(() => {
+      void import('./floor-stack').then((module) => (floorStack = module));
+    }, 0);
   }
 
   /** Show a scene; cheap to call on every render. */
@@ -356,7 +366,8 @@ export class MapView {
    * wide ones cover the top or bottom, narrow tall ones the left (laptop side panel).
    */
   private insets(): { top: number; right: number; bottom: number; left: number } {
-    const box = this.svg.getBoundingClientRect();
+    // The map's box, not the svg: the svg tilts while a floor change plays.
+    const box = this.el.getBoundingClientRect();
     const inset = { top: 0, right: 0, bottom: 0, left: 0 };
     const screen = this.el.closest('.mapped');
     for (const el of screen?.querySelectorAll<HTMLElement>('.covers-map') ?? []) {
@@ -382,6 +393,14 @@ export class MapView {
   private buildLevel(levelId: string): void {
     const site = this.scene?.site;
     if (!site) return;
+    const before = site.graph.levels.find((l) => l.id === this.shownBefore);
+    const changing = this.placed && !!before && before.id !== levelId;
+    // A copy of the old floor as it looks now, for the floor-change animation.
+    const ghost =
+      changing && floorStack && !reducedMotion()
+        ? (this.svg.cloneNode(true) as SVGSVGElement)
+        : null;
+    this.shownBefore = levelId;
     this.shownLevel = levelId;
     this.plan.replaceChildren();
     this.overlay.replaceChildren();
@@ -392,23 +411,9 @@ export class MapView {
     const rooms = new Map(site.map.rooms.map((r) => [r.id, r]));
     const buildings = new Map((site.map.buildings ?? []).map((b) => [b.id, b]));
     this.svg.setAttribute('aria-label', tr('map.label', { floor: this.levelName(levelId) }));
-    const before = site.map.levels.find((l) => l.id === this.shownBefore);
-    this.shownBefore = levelId;
     // Each floor in its own colour: walls and the floor itself follow --lvl (styles.css).
     this.svg.setAttribute('class', `map-svg lvl-${level?.color ?? 'slate'}`);
-    // A floor change is seen, not just a jump: the new floor rises in when going up, drops in
-    // when going down, and its name shows for a moment in its colour.
-    if (this.placed && before && before.id !== levelId) {
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const up = (level?.ord ?? 0) >= before.ord;
-        this.svg.classList.add('swap', up ? 'swap-up' : 'swap-down');
-        setTimeout(() => this.svg.classList.remove('swap', 'swap-up', 'swap-down'), 450);
-      }
-      this.floorToast.className = `floor-toast show lvl-${level?.color ?? 'slate'}`;
-      this.floorToast.textContent = this.levelName(levelId);
-      clearTimeout(this.toastTimer);
-      this.toastTimer = window.setTimeout(() => this.floorToast.classList.remove('show'), 1000);
-    }
+    if (changing && before) this.floorChanged(site, before.id, levelId, ghost);
     this.footprints = shapes.filter((shape) => shape.kind === 'building');
     this.roomShapes = shapes.filter((shape) => shape.kind === 'room' && shape.room !== undefined);
     this.roomEls = new Map();
@@ -708,6 +713,73 @@ export class MapView {
   }
 
   /** "Block A · Floor 2" on a campus, just "Floor 2" otherwise. */
+  /**
+   * The floor just changed: play the floor stack, say which floor next to the switcher
+   * ("↑ Floor 2" in its colour), and on a trip pulse the lift or stairs you arrive at.
+   */
+  private floorChanged(
+    site: Site,
+    fromId: string,
+    toId: string,
+    ghost: SVGSVGElement | null,
+  ): void {
+    const to = site.graph.levels.find((l) => l.id === toId);
+    const from = site.graph.levels.find((l) => l.id === fromId);
+    if (!to || !from) return;
+    const owner = to.building ?? from.building;
+    const plates = site.graph.levels.filter(
+      (l) => l.building === undefined || l.building === owner,
+    );
+    const up = to.rank > from.rank;
+    if (ghost && floorStack) {
+      floorStack.playFloorChange(
+        this.el,
+        this.svg,
+        ghost,
+        plates.map((l) => ({ name: shortName(l.name), color: l.color })),
+        plates.indexOf(from),
+        plates.indexOf(to),
+      );
+    }
+    this.floorToast.className = `floor-toast show lvl-${to.color}`;
+    this.floorToast.textContent = `${up ? '↑' : '↓'} ${this.levelName(toId)}`;
+    clearTimeout(this.toastTimer);
+    // The "viewing another floor" note waits until the floor's name has gone.
+    this.floorNote.classList.add('wait');
+    this.toastTimer = window.setTimeout(() => {
+      this.floorToast.classList.remove('show');
+      this.floorNote.classList.remove('wait');
+    }, 1600);
+    // Next to the floor switcher, level with the new floor's button.
+    requestAnimationFrame(() => {
+      const button = this.floors.querySelector<HTMLElement>(`button[data-level="${toId}"]`);
+      const box = this.el.getBoundingClientRect();
+      const b = button?.getBoundingClientRect();
+      if (!b || b.width === 0) {
+        this.floorToast.style.removeProperty('top');
+        this.floorToast.style.removeProperty('right');
+        return;
+      }
+      this.floorToast.style.top = `${Math.round(b.top - box.top + b.height / 2)}px`;
+      this.floorToast.style.right = `${Math.round(box.right - b.left + 10)}px`;
+    });
+    // On a trip: where you come out on the new floor (lift or stairs) pulses for a moment.
+    const arrive = this.scene?.path
+      .map((id) => site.graph.nodes.get(id))
+      .find((n) => n?.level === toId && (n.kind === 'lift-stop' || n.kind === 'stairs-stop'));
+    if (arrive && !this.browsing) {
+      const g = s('g', { class: 'arrive-pulse' });
+      g.append(s('circle', { r: 10 }), s('circle', { r: 10, class: 'late' }));
+      this.overlay.append(g);
+      const pin: Pin = { p: arrive, el: g };
+      this.pins.push(pin);
+      setTimeout(() => {
+        g.remove();
+        this.pins = this.pins.filter((x) => x !== pin);
+      }, 2600);
+    }
+  }
+
   private levelName(levelId: string): string {
     const site = this.scene?.site;
     const level = site?.map.levels.find((l) => l.id === levelId);
@@ -748,7 +820,19 @@ export class MapView {
     const signature = `${scene.levelId}|${scene.youLevel}|${building ?? ''}|${levels.length}|${[...onRoute].join()}|${destLevel ?? ''}`;
     if (this.floors.dataset['for'] !== signature) {
       this.floors.dataset['for'] = signature;
+      const owner = building ? scene.site.map.buildings?.find((b) => b.id === building) : undefined;
       this.floors.replaceChildren(
+        // Whose floors these are, and a highlight that slides to the floor shown.
+        ...(owner
+          ? [
+              h(
+                'div',
+                { class: 'floor-bldg', title: owner.name, 'aria-hidden': 'true' },
+                owner.name.length > 8 ? initials(owner.name) : owner.name,
+              ),
+            ]
+          : []),
+        this.floorThumb,
         ...levels.map((l) =>
           h(
             'button',
@@ -782,10 +866,15 @@ export class MapView {
     }
     this.floors.hidden = levels.length < 2;
     this.updateFloorNote(scene, levelId);
-    for (const button of this.floors.children) {
-      const on = (button as HTMLElement).dataset['level'] === levelId;
+    for (const button of this.floors.querySelectorAll('button')) {
+      const on = button.dataset['level'] === levelId;
       button.classList.toggle('on', on);
       button.setAttribute('aria-pressed', String(on));
+      if (on) {
+        this.floorThumb.className = `floor-thumb lvl-${shown?.color ?? 'slate'}`;
+        this.floorThumb.style.transform = `translateY(${button.offsetTop}px)`;
+        this.floorThumb.style.height = `${button.offsetHeight}px`;
+      }
     }
   }
 
@@ -1468,7 +1557,7 @@ export class MapView {
       // Below the top panel and its chip row too (the chips don't count as covering the map).
       const bar = this.el.closest('.mapped')?.querySelector('.top');
       const below = bar
-        ? bar.getBoundingClientRect().bottom - this.svg.getBoundingClientRect().top
+        ? bar.getBoundingClientRect().bottom - this.el.getBoundingClientRect().top
         : 0;
       this.floorNote.style.top = `${Math.round(Math.max(this.insets().top, below) + 8)}px`;
     };

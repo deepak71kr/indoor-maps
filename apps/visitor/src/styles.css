@@ -2759,3 +2759,149 @@ html.big-text .map text {
     transition: none;
   }
 }
+
+/* ================================================================================
+ * Round 1 (2026-10-18): the floor stack, a sliding floor switcher, "↑ Floor 2" by the
+ * switcher, the lift or stairs you arrive at pulsing.
+ * ================================================================================ */
+.map {
+  perspective: 1100px;
+  perspective-origin: 50% 35%;
+}
+.map-svg {
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}
+.map .floor-ghost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+/* The building's floors as plates, tilted like the map while it changes floor. */
+.map .floor-plates {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.map .plate {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 34%;
+  height: 32%;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--lvl) 10%, transparent);
+  border: 2px solid color-mix(in srgb, var(--lvl) 55%, transparent);
+  transform: translateY(var(--y)) rotateX(52deg) scale(0.74);
+}
+.map .plate span {
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  translate: -100% -50%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--lvl);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.map .plate.to {
+  border-width: 3px;
+  background: color-mix(in srgb, var(--lvl) 18%, transparent);
+}
+
+/* "↑ Floor 2" just left of the switcher, in the floor's colour. */
+.map .floor-toast {
+  top: 140px;
+  right: 76px;
+  left: auto;
+  translate: 0 -50%;
+  max-width: calc(100% - 110px);
+  padding: 7px 14px;
+  font-size: 0.95rem;
+  z-index: 4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  scale: 1;
+  transform: translateX(10px);
+  transition:
+    opacity 0.25s,
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.map .floor-toast.show {
+  transform: none;
+}
+
+/* Floor switcher: a rounded pill, the building's name on top, and a highlight in the
+   shown floor's colour that slides from floor to floor. */
+.floors {
+  position: relative;
+  border-radius: 14px;
+}
+.floors .floor-bldg {
+  max-width: 44px;
+  padding: 5px 3px 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.floors .floor-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: var(--lvl);
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.32s,
+    background-color 0.32s;
+}
+.floors button {
+  z-index: 1;
+  transition: color 0.2s;
+}
+.floors button.on {
+  background: none;
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .floors .floor-thumb,
+  .map .floor-toast {
+    transition: none;
+  }
+}
+
+/* Where you come out on the new floor: two rings spreading from the lift or stairs. */
+.map .arrive-pulse circle {
+  fill: none;
+  stroke: var(--lvl);
+  stroke-width: 3;
+  animation: arrive 1.2s ease-out 2;
+}
+.map .arrive-pulse .late {
+  animation-delay: 0.4s;
+}
+@keyframes arrive {
+  from {
+    r: 6px;
+    opacity: 1;
+  }
+  to {
+    r: 34px;
+    opacity: 0;
+  }
+}
+.floor-note {
+  transition: opacity 0.25s;
+}
+.floor-note.wait {
+  opacity: 0;
+}
