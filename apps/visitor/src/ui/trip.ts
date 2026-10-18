@@ -77,14 +77,18 @@ function routeOptions(ctx: ViewContext): HTMLElement {
   );
 }
 
-export function stepView(ctx: ViewContext, current: number, peek?: number): HTMLElement {
+export function stepView(
+  ctx: ViewContext,
+  current: number,
+  peek?: number,
+  undone = 0,
+): HTMLElement {
   const { steps, target, notice, site } = ctx.state;
   // The card shows the step looked at (swipe left / right), the trip stays at `current`.
   const index = peek ?? current;
   const peeking = peek !== undefined;
   const step = steps[index];
   if (!step) return h('section');
-  const last = steps.length - 2; // the last walking step (after it: the arrival message)
   const look = (to: number) => ctx.dispatch({ type: 'peek', step: to });
   const total = steps.length - 1; // the last one is the arrival message
   // One thing at a time: what to do now, and one button that says where you should be when
@@ -113,18 +117,20 @@ export function stepView(ctx: ViewContext, current: number, peek?: number): HTML
         icon('check'),
         place ? tr('step.reached-short') : tr('step.here'),
       );
-  const arrow = (to: number, label: string, name: 'back' | 'forward') =>
+  // Undo a "Reached" tapped by mistake; Redo puts it back (only after an Undo).
+  const fix = (name: 'undo' | 'redo', enabled: boolean) =>
     h(
       'button',
       {
         type: 'button',
-        class: `step-nav ${name}`,
-        'aria-label': label,
-        title: label,
-        disabled: to < 0 || to > last,
-        onClick: () => look(to),
+        class: `step-fix ${name}`,
+        'aria-label': tr(`step.${name}`),
+        title: tr(`step.${name}`),
+        disabled: !enabled,
+        onClick: () => ctx.dispatch({ type: name }),
       },
-      icon('back'),
+      icon('undo'),
+      h('span', {}, tr(`step.${name}`)),
     );
   if (!peeking) glowWhenNear(reached, index, step.meters);
   const toggleMenu = (e: Event) => {
@@ -165,8 +171,8 @@ export function stepView(ctx: ViewContext, current: number, peek?: number): HTML
         h(
           'span',
           { class: 'step-navs' },
-          arrow(index - 1, tr('step.prev'), 'back'),
-          arrow(index + 1, tr('step.next'), 'forward'),
+          fix('undo', current > 0),
+          undone > 0 ? fix('redo', true) : null,
         ),
         h(
           'button',
@@ -191,7 +197,6 @@ export function stepView(ctx: ViewContext, current: number, peek?: number): HTML
         h(
           'div',
           { class: 'menu-row' },
-          button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'chip', 'back'),
           button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'chip lost', 'help'),
           button(tr('map.overview'), showRouteOverview, 'chip', 'directions'),
           button(
@@ -692,6 +697,7 @@ export function arrivedView(ctx: ViewContext): HTMLElement {
         'btn primary big',
         'search',
       ),
+      button(tr('arrived.undo'), () => ctx.dispatch({ type: 'undo' }), 'link undo', 'undo'),
       toilet &&
         button(
           `${toilet.emoji} ${tr('choose.nearest')} ${tr('chip.toilet').toLowerCase()}`,

@@ -52,7 +52,7 @@ export function view(ctx: ViewContext): HTMLElement {
     case 'preview':
       return trip ? trip.previewView(ctx) : waitForScreens();
     case 'navigate':
-      return trip ? trip.stepView(ctx, screen.step, screen.peek) : waitForScreens();
+      return trip ? trip.stepView(ctx, screen.step, screen.peek, screen.undone) : waitForScreens();
     case 'lost':
       return lostView(ctx);
     case 'arrived':

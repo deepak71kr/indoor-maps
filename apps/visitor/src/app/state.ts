@@ -33,6 +33,8 @@ export type Screen =
       readonly step: number;
       /** Looking ahead or back at another step (swipe the card); the trip stays at `step`. */
       readonly peek?: number;
+      /** How many "Reached" taps were undone (so Redo can put them back). */
+      readonly undone?: number;
     }
   | { readonly name: 'lost'; readonly step: number }
   | { readonly name: 'arrived' }
@@ -96,6 +98,8 @@ export type Action =
   | { readonly type: 'recent-loaded'; readonly recent: readonly Target[] }
   | { readonly type: 'confirm' }
   | { readonly type: 'peek'; readonly step: number }
+  | { readonly type: 'undo' }
+  | { readonly type: 'redo' }
   | { readonly type: 'back' }
   | { readonly type: 'lost' }
   | { readonly type: 'found-way' }
@@ -214,6 +218,33 @@ export function reducer(state: State, action: Action): State {
         : { ...s, screen: { name: 'navigate', step: next } };
     }
 
+    // A "Reached" tapped by mistake: Undo goes back one checkpoint (also from Arrived),
+    // Redo puts it back. A new "Reached" forgets what was undone.
+    case 'undo': {
+      if (s.screen.name === 'arrived' && s.steps.length > 1)
+        return { ...s, screen: { name: 'navigate', step: s.steps.length - 2, undone: 1 } };
+      if (s.screen.name !== 'navigate' || s.screen.step === 0) return state;
+      return {
+        ...s,
+        screen: {
+          name: 'navigate',
+          step: s.screen.step - 1,
+          undone: (s.screen.undone ?? 0) + 1,
+        },
+      };
+    }
+
+    case 'redo': {
+      if (s.screen.name !== 'navigate' || !s.screen.undone) return state;
+      const next = s.screen.step + 1;
+      if (next >= s.steps.length - 1) return { ...s, screen: { name: 'arrived' } };
+      const undone = s.screen.undone - 1;
+      return {
+        ...s,
+        screen: { name: 'navigate', step: next, ...(undone > 0 && { undone }) },
+      };
+    }
+
     case 'peek': {
       if (s.screen.name !== 'navigate') return state;
       const shown = Math.max(0, Math.min(action.step, s.steps.length - 2));
@@ -221,8 +252,17 @@ export function reducer(state: State, action: Action): State {
         ...s,
         screen:
           shown === s.screen.step
-            ? { name: 'navigate', step: s.screen.step }
-            : { name: 'navigate', step: s.screen.step, peek: shown },
+            ? {
+                name: 'navigate',
+                step: s.screen.step,
+                ...(s.screen.undone && { undone: s.screen.undone }),
+              }
+            : {
+                name: 'navigate',
+                step: s.screen.step,
+                peek: shown,
+                ...(s.screen.undone && { undone: s.screen.undone }),
+              },
       };
     }
 

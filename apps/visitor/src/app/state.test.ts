@@ -53,6 +53,32 @@ describe('visitor state machine', () => {
     expect(s.screen).toEqual({ name: 'navigate', step: 1 }); // "Reached" ends the look-ahead
   });
 
+  it('undoes a Reached tapped by mistake, and redoes it', () => {
+    let s = loaded(
+      { type: 'set-position', position: atMain },
+      { type: 'choose', target: radiology },
+      { type: 'start' },
+      { type: 'confirm' },
+      { type: 'confirm' },
+    );
+    expect(s.screen).toEqual({ name: 'navigate', step: 2 });
+    s = reducer(s, { type: 'undo' });
+    expect(s.screen).toEqual({ name: 'navigate', step: 1, undone: 1 });
+    s = reducer(s, { type: 'undo' });
+    expect(s.screen).toEqual({ name: 'navigate', step: 0, undone: 2 });
+    expect(reducer(s, { type: 'undo' })).toBe(s); // nothing before the first step
+    s = reducer(s, { type: 'redo' });
+    expect(s.screen).toEqual({ name: 'navigate', step: 1, undone: 1 });
+    s = reducer(s, { type: 'confirm' }); // a new Reached forgets what was undone
+    expect(s.screen).toEqual({ name: 'navigate', step: 2 });
+    expect(reducer(s, { type: 'redo' })).toBe(s);
+    // The last Reached by mistake: Undo from Arrived goes back to the last step.
+    for (let i = 0; i < s.steps.length; i++) s = reducer(s, { type: 'confirm' });
+    expect(s.screen.name).toBe('arrived');
+    s = reducer(s, { type: 'undo' });
+    expect(s.screen).toEqual({ name: 'navigate', step: s.steps.length - 2, undone: 1 });
+  });
+
   it('confirming every step ends on Arrived (the arrive message is not a card)', () => {
     let s = loaded(
       { type: 'set-position', position: atMain },

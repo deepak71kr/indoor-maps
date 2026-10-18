@@ -459,6 +459,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): no times; a shorter preview.** No walking time or distance anywhere for now: the room card shows only the floor (and says so when there is no way there), the preview's Walk / Step-free tabs carry no times (no second route is worked out for them), there is no "1 min" headline and no time bubble on the route. At rest the preview sheet ends after Start and Fastest / Shortest (the steps are a pull-up away), so the map gets about two thirds of the screen.
 
+**Follow-up (2026-10-18): undo / redo a checkpoint; the card is the bottom panel.** A "Reached" tapped by mistake: ↶ Undo in the card's footer goes back one checkpoint, ↷ Redo (shown after an Undo) puts it back; a new Reached forgets what was undone (state `navigate.undone`, actions `undo` / `redo`); Arrived has "Not there yet? Undo". Undo replaces the menu's Back and the footer's ‹ › (swiping the card still looks ahead or back). The card is now the bottom panel itself: full width, flush with the bottom edge, no padding round it.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

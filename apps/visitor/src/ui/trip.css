@@ -1073,3 +1073,54 @@
   -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent);
   mask-image: linear-gradient(#000 calc(100% - 26px), transparent);
 }
+
+/* The card is the bottom panel itself (2026-10-18): full width, flush with the bottom edge,
+   no padding round it. */
+.trip .sheet {
+  padding: 0 0 env(safe-area-inset-bottom);
+  gap: 0;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+}
+.trip .sheet .banner {
+  margin: 0;
+  border-radius: 0;
+  background: var(--surface);
+}
+.trip .sheet.open .trip-menu {
+  padding: 8px 12px 12px;
+}
+.trip .card-foot {
+  padding: 2px 10px 8px;
+}
+/* ↶ Undo · ↷ Redo: small text buttons in the footer. */
+.trip .step-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.trip .step-fix .icon {
+  width: 16px;
+  height: 16px;
+}
+.trip .step-fix.redo .icon {
+  scale: -1 1;
+}
+.trip .step-fix:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.arrived .undo {
+  align-self: center;
+  font-size: 0.85rem;
+}
