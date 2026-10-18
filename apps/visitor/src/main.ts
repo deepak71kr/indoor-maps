@@ -144,7 +144,13 @@ if (compass?.needsPermission && matchMedia('(pointer: coarse)').matches) {
 async function boot(): Promise<void> {
   installIcons();
   applyTextSize();
-  if (import.meta.env.PROD) registerServiceWorker();
+  // A new version shows at once, except mid-walk (it shows on the next open then).
+  if (import.meta.env.PROD) {
+    registerServiceWorker(() => {
+      const screen = store.getState().screen.name;
+      return screen !== 'navigate' && screen !== 'lost';
+    });
+  }
   render();
   store.subscribe(render);
   // The trip screens (card, preview, walking) arrive right after the first screen.

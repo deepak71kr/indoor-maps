@@ -16,8 +16,26 @@ export async function saveMap(url: string, response: Response): Promise<void> {
   }
 }
 
-export function registerServiceWorker(): void {
+/**
+ * `canReload()` says whether the page may reload now (not in the middle of a walk): then a
+ * newly installed version shows at once instead of on the next open.
+ */
+export function registerServiceWorker(canReload: () => boolean = () => false): void {
   if (!('serviceWorker' in navigator)) return;
+  // A new version took over: show it now if the visitor isn't walking.
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || !canReload()) return;
+    // Never reload twice within a few seconds (no loop if something goes wrong).
+    try {
+      const last = Number(sessionStorage.getItem('im.reloaded') ?? 0);
+      if (Date.now() - last < 10_000) return;
+      sessionStorage.setItem('im.reloaded', String(Date.now()));
+    } catch {
+      return;
+    }
+    location.reload();
+  });
   navigator.serviceWorker
     .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
     .then((registration) => {

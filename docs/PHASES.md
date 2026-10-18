@@ -461,6 +461,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): undo / redo a checkpoint; the card is the bottom panel.** A "Reached" tapped by mistake: ↶ Undo in the card's footer goes back one checkpoint, ↷ Redo (shown after an Undo) puts it back; a new Reached forgets what was undone (state `navigate.undone`, actions `undo` / `redo`); Arrived has "Not there yet? Undo". Undo replaces the menu's Back and the footer's ‹ › (swiping the card still looks ahead or back). The card is now the bottom panel itself: full width, flush with the bottom edge, no padding round it.
 
+**Follow-up (2026-10-18): updates show at once; edge to edge.** A new version used to show only on the open after the one that downloaded it, so a visitor (and the founder, testing) could keep seeing the old one. Now, when a new version takes over and the visitor is not walking, the page reloads itself (at most once in 10 s); mid-walk it waits for the next open (the trip is saved anyway). The page uses `viewport-fit=cover`, so on phones with a home bar the bottom card reaches the very edge (its safe-area padding keeps the buttons clear). Checked on 360×640, 412×915, 768×1024 and 1366×768: the card ends exactly at the bottom (side panel on laptops).
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
