@@ -378,17 +378,12 @@ test('route options and "Path blocked?": shortest / fastest, detour around a blo
   await expect(page.getByRole('heading', { name: /Radiology/ })).toBeVisible();
 });
 
-test('Google-style details: Save + Saved tab, Walk / Step-free tabs, Exit and arrival time', async ({
-  page,
-}) => {
+test('Google-style details: Walk / Step-free tabs, Exit and arrival time', async ({ page }) => {
   await page.goto('/?at=G-MAIN');
   await page
     .locator('.places')
     .getByRole('button', { name: /Radiology/ })
     .click();
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
-
   await page.getByRole('button', { name: 'Directions' }).click();
   const modes = page.getByRole('tablist', { name: 'How to go' });
   await expect(modes.getByRole('tab', { name: /Walk/ })).toHaveAttribute('aria-selected', 'true');
@@ -403,9 +398,22 @@ test('Google-style details: Save + Saved tab, Walk / Step-free tabs, Exit and ar
   await expect(page.getByRole('button', { name: 'End route' })).toHaveText('Exit');
   await expect(page.locator('.trip-sub')).toHaveText(/\d+ m · \d{1,2}:\d{2}/);
   await page.getByRole('button', { name: 'End route' }).click();
+});
 
-  await page.getByRole('tab', { name: /Saved/ }).click();
-  await expect(page.locator('.tab-saved')).toContainText('Radiology');
+test('forgiving search: misspellings, spacing, other words, nearest service, nothing found', async ({
+  page,
+}) => {
+  await page.goto('/?at=G-MAIN');
+  const search = page.getByRole('searchbox');
+  const results = page.locator('.search-page');
+  await search.fill('radiolgy'); // a typo
+  await expect(results.getByRole('button', { name: /Radiology/ }).first()).toBeVisible();
+  await search.fill('xray'); // no hyphen
+  await expect(results.getByRole('button', { name: /X-Ray/ }).first()).toBeVisible();
+  await search.fill('washroom'); // another word for toilet
+  await expect(results.getByRole('button', { name: /Nearest toilet/ })).toBeVisible();
+  await search.fill('qqqzz');
+  await expect(results).toContainText('Nothing found for');
 });
 
 test('floors: colour per floor, "viewing another floor" note, floor chips, lift tile', async ({

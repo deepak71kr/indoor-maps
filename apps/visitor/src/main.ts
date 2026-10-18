@@ -8,14 +8,7 @@ import { loadSite } from '@innermap/core';
 import { tr } from './app/i18n';
 import { codeFromQr, resolvePosition } from './app/search';
 import type { KeyValue } from './app/session';
-import {
-  loadRecent,
-  loadSaved,
-  loadTrip,
-  persistRecent,
-  persistSaved,
-  persistTrip,
-} from './app/session';
+import { loadRecent, loadTrip, persistRecent, persistTrip } from './app/session';
 import { initialState } from './app/state';
 import { createStore } from './app/store';
 import { h, replace } from './ui/dom';
@@ -169,7 +162,6 @@ async function boot(): Promise<void> {
   const trip = loadTrip(storage, siteId, Date.now());
   store.dispatch({ type: 'map-loaded', site });
   store.dispatch({ type: 'recent-loaded', recent: loadRecent(storage, siteId) });
-  store.dispatch({ type: 'saved-loaded', saved: loadSaved(storage, siteId) });
 
   const scanned = qrCode ? resolvePosition(site, qrCode) : null;
   if (qrCode) {
@@ -214,16 +206,11 @@ async function boot(): Promise<void> {
   }
 
   let savedRecent = store.getState().recent;
-  let savedPlaces = store.getState().saved;
   store.subscribe((state) => {
     persistTrip(storage, siteId, state, Date.now());
     if (state.recent !== savedRecent) {
       savedRecent = state.recent;
       persistRecent(storage, siteId, state.recent);
-    }
-    if (state.saved !== savedPlaces) {
-      savedPlaces = state.saved;
-      persistSaved(storage, siteId, state.saved);
     }
   });
 }

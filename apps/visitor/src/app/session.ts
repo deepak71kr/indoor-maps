@@ -65,30 +65,6 @@ export function persistRecent(
   }
 }
 
-const SAVED_KEY = 'im.saved';
-
-/** Rooms the visitor saved on this site (ids); empty when storage is missing. */
-export function loadSaved(storage: KeyValue | null, site: string): string[] {
-  try {
-    const list = JSON.parse(storage?.getItem(`${SAVED_KEY}.${site}`) ?? '[]') as unknown;
-    return Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-export function persistSaved(
-  storage: KeyValue | null,
-  site: string,
-  saved: readonly string[],
-): void {
-  try {
-    storage?.setItem(`${SAVED_KEY}.${site}`, JSON.stringify(saved));
-  } catch {
-    // Storage full or blocked: saved places just won't be remembered.
-  }
-}
-
 /** Saves while a trip is in progress; clears once it ends. */
 export function persistTrip(
   storage: KeyValue | null,

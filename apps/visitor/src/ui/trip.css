@@ -367,15 +367,6 @@
   border: 1.5px solid var(--line);
 }
 
-.actions .btn.save.on {
-  background: var(--blue-soft);
-  border-color: var(--blue);
-}
-
-.actions .btn.save.on .icon {
-  fill: currentColor;
-}
-
 /* Walking: ? left, time in the middle, red Exit pill right. */
 .nav-bar .trip-info {
   text-align: center;

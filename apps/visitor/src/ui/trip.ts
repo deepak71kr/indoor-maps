@@ -306,7 +306,6 @@ export function placeView(ctx: ViewContext, roomId: string): HTMLElement {
         })
       : tr('place.no-route');
   const close = () => ctx.dispatch({ type: 'close-place' });
-  const saved = ctx.state.saved.includes(roomId);
 
   const share = async (el: HTMLElement) => {
     const url = `${location.origin}${location.pathname}?site=${encodeURIComponent(site.map.site.id)}&to=${encodeURIComponent(roomId)}`;
@@ -384,12 +383,6 @@ export function placeView(ctx: ViewContext, roomId: string): HTMLElement {
           },
           'btn outline',
           'straight',
-        ),
-        button(
-          saved ? tr('place.saved') : tr('place.save'),
-          () => ctx.dispatch({ type: 'toggle-save', roomId }),
-          `btn outline save${saved ? ' on' : ''}`,
-          'bookmark',
         ),
       ),
     ],

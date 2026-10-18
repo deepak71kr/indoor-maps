@@ -1,14 +1,19 @@
 import { roomIcon } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
-import { amenityChips, nearbyLandmarks, searchRooms } from '../app/search';
+import {
+  amenityChips,
+  nearbyLandmarks,
+  searchRooms,
+  searchAmenities,
+  searchSpots,
+  searchBuildings,
+} from '../app/search';
 import { currentNode } from '../app/state';
 import { h, replace } from './dom';
-import type { IconName } from './icons';
 import { icon } from './icons';
 import {
   mapScreen,
   bigTextToggle,
-  setSheetOpen,
   title,
   button,
   roundButton,
@@ -96,12 +101,103 @@ function chooseView(ctx: ViewContext): HTMLElement {
   const hereName = (here && site.graph.nodes.get(here)?.landmark) ?? here ?? '';
   const label = (c: keyof typeof CATEGORY) => CATEGORY[c].label;
 
-  // Search page (full screen while typing, like Google Maps).
+  // Search page (full screen while typing, like Google Maps). Forgiving: first-time visitors
+  // don't know exact names or spellings. "Nearest toilet" answers and named spots come first.
   const results = h('ul', { class: 'list', 'aria-live': 'polite' });
+  const heading = h('h2', {}, tr('choose.all'));
+  const go = (target: Parameters<typeof ctx.dispatch>[0]) => () => ctx.dispatch(target);
   const showResults = (query: string) => {
-    const found = searchRooms(site, query, label);
-    if (found.length === 0) replace(results, h('li', { class: 'muted' }, tr('choose.none')));
-    else replace(results, ...found.map((r) => placeItem(ctx, r)));
+    const found = searchRooms(site, query, label, here);
+    const services = searchAmenities(site, query, stepFree);
+    const buildings = searchBuildings(site, query);
+    // A building's own doors are covered by the building's result.
+    const spots = searchSpots(site, query).filter(
+      (s) => !buildings.some((b) => s.name.startsWith(b.name)),
+    );
+    const rows: HTMLElement[] = [
+      ...buildings.map((b) =>
+        h(
+          'li',
+          {},
+          button(
+            `🏢 ${b.name}`,
+            go({
+              type: 'choose',
+              target: { destination: { type: 'node', nodeId: b.nodeId }, label: b.name },
+            }),
+            'item place building',
+          ),
+        ),
+      ),
+      ...services.map((chip) =>
+        h(
+          'li',
+          {},
+          button(
+            `${chip.emoji} ${tr('choose.nearest')} ${tr(chip.labelKey).toLowerCase()}`,
+            go({
+              type: 'choose',
+              target: {
+                destination: { type: 'amenity', kinds: chip.kinds },
+                label: tr(chip.labelKey),
+              },
+            }),
+            'item place service',
+          ),
+        ),
+      ),
+      ...spots.map((spot) =>
+        h(
+          'li',
+          {},
+          button(
+            `📍 ${spot.name}`,
+            go({
+              type: 'choose',
+              target: { destination: { type: 'node', nodeId: spot.nodeId }, label: spot.name },
+            }),
+            'item place spot',
+          ),
+        ),
+      ),
+      ...found.slice(0, 60).map((r) => placeItem(ctx, r)),
+    ];
+    heading.textContent = query.trim() ? tr('choose.results') : tr('choose.all');
+    const close =
+      query.trim() && buildings.length === 0 && found.length > 0 && (found[0]?.score ?? 1) < 0.85;
+    if (rows.length === 0) {
+      // Nothing at all: say so kindly, and offer the help desk and a few kinds of place.
+      const help = amenityChips(site, stepFree).find((c) => c.labelKey === 'chip.help');
+      replace(
+        results,
+        h('li', { class: 'muted none' }, tr('choose.none-for', { query: query.trim() })),
+        help
+          ? h(
+              'li',
+              {},
+              button(
+                `${help.emoji} ${tr('choose.ask-help')}`,
+                go({
+                  type: 'choose',
+                  target: {
+                    destination: { type: 'amenity', kinds: help.kinds },
+                    label: tr(help.labelKey),
+                  },
+                }),
+                'item place service',
+              ),
+            )
+          : null,
+      );
+    } else {
+      replace(
+        results,
+        close
+          ? h('li', { class: 'muted close' }, tr('choose.close', { query: query.trim() }))
+          : null,
+        ...rows,
+      );
+    }
   };
   showResults('');
   let screen: HTMLElement | null = null;
@@ -202,63 +298,12 @@ function chooseView(ctx: ViewContext): HTMLElement {
         recentList(ctx),
         places,
       ),
-      savedPanel(ctx),
-      tabBar(),
     ],
-    extra: [h('div', { class: 'search-page' }, h('h2', {}, tr('choose.all')), results)],
+    extra: [h('div', { class: 'search-page' }, heading, results)],
   });
   return screen;
 }
 
-/** Saved places (⭐ Save on a room card), Google's "You" tab for a building. */
-function savedPanel(ctx: ViewContext): HTMLElement {
-  const { site, saved } = ctx.state;
-  const label = (c: keyof typeof CATEGORY) => CATEGORY[c].label;
-  const rows = site ? searchRooms(site, '', label).filter((r) => saved.includes(r.room.id)) : [];
-  return h(
-    'div',
-    { class: 'tab-saved' },
-    h('h2', {}, tr('tab.saved')),
-    rows.length > 0
-      ? h('ul', { class: 'list' }, ...rows.map((r) => placeItem(ctx, r)))
-      : h('p', { class: 'muted' }, tr('saved.empty')),
-  );
-}
-
-/** Google's bottom bar (Explore · You · Contribute), here Explore · Saved. */
-function tabBar(): HTMLElement {
-  const tab = (name: 'explore' | 'saved', iconName: IconName) =>
-    h(
-      'button',
-      {
-        type: 'button',
-        role: 'tab',
-        class: name === 'explore' ? 'on' : '',
-        'aria-selected': String(name === 'explore'),
-        onClick: (e: Event) => {
-          const bar = (e.currentTarget as HTMLElement).parentElement;
-          const sheet = bar?.closest<HTMLElement>('.sheet');
-          sheet?.classList.toggle('show-saved', name === 'saved');
-          for (const b of bar?.children ?? []) {
-            const on = b === e.currentTarget;
-            b.classList.toggle('on', on);
-            b.setAttribute('aria-selected', String(on));
-          }
-          if (name === 'saved' && sheet) setSheetOpen(sheet, true);
-        },
-      },
-      h('span', { class: 'pill' }, icon(iconName)),
-      tr(`tab.${name}`),
-    );
-  return h(
-    'nav',
-    { class: 'tabbar', role: 'tablist', 'aria-label': tr('tab.explore') },
-    tab('explore', 'arrive'),
-    tab('saved', 'bookmark'),
-  );
-}
-
-/** Recently chosen rooms (Google's "Recent"), each opening its card. */
 function recentList(ctx: ViewContext): HTMLElement | null {
   const { recent, site } = ctx.state;
   const rooms = recent.flatMap((r) =>

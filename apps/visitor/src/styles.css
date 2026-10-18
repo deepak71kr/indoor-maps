@@ -1560,60 +1560,6 @@ html.big-text .map text {
 }
 
 /* Explore · Saved bar at the bottom of the home sheet. */
-.tab-saved {
-  display: none;
-}
-.sheet.show-saved .tab-explore {
-  display: none;
-}
-.sheet.show-saved .tab-saved {
-  display: block;
-}
-.tab-explore {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.tabbar {
-  position: sticky;
-  bottom: calc(-14px - env(safe-area-inset-bottom));
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 4px -16px calc(-14px - env(safe-area-inset-bottom));
-  padding: 6px 16px calc(8px + env(safe-area-inset-bottom));
-  background: var(--surface-2);
-  border-top: 1px solid var(--line);
-}
-.tabbar button {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: 0.8rem;
-  color: var(--muted);
-  cursor: pointer;
-}
-.tabbar .pill {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 28px;
-  border-radius: 14px;
-}
-.tabbar .on {
-  color: var(--text);
-  font-weight: 700;
-}
-.tabbar .on .pill {
-  background: color-mix(in srgb, var(--blue) 22%, var(--surface));
-}
-.tabbar .icon {
-  width: 20px;
-  height: 20px;
-}
 
 /* Calmer Google base map: near-white ground, sky-blue water, blue-grey road edges. */
 .map {

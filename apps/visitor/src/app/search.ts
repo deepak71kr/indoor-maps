@@ -1,5 +1,6 @@
 import type { Destination, Site } from '@innermap/core';
 import type { Amenity, Room } from '@innermap/schema';
+import { matchScore } from './fuzzy';
 import type { Position, Target } from './state';
 
 export interface RoomResult {
@@ -8,54 +9,158 @@ export interface RoomResult {
   /** Building name on a campus ("Block A"), so a search for it lists its rooms. */
   readonly building?: string;
   readonly target: Target;
+  /** How well it matched the search (1 = exactly); absent when nothing was typed. */
+  readonly score?: number;
 }
 
-/** Rooms whose name, number, category or building matches; all rooms when the query is empty. */
+/** Below this a place is not shown as a match. */
+const MIN_SCORE = 0.5;
+
+/**
+ * Rooms for what was typed — forgiving about spelling, spaces and words (app/fuzzy.ts) —
+ * best matches first, and among equal ones the nearest to `near` (the visitor) first.
+ * With nothing typed: every room, by building and floor.
+ */
 export function searchRooms(
   site: Site,
   query: string,
   categoryLabel: (c: Room['category']) => string,
+  near?: string | null,
 ): RoomResult[] {
-  const q = query.trim().toLowerCase();
-  const levelOrder = new Map(site.graph.levels.map((l) => [l.id, l.rank]));
-  return site.map.rooms
-    .map((room): RoomResult => {
-      const door = room.doors[0] ?? '';
-      const levelId = site.graph.nodes.get(door)?.level ?? '';
-      const building = site.buildingAt(door)?.name;
-      const destination: Destination = { type: 'room', roomId: room.id };
-      return {
+  const typed = query.trim().length > 0;
+  const levels = new Map(site.graph.levels.map((l) => [l.id, l]));
+  const here = near ? site.graph.nodes.get(near) : undefined;
+  const away = (door: string) => {
+    const n = site.graph.nodes.get(door);
+    if (!here || !n) return 0;
+    // Another floor counts as far: walking there means stairs or a lift.
+    return Math.hypot(n.x - here.x, n.y - here.y) + (n.level === here.level ? 0 : 200);
+  };
+  const results = site.map.rooms.flatMap((room): RoomResult[] => {
+    const door = room.doors[0] ?? '';
+    const levelId = site.graph.nodes.get(door)?.level ?? '';
+    const building = site.buildingAt(door)?.name;
+    const level = levels.get(levelId);
+    const score = typed
+      ? matchScore(query, [
+          room.name,
+          room.number ?? '',
+          categoryLabel(room.category),
+          building ?? '',
+          level?.name ?? '',
+        ])
+      : undefined;
+    if (score !== undefined && score < MIN_SCORE) return [];
+    const destination: Destination = { type: 'room', roomId: room.id };
+    return [
+      {
         room,
         levelId,
         ...(building !== undefined && { building }),
         target: { destination, label: room.name },
-      };
-    })
-    .filter(({ room, building }) => {
-      if (!q) return true;
-      const texts = [room.name, room.number ?? '', room.id, categoryLabel(room.category)];
-      return [...texts, building ?? ''].some((text) => text.toLowerCase().includes(q));
-    })
-    .sort(
+        ...(score !== undefined && { score }),
+      },
+    ];
+  });
+  if (typed) {
+    const dist = new Map(results.map((r) => [r, away(r.room.doors[0] ?? '')]));
+    return results.sort(
       (a, b) =>
-        (a.building ?? '').localeCompare(b.building ?? '') ||
-        (levelOrder.get(a.levelId) ?? 0) - (levelOrder.get(b.levelId) ?? 0) ||
+        // Close scores count as equal, so a nearby place beats a far one with a tiny edge.
+        Math.round(((b.score ?? 0) - (a.score ?? 0)) * 10) ||
+        (dist.get(a) ?? 0) - (dist.get(b) ?? 0) ||
         a.room.name.localeCompare(b.room.name),
     );
+  }
+  return results.sort(
+    (a, b) =>
+      (a.building ?? '').localeCompare(b.building ?? '') ||
+      (levels.get(a.levelId)?.rank ?? 0) - (levels.get(b.levelId)?.rank ?? 0) ||
+      a.room.name.localeCompare(b.room.name),
+  );
+}
+
+/**
+ * Buildings for what was typed ("library", "main bldg", "hostel 3"): a first-time visitor
+ * often wants the building itself. Goes to its main way in.
+ */
+export function searchBuildings(
+  site: Site,
+  query: string,
+): Array<{ nodeId: string; name: string; score: number }> {
+  if (!query.trim()) return [];
+  const doors = [...site.graph.nodes.values()].filter((n) => n.kind === 'entrance');
+  return (site.map.buildings ?? [])
+    .map((b) => {
+      const ways = doors.filter((n) => site.buildingAt(n.id)?.id === b.id);
+      // The main way in: the one named "<building> entrance" / "… Entry", else the first.
+      const door = ways.find((n) => /(entrance|entry)$/i.test(n.landmark ?? '')) ?? ways[0];
+      return { nodeId: door?.id ?? '', name: b.name, score: matchScore(query, [b.name]) };
+    })
+    .filter((b) => b.nodeId && b.score >= 0.7)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+/** Named spots outdoors for what was typed (a gate, a fountain, a notice board). */
+export function searchSpots(
+  site: Site,
+  query: string,
+  limit = 3,
+): Array<{ nodeId: string; name: string }> {
+  // Only campuses have an outdoors; in a single building every named spot is a corridor.
+  if (!query.trim() || !site.map.buildings?.length) return [];
+  const seen = new Set<string>();
+  return [...site.graph.nodes.values()]
+    .filter(
+      (n) =>
+        n.landmark &&
+        (n.kind === 'entrance' || n.kind === 'junction') &&
+        // Outdoors only: corridors, lobbies and stairs are steps of a route, not places.
+        site.buildingAt(n.id) === undefined,
+    )
+    .map((n) => ({
+      nodeId: n.id,
+      name: n.landmark ?? '',
+      score: matchScore(query, [n.landmark ?? '']),
+    }))
+    .filter((s) => s.score >= 0.7 && !/^(Path to|Outside|Between|Where)/.test(s.name))
+    .sort((a, b) => b.score - a.score)
+    .filter((s) => !seen.has(s.name) && seen.add(s.name))
+    .slice(0, limit)
+    .map(({ nodeId, name }) => ({ nodeId, name }));
 }
 
 export interface AmenityChip {
   readonly emoji: string;
   readonly labelKey: 'chip.toilet' | 'chip.water' | 'chip.atm' | 'chip.help';
   readonly kinds: readonly Amenity['kind'][];
+  /** What a visitor might type for it. */
+  readonly words: string;
 }
 
 const CHIPS: readonly AmenityChip[] = [
-  { emoji: '🚻', labelKey: 'chip.toilet', kinds: ['toilet', 'toilet-accessible'] },
-  { emoji: '💧', labelKey: 'chip.water', kinds: ['water'] },
-  { emoji: '🏧', labelKey: 'chip.atm', kinds: ['atm'] },
-  { emoji: 'ℹ️', labelKey: 'chip.help', kinds: ['help-desk'] },
+  {
+    emoji: '🚻',
+    labelKey: 'chip.toilet',
+    kinds: ['toilet', 'toilet-accessible'],
+    words: 'toilet washroom restroom bathroom loo wc',
+  },
+  { emoji: '💧', labelKey: 'chip.water', kinds: ['water'], words: 'water drinking cooler' },
+  { emoji: '🏧', labelKey: 'chip.atm', kinds: ['atm'], words: 'atm cash bank' },
+  {
+    emoji: 'ℹ️',
+    labelKey: 'chip.help',
+    kinds: ['help-desk'],
+    words: 'help desk reception enquiry information',
+  },
 ];
+
+/** "Nearest toilet" and the like, when what was typed means one of them ("washroom"). */
+export function searchAmenities(site: Site, query: string, stepFree: boolean): AmenityChip[] {
+  if (!query.trim()) return [];
+  return amenityChips(site, stepFree).filter((chip) => matchScore(query, [chip.words]) >= 0.7);
+}
 
 /**
  * "Nearest …" chips for amenities this site actually has.
