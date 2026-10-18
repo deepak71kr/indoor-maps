@@ -978,7 +978,16 @@ export class MapView {
     }
 
     // Arrows along the way still to walk, pointing where to go.
-    for (const line of [...leg, ...later]) {
+    const lengthOf = (line: readonly Point[]) => {
+      let sum = 0;
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1] as Point;
+        const b = line[i] as Point;
+        sum += Math.hypot(b.x - a.x, b.y - a.y);
+      }
+      return sum;
+    };
+    for (const line of next === null ? [...leg, ...later] : leg.filter((l) => lengthOf(l) > 30)) {
       let carry = CHEVRON_EVERY / 2;
       for (let i = 1; i < line.length; i++) {
         const a = line[i - 1] as Point;
@@ -1014,6 +1023,14 @@ export class MapView {
     scene.checkpoints.forEach((id, i) => {
       if (id === scene.here || id === last || id === next) return;
       const passed = i < scene.done;
+      // While walking only the next checkpoint stands out: the rest are small dots on the line.
+      // The preview (no next yet) numbers them all, to match the step list.
+      if (next !== null) {
+        marker(id, passed ? 'cp done dot' : 'cp dot', (g) => {
+          g.append(s('circle', { r: passed ? 3.5 : 4.5 }));
+        });
+        return;
+      }
       marker(id, passed ? 'cp done' : 'cp', (g) => {
         g.append(s('circle', { r: 10.5 }));
         if (passed) g.append(s('path', { d: 'M-4 0-1.2 3 4-3' }));
@@ -1263,6 +1280,8 @@ export class MapView {
   }
 
   private animateTo(target: View): void {
+    // A planned move (re-centre, framing) wins over a glide still running from a flick.
+    cancelAnimationFrame(this.fling);
     cancelAnimationFrame(this.animation);
     const from = { ...this.view };
     if (!this.placed || matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -1674,6 +1693,11 @@ export class MapView {
   }
 
   /** Route overview: frame the whole route on the floor being shown. */
+  /** The whole route at once (the walking screen's menu). */
+  overviewRoute(): void {
+    this.showWholeRoute();
+  }
+
   private showWholeRoute(): void {
     const scene = this.scene;
     if (!scene) return;

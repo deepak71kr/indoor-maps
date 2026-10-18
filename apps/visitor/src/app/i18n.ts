@@ -34,6 +34,7 @@ export const ui = {
   'step.of': 'Step {n} of {total}',
   'step.to': 'Route to {place}',
   'step.here': "I'm here",
+  'step.here-floor': "I'm on {floor}",
   'step.lost': "I'm lost",
   'step.back': 'Back',
   'step.end': 'End route',

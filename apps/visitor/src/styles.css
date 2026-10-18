@@ -2523,3 +2523,18 @@ html.big-text .map text {
     animation: none;
   }
 }
+
+/* Walking: checkpoints other than the next one are small dots on the route line. */
+.map .cp.dot circle {
+  fill: #fff;
+  stroke: var(--m-route);
+  stroke-width: 2;
+}
+.map .cp.done.dot circle {
+  fill: #9aa0a6;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.map .next .pulse {
+  r: 12px;
+}

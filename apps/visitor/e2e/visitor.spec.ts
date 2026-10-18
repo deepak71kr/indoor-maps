@@ -14,7 +14,8 @@ async function slowPhone(page: Page): Promise<void> {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 }
 
-const iAmHere = (page: Page) => page.getByRole('button', { name: "I'm here" });
+// "I'm here", or "I'm on Floor 2" on a lift or stairs step.
+const iAmHere = (page: Page) => page.getByRole('button', { name: /^I'm (here|on )/ });
 
 /** Taps "I'm here" until the Arrived screen. */
 async function walkToTheEnd(page: Page): Promise<void> {

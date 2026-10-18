@@ -202,6 +202,11 @@ export function sheetHandle(sheet: HTMLElement): HTMLButtonElement {
   });
 }
 
+/** The whole route on the map (the walking screen's menu). */
+export function showRouteOverview(): void {
+  mapView?.overviewRoute();
+}
+
 export function setSheetOpen(sheet: HTMLElement, open: boolean): void {
   sheet.classList.toggle('open', open);
   const handle = sheet.querySelector('.handle');

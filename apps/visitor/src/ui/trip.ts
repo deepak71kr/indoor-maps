@@ -21,6 +21,7 @@ import {
   floorBadgeText,
   buildingOf,
   button,
+  showRouteOverview,
   roundButton,
 } from './parts';
 
@@ -32,25 +33,35 @@ function arrivalTime(minutes: number): string {
   });
 }
 
+/** A short tick when a checkpoint is confirmed (only while sound is on). */
+function tick(): void {
+  try {
+    const audio = new AudioContext();
+    const tone = audio.createOscillator();
+    const gain = audio.createGain();
+    tone.frequency.value = 880;
+    gain.gain.setValueAtTime(0.12, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.12);
+    tone.connect(gain).connect(audio.destination);
+    tone.start();
+    tone.stop(audio.currentTime + 0.13);
+    tone.onended = () => void audio.close();
+  } catch {
+    // No audio on this phone: the vibration is enough.
+  }
+}
+
 /**
- * While walking, Google shows sound on/off and Report (⚠️ = our "Path blocked?") just above
- * the bottom bar on the right; the Re-center pill sits on the left (CSS).
+ * When the visitor should be near the next checkpoint (by the step's length at a slow walk),
+ * the "I'm here" pill glows. It never moves on by itself: the visitor still confirms.
  */
-function tripTools(ctx: ViewContext): HTMLElement | null {
-  if (ctx.state.screen.name !== 'navigate') return null;
-  const voice = voiceButton(ctx, 'map-btn trip-tool');
-  const report = h(
-    'button',
-    {
-      type: 'button',
-      class: 'map-btn trip-tool report',
-      'aria-label': tr('blocked.button'),
-      title: tr('blocked.button'),
-      onClick: () => ctx.dispatch({ type: 'block-ahead' }),
-    },
-    icon('warn'),
-  );
-  return h('div', { class: 'trip-tools' }, voice, report);
+const stepClock = { index: -1, at: 0 };
+function glowWhenNear(pill: HTMLElement, index: number, meters: number): void {
+  if (stepClock.index !== index) Object.assign(stepClock, { index, at: Date.now() });
+  const due = stepClock.at + Math.max(3000, (meters / 1.1) * 1000 * 0.8);
+  const wait = due - Date.now();
+  if (wait <= 0) pill.classList.add('near');
+  else setTimeout(() => pill.classList.add('near'), wait);
 }
 
 /** Route options under Start: fastest / shortest (Google's "Options"), and step-free. */
@@ -80,9 +91,27 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
   if (!step) return h('section');
   const total = steps.length - 1; // the last one is the arrival message
   const { minutes, meters } = tripStats(steps, index);
+  // Lifts and stairs: the pill says where you should be ("I'm on Floor 2").
+  const pill = button(
+    step.kind === 'ride' ? tr('step.here-floor', { floor: step.levelName }) : tr('step.here'),
+    () => {
+      navigator.vibrate?.(15);
+      if (voiceOn()) tick();
+      ctx.dispatch({ type: 'confirm' });
+    },
+    'btn primary go here-pill',
+    'check',
+  );
+  glowWhenNear(pill, index, step.meters);
+  const toggleMenu = (e: Event) => {
+    const sheet = (e.currentTarget as HTMLElement).closest<HTMLElement>('.sheet');
+    if (!sheet) return;
+    const open = !sheet.classList.contains('open');
+    setSheetOpen(sheet, open);
+    (e.currentTarget as HTMLElement).setAttribute('aria-expanded', String(open));
+  };
 
   return mapScreen(ctx, `trip lvl-${step.levelColor}`, {
-    tools: tripTools(ctx),
     top: [
       banner(
         step,
@@ -90,77 +119,73 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
         steps[index + 1],
         index === 0 && ctx.state.position?.facing !== undefined,
         floorBadgeText(step.levelName, buildingOf(ctx.state, step.target)),
+        total,
       ),
       notice === 'rerouted' && h('p', { class: 'toast', role: 'status' }, tr('rerouted')),
       notice === 'blocked' && h('p', { class: 'toast', role: 'status' }, tr('blocked.rerouted')),
     ],
     sheet: [
-      // Google's 2026 bottom bar: a button left, the time in the middle, a red Exit pill right.
+      // One row, all within thumb reach: Exit, time (opens the menu), "I'm here".
       h(
         'div',
         { class: 'trip-bar nav-bar' },
-        roundButton('help', tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'lost'),
-        h(
-          'div',
-          { class: 'grow trip-info' },
-          h('p', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
-          h('p', { class: 'trip-sub' }, `${tr('step.m', { m: meters })} · ${arrivalTime(minutes)}`),
-        ),
         h(
           'button',
           {
             type: 'button',
-            class: 'exit-pill',
+            class: 'exit-x',
             'aria-label': tr('step.end'),
+            title: tr('step.end'),
             onClick: () => ctx.dispatch({ type: 'new-destination' }),
           },
-          tr('step.exit'),
+          icon('close'),
+          h('span', { class: 'sr-only' }, tr('step.exit')),
         ),
-      ),
-      h(
-        'p',
-        { class: 'trip-head' },
-        tr('step.to', { place: '' }),
-        h('strong', {}, target?.label ?? ''),
-        ` · ${tr('step.of', { n: index + 1, total })}`,
-      ),
-      h(
-        'div',
-        { class: 'progress' },
-        floorBadge(step.levelName, step.levelColor, buildingOf(ctx.state, step.target)),
-        h(
-          'span',
-          { class: 'dots', 'aria-hidden': 'true' },
-          ...steps.slice(0, total).map((_, i) => h('i', { class: i <= index ? 'on' : '' })),
-        ),
-      ),
-      button(
-        tr('step.here'),
-        () => ctx.dispatch({ type: 'confirm' }),
-        'btn primary big go',
-        'check',
-      ),
-      h(
-        'div',
-        { class: 'links' },
-        button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'link', 'back'),
         h(
           'button',
           {
             type: 'button',
-            class: 'link',
-            onClick: (e: Event) => {
-              const sheet = (e.currentTarget as HTMLElement).closest<HTMLElement>('.sheet');
-              if (sheet) setSheetOpen(sheet, !sheet.classList.contains('open'));
-            },
+            class: 'grow trip-info',
+            'aria-label': tr('step.list'),
+            'aria-expanded': 'false',
+            onClick: toggleMenu,
           },
-          icon('list'),
-          tr('step.list'),
+          h('span', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
+          h(
+            'span',
+            { class: 'trip-sub' },
+            `${tr('step.m', { m: meters })} · ${arrivalTime(minutes)}`,
+          ),
         ),
+        pill,
       ),
-      site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
-      // All steps (Google's step list), the current one highlighted; shown when the sheet opens.
-      stepList(steps, index),
+      // The menu (tap the time or pull the bar up): everything else, and every step.
+      h(
+        'div',
+        { class: 'trip-menu' },
+        h(
+          'p',
+          { class: 'trip-head' },
+          tr('step.to', { place: '' }),
+          h('strong', {}, target?.label ?? ''),
+        ),
+        h(
+          'div',
+          { class: 'menu-row' },
+          button(tr('step.back'), () => ctx.dispatch({ type: 'back' }), 'chip', 'back'),
+          button(tr('step.lost'), () => ctx.dispatch({ type: 'lost' }), 'chip lost', 'help'),
+          button(tr('map.overview'), showRouteOverview, 'chip', 'directions'),
+          button(
+            tr('blocked.button'),
+            () => ctx.dispatch({ type: 'block-ahead' }),
+            'chip report',
+            'warn',
+          ),
+          voiceButton(ctx, 'chip'),
+        ),
+        site && site.map.qr.length > 0 && h('p', { class: 'tip' }, icon('qr'), tr('step.tip')),
+        stepList(steps, index),
+      ),
     ],
   });
 }
@@ -383,17 +408,21 @@ function banner(
   next: Step | undefined,
   sign: boolean,
   floorLabel = step.levelName,
+  total = 0,
 ): HTMLElement {
+  // "Then …" only when the next move comes right after this one.
+  const soon = next && next.kind !== 'arrive' && step.meters > 0 && step.meters < 12;
   return h(
     'article',
-    // Coloured by the move, so "follow the colour" works for children and older visitors too.
+    // Coloured by the move (on the arrow tile), so "follow the colour" works for everyone.
     { class: `banner step move-${step.icon}`, 'data-step': index },
     h('p', { class: 'step-text sr-only', 'aria-live': 'polite' }, step.text),
+    total > 0 && h('p', { class: 'sr-only' }, tr('step.of', { n: index + 1, total })),
     h(
       'div',
       { class: 'banner-main', 'aria-hidden': 'true' },
       step.kind === 'ride'
-        ? // Lifts and stairs: the floor to go to, big, in that floor's colour.
+        ? // Lifts and stairs: the floor to go to, in that floor's colour.
           h(
             'div',
             { class: `floor-tile lvl-${step.levelColor}` },
@@ -404,7 +433,6 @@ function banner(
       h(
         'div',
         { class: 'grow' },
-        h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
         h(
           'p',
           { class: 'step-title' },
@@ -412,37 +440,40 @@ function banner(
           step.meters > 0 && h('span', { class: 'step-meters' }, tr('step.m', { m: step.meters })),
         ),
         sign && h('p', { class: 'route-line sign' }, tr('step.sign')),
-        step.kind === 'ride' &&
-          h(
-            'p',
-            { class: 'route-line press' },
-            step.icon === 'lift'
-              ? tr('step.press', { floor: shortName(step.levelName) })
-              : tr('step.get-off', { floor: step.levelName }),
-          ),
-        (step.from || step.to) &&
-          h(
-            'p',
-            { class: 'route-line' },
-            step.from ? tr('step.from', { place: '' }) : null,
-            step.from ? h('b', {}, step.from) : null,
-            step.to ? h('span', { class: 'arrow' }, ' → ') : null,
-            step.to ? h('b', {}, step.to) : null,
-          ),
-        step.via && h('p', { class: 'route-line via' }, tr('step.via', { place: step.via })),
+        step.kind === 'ride'
+          ? h(
+              'p',
+              { class: 'route-line press' },
+              step.icon === 'lift'
+                ? tr('step.press', { floor: shortName(step.levelName) })
+                : tr('step.get-off', { floor: step.levelName }),
+            )
+          : (step.from || step.to) &&
+              h(
+                'p',
+                { class: 'route-line' },
+                step.from ? tr('step.from', { place: '' }) : null,
+                step.from ? h('b', {}, step.from) : null,
+                step.to ? h('span', { class: 'arrow' }, ' → ') : null,
+                step.to ? h('b', {}, step.to) : null,
+              ),
       ),
+      h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
     ),
-    next &&
+    soon &&
       h(
         'p',
         { class: 'then' },
         h('span', {}, tr('step.then')),
         icon(next.icon),
-        h(
-          'span',
-          { class: 'grow' },
-          next.kind === 'walk' && next.to ? `${next.title} → ${next.to}` : next.title,
-        ),
+        h('span', { class: 'grow' }, next.title),
+      ),
+    // How far along the trip: a thin bar under the card.
+    total > 0 &&
+      h(
+        'div',
+        { class: 'step-progress', 'aria-hidden': 'true' },
+        h('i', { style: { width: `${Math.round(((index + 1) / total) * 100)}%` } }),
       ),
   );
 }
@@ -627,10 +658,18 @@ export function arrivedView(ctx: ViewContext): HTMLElement {
         { class: 'confetti', 'aria-hidden': 'true' },
         ...Array.from({ length: 14 }, (_, i) => h('i', { style: { '--i': String(i) } })),
       ),
-      h('div', { class: 'step-icon' }, icon('check', 'icon huge')),
-      h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
-      arrive &&
-        floorBadge(arrive.levelName, arrive.levelColor, buildingOf(ctx.state, arrive.target)),
+      h(
+        'div',
+        { class: 'arrive-row' },
+        h('div', { class: 'step-icon' }, icon('check', 'icon huge')),
+        h(
+          'div',
+          { class: 'grow' },
+          h('h1', { tabindex: '-1', class: 'step-text' }, arrive?.text ?? ''),
+          arrive &&
+            floorBadge(arrive.levelName, arrive.levelColor, buildingOf(ctx.state, arrive.target)),
+        ),
+      ),
       button(
         tr('arrived.new'),
         () => ctx.dispatch({ type: 'new-destination' }),
