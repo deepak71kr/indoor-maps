@@ -162,6 +162,8 @@ export function bigTextToggle(): HTMLElement {
 /** Tap, or swipe up / down, to make the sheet taller or shorter. */
 export function sheetHandle(sheet: HTMLElement): HTMLButtonElement {
   let startY = 0;
+  let startH = 0;
+  let dragging = false;
   let swiped = false;
   return h('button', {
     type: 'button',
@@ -170,10 +172,24 @@ export function sheetHandle(sheet: HTMLElement): HTMLButtonElement {
     'aria-expanded': 'false',
     onPointerdown: (e: PointerEvent) => {
       startY = e.clientY;
+      startH = sheet.getBoundingClientRect().height;
+      dragging = true;
       swiped = false;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    // The sheet follows the finger, then settles open or closed (whichever is nearer).
+    onPointermove: (e: PointerEvent) => {
+      if (!dragging) return;
+      const dy = e.clientY - startY;
+      if (Math.abs(dy) < 6) return;
+      sheet.classList.add('dragging');
+      sheet.style.maxHeight = `${Math.max(80, Math.min(innerHeight * 0.88, startH - dy))}px`;
     },
     onPointerup: (e: PointerEvent) => {
+      dragging = false;
       const dy = e.clientY - startY;
+      sheet.classList.remove('dragging');
+      sheet.style.removeProperty('max-height');
       if (Math.abs(dy) > 24) {
         swiped = true;
         setSheetOpen(sheet, dy < 0);

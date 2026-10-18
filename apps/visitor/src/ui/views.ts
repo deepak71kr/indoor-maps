@@ -27,7 +27,14 @@ export function view(ctx: ViewContext): HTMLElement {
   const { screen } = ctx.state;
   switch (screen.name) {
     case 'loading':
-      return h('section', { class: 'screen center' }, h('p', { class: 'muted' }, tr('loading')));
+      // A sketch of the screen while the map loads: search bar, map, sheet.
+      return h(
+        'section',
+        { class: 'screen skeleton', 'aria-busy': 'true' },
+        h('div', { class: 'sk sk-bar' }),
+        h('div', { class: 'sk sk-chips' }),
+        h('div', { class: 'sk sk-sheet' }, h('p', { class: 'muted' }, tr('loading'))),
+      );
     case 'error':
       return errorView(screen.message);
     case 'where-am-i':

@@ -1794,15 +1794,6 @@ html.big-text .map text {
   fill: #fff;
   font-size: 10.5px;
 }
-.map-svg.swap:not(.swap-up, .swap-down) .plan,
-.map-svg.swap:not(.swap-up, .swap-down) .overlay {
-  animation: floor-in 0.28s ease-out;
-}
-@keyframes floor-in {
-  from {
-    opacity: 0.35;
-  }
-}
 
 /* Floor switcher: a stripe in each floor's colour, the shown floor filled with it,
    a blue route mark on floors the route uses, a red pin on the destination floor. */
@@ -2143,24 +2134,7 @@ html.big-text .map text {
 }
 
 /* Floor change: the new floor rises in (going up) or drops in (going down). */
-.map-svg.swap-up {
-  animation: floor-up 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.map-svg.swap-down {
-  animation: floor-down 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-@keyframes floor-up {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-  }
-}
-@keyframes floor-down {
-  from {
-    opacity: 0;
-    transform: translateY(-28px) scale(1.03);
-  }
-}
+
 .map .floor-toast {
   position: absolute;
   left: 50%;
@@ -2406,5 +2380,146 @@ html.big-text .map text {
   from {
     translate: 0 -36px;
     opacity: 0;
+  }
+}
+
+/* ================================================================================
+ * Round 3 (2026-10-18): campus, controls and motion.
+ * ================================================================================ */
+/* Raised buildings: the south wall in a darker shade of the building's colour. */
+.map .shade.tall {
+  fill: color-mix(in srgb, var(--rw, #9aa3ad) 70%, #1f2937 18%);
+  opacity: 0.85;
+}
+/* Ground: lawns with a darker edge, calm parking, footpaths with a dashed edge, softer trees. */
+.map-svg .green {
+  stroke: color-mix(in srgb, var(--m-green) 70%, #2e7d32);
+  stroke-width: 0.8;
+}
+.map-svg .parking {
+  fill: #e9eef5;
+  stroke: #c9d4e3;
+  stroke-dasharray: none;
+}
+.map-svg .path {
+  stroke-dasharray: 3 2;
+}
+.map-svg .tree {
+  fill: #9bd391;
+  stroke: #6dbb63;
+  stroke-width: 0.7;
+}
+
+/* Map buttons: one set — same size, same shadow, round. */
+.map-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.12),
+    0 2px 8px rgb(16 24 40 / 0.08);
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.map-btn:active,
+.floors button:active {
+  transform: scale(0.94);
+}
+
+/* The bottom sheet follows the finger while dragged (no easing until it is let go). */
+.sheet.dragging {
+  transition: none;
+}
+
+/* Screens: panels slide in when a screen opens; a new walking step slides in. */
+.screen.enter .sheet {
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.screen.enter .top,
+.screen.enter .banner {
+  animation: top-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.screen.step-in .banner-main,
+.screen.step-in .then {
+  animation: step-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes sheet-in {
+  from {
+    translate: 0 40px;
+    opacity: 0;
+  }
+}
+@keyframes top-in {
+  from {
+    translate: 0 -16px;
+    opacity: 0;
+  }
+}
+@keyframes step-in {
+  from {
+    translate: 36px 0;
+    opacity: 0;
+  }
+}
+.btn.go:active {
+  transform: scale(0.97);
+}
+/* Arrived: the destination pin glows. */
+.arrived .map .dest > path {
+  animation: dest-glow 1.4s ease-in-out 3;
+}
+@keyframes dest-glow {
+  50% {
+    filter: drop-shadow(0 0 6px rgb(234 67 53 / 0.8));
+  }
+}
+
+/* Loading: a sketch of the screen with a soft shimmer. */
+.skeleton {
+  position: relative;
+  min-height: 100dvh;
+  background: #eef1f4;
+}
+.skeleton .sk {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fff 30%, #f3f5f8 50%, #fff 70%) 0 0 / 300% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+.skeleton .sk-bar {
+  top: 12px;
+  height: 46px;
+}
+.skeleton .sk-chips {
+  top: 68px;
+  height: 32px;
+  right: 40%;
+}
+.skeleton .sk-sheet {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  border-radius: 20px 20px 0 0;
+  display: grid;
+  place-items: center;
+}
+@keyframes shimmer {
+  to {
+    background-position: -300% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen.enter .sheet,
+  .screen.enter .top,
+  .screen.enter .banner,
+  .screen.step-in .banner-main,
+  .screen.step-in .then,
+  .skeleton .sk {
+    animation: none;
   }
 }

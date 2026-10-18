@@ -135,6 +135,9 @@ export function shortPlace(name: string): string {
 
 /** "Girls Hostel 1" → "GH1", "Medical Centre (Dispensary)" → "MC". */
 export function initials(name: string): string {
+  // A name that starts with an acronym keeps it: "CSE Department" → "CSE", not "CD".
+  const lead = /^([A-Z][A-Z0-9&]{1,4})\b/.exec(name)?.[1];
+  if (lead) return lead;
   return shortPlace(name)
     .split(/\s+/)
     .map((word) => (/^\d+$/.test(word) ? word : (word[0] ?? '').toUpperCase()))
@@ -250,6 +253,8 @@ export class MapView {
   private youPos: { id: string; level: string; p: Point } | null = null;
   private gliding: { x: number; y: number } | null = null;
   private glideFrame = 0;
+  private fling = 0;
+  private velocity = { x: 0, y: 0, t: 0 };
   /** The part of the map covered by panels, as measured at the last framing. */
   private pad = { top: 0, right: 0, bottom: 0, left: 0 };
   private readonly scaleBar: SVGGElement;
@@ -439,19 +444,22 @@ export class MapView {
     }
 
     if (shapes.length > 0) {
+      const tints = tintShapes(shapes);
       // A soft shadow under buildings and floors lifts them off the ground (no filters: cheap).
       for (const shape of shapes) {
         if (shape.kind !== 'floor' && shape.kind !== 'building') continue;
-        // Buildings stand up from the ground (Google's "raised buildings"): a deeper shadow.
+        // Buildings stand up from the ground (Google's "raised buildings"): their south wall
+        // shows below the roof, in a darker shade of the building's own colour.
         const raised = shape.kind === 'building';
+        const tint = tints.get(shape);
         const shade = s('polygon', {
           class: raised ? 'shade tall' : 'shade in',
           points: flat(shapePoints(shape)),
-          transform: raised ? 'translate(1.1 1.5)' : 'translate(0.5 0.7)',
+          transform: raised ? 'translate(0.4 2.6)' : 'translate(0.5 0.7)',
+          ...(raised && tint && { style: `--rw:${tint[1]}` }),
         });
         this.plan.append(shade);
       }
-      const tints = tintShapes(shapes);
       for (const shape of shapes) {
         const el = this.shapeEl(shape, rooms);
         const tint = tints.get(shape);
@@ -947,12 +955,17 @@ export class MapView {
 
     // Closed (map authors) and blocked (this visitor) lines: red dashes and a 🚧.
     const blocked = new Set(scene.blocked);
+    const signs: Point[] = [];
     for (const e of site.map.edges) {
       const a = site.graph.nodes.get(e.a);
       const b = site.graph.nodes.get(e.b);
       if (a?.level !== levelId || b?.level !== levelId) continue;
       if (!e.tags?.includes('closed') && !blocked.has(edgeKey(e.a, e.b))) continue;
       this.routeLayer.append(s('line', { class: 'closed', x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
+      // One 🚧 per closed stretch, not one per line: skip it near the last sign.
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (signs.some((p) => Math.hypot(p.x - mid.x, p.y - mid.y) < 80)) continue;
+      signs.push(mid);
       marker(
         null,
         'works',
@@ -1473,6 +1486,8 @@ export class MapView {
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     this.svg.addEventListener('pointerdown', (e) => {
+      cancelAnimationFrame(this.fling);
+      this.velocity = { x: 0, y: 0, t: performance.now() };
       this.svg.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, local(e));
       if (this.pointers.size === 1) this.travel = 0;
@@ -1510,6 +1525,14 @@ export class MapView {
         this.rotateAt({ x: this.width / 2, y: this.height / 2 }, (now.x - before.x) * 0.5);
       } else {
         this.panBy(now.x - before.x, now.y - before.y);
+        // Speed of the finger (px/ms), smoothed, for the glide after a flick.
+        const t = performance.now();
+        const dt = Math.max(1, t - this.velocity.t);
+        this.velocity = {
+          x: this.velocity.x * 0.6 + ((now.x - before.x) / dt) * 0.4,
+          y: this.velocity.y * 0.6 + ((now.y - before.y) / dt) * 0.4,
+          t,
+        };
       }
       this.pointers.set(e.pointerId, now);
     });
@@ -1518,6 +1541,7 @@ export class MapView {
       const single = this.pointers.size === 1;
       up(e);
       if (single && this.travel < TAP_PX) this.tap(local(e));
+      else if (single) this.glide();
     });
     this.svg.addEventListener('pointercancel', up);
     // Double-click zooms in there (Google Maps does the same).
@@ -1701,6 +1725,23 @@ export class MapView {
     this.view.cy -= (dx * Math.sin(a) + dy * Math.cos(a)) / scale;
     this.moved = true;
     this.requestDraw();
+  }
+
+  /** After a flick the map keeps moving and slows down, like any phone map. */
+  private glide(): void {
+    let { x: vx, y: vy, t: last } = this.velocity;
+    if (performance.now() - last > 80 || Math.hypot(vx, vy) < 0.25 || reducedMotion()) return;
+    const step = (now: number) => {
+      const dt = Math.min(32, now - last);
+      last = now;
+      this.panBy(vx * dt, vy * dt);
+      const decay = 0.94 ** (dt / 16);
+      vx *= decay;
+      vy *= decay;
+      if (Math.hypot(vx, vy) > 0.02) this.fling = requestAnimationFrame(step);
+    };
+    last = performance.now();
+    this.fling = requestAnimationFrame(step);
   }
 
   /** Animated zoom by `factor` around a screen point (default: the middle of the map). */
