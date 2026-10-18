@@ -66,6 +66,8 @@ interface Pin {
    */
   readonly run?: readonly [Point, Point, Point];
   readonly upright?: boolean;
+  /** A room with a number: "204" on top, its name below, when the room is tall enough. */
+  readonly two?: readonly [string, string];
 }
 
 /** Collision ranks: you, next checkpoint, destination, checkpoint names, entrances, rooms, corridors. */
@@ -242,6 +244,12 @@ export class MapView {
   private animation = 0;
   private framing = 0;
   private scaleTimer = 0;
+  private routeSig = '';
+  private destKey = '';
+  /** Where the blue dot was last drawn, and the point it glides along meanwhile. */
+  private youPos: { id: string; level: string; p: Point } | null = null;
+  private gliding: { x: number; y: number } | null = null;
+  private glideFrame = 0;
   /** The part of the map covered by panels, as measured at the last framing. */
   private pad = { top: 0, right: 0, bottom: 0, left: 0 };
   private readonly scaleBar: SVGGElement;
@@ -342,6 +350,7 @@ export class MapView {
     this.fillPicker(scene, levelId);
     this.drawRoute(scene, levelId);
     for (const [id, el] of this.roomEls) el.classList.toggle('selected', id === scene.selected);
+    this.svg.classList.toggle('picking', !!scene.selected && this.roomEls.has(scene.selected));
     this.overview.hidden = scene.path.length < 2;
 
     const rot = this.northUp
@@ -508,6 +517,10 @@ export class MapView {
         OUTDOOR_SHAPE_KINDS.has(shape.kind) ? undefined : 'room',
         room ? roomIcon(room, CATEGORY[room.category].emoji) : shapeIcon(shape),
       );
+      if (room?.number) {
+        const last = this.pins.pop();
+        if (last) this.pins.push({ ...last, two: [lock + room.number, room.name] });
+      }
       const pin = run && this.pins.pop();
       if (pin && run) {
         const [a, b] = run;
@@ -989,9 +1002,9 @@ export class MapView {
       if (id === scene.here || id === last || id === next) return;
       const passed = i < scene.done;
       marker(id, passed ? 'cp done' : 'cp', (g) => {
-        g.append(s('circle', { r: 8.5 }));
-        if (passed) g.append(s('path', { d: 'M-3.5 0-1 2.5 3.5-2.5' }));
-        else g.append(s('text', { y: 3.5 }, String(i + 1)));
+        g.append(s('circle', { r: 10.5 }));
+        if (passed) g.append(s('path', { d: 'M-4 0-1.2 3 4-3' }));
+        else g.append(s('text', { y: 4 }, String(i + 1)));
       });
     });
 
@@ -1106,14 +1119,17 @@ export class MapView {
     // The beam: which way the visitor faces — the phone's compass when known, else the way
     // the route / QR sticker says. Its own pin, so it turns while the label stays upright.
     const here = scene.here ? site.graph.nodes.get(scene.here) : undefined;
-    if (here?.level === levelId && (scene.facing !== null || this.liveHeading !== null)) {
+    // The blue dot glides from the last checkpoint to this one instead of jumping.
+    const youAt =
+      here?.level === levelId && scene.here ? this.glideTo(scene.here, here) : undefined;
+    if (youAt && (scene.facing !== null || this.liveHeading !== null)) {
       const beam = s('g', { class: 'beam' });
       beam.append(s('path', { class: 'cone', d: 'M0 0-17-36A40 40 0 0 1 17-36Z' }));
       this.overlay.append(beam);
-      this.markers.push({ p: here, el: beam, angle: scene.facing ?? 0, live: true });
+      this.markers.push({ p: youAt, el: beam, angle: scene.facing ?? 0, live: true });
     }
     marker(
-      scene.here,
+      youAt ? null : scene.here,
       'you',
       (g) => {
         g.append(s('circle', { class: 'halo', r: 16 }), s('circle', { class: 'dot', r: 8 }));
@@ -1121,9 +1137,56 @@ export class MapView {
         return { w: 84, h: 52, dy: 8 };
       },
       undefined,
-      undefined,
+      youAt,
       RANK.you,
     );
+
+    // A new route or leg draws itself along the way; a new destination pin drops in.
+    const sig = `${levelId}|${path.join()}|${at}|${legEnd}`;
+    if (sig !== this.routeSig && !reducedMotion()) {
+      for (const line of this.routeLayer.querySelectorAll<SVGPolylineElement>('.ahead, .casing')) {
+        line.setAttribute('pathLength', '1');
+        line.style.strokeDasharray = '1';
+        line.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], {
+          duration: 650,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        }).onfinish = () => {
+          line.removeAttribute('pathLength');
+          line.style.removeProperty('stroke-dasharray');
+        };
+      }
+    }
+    this.routeSig = sig;
+    const destKey = `${last ?? ''}|${scene.selected ?? ''}`;
+    if (destKey !== this.destKey && !reducedMotion()) {
+      for (const pin of this.overlay.querySelectorAll('.dest')) pin.classList.add('drop');
+    }
+    this.destKey = destKey;
+  }
+
+  /** The point to draw the blue dot at: `target`, reached by gliding from the last spot. */
+  private glideTo(id: string, target: Point & { readonly level: string }): Point {
+    const last = this.youPos;
+    if (last?.id === id) return this.gliding ?? target;
+    this.youPos = { id, level: target.level, p: target };
+    cancelAnimationFrame(this.glideFrame);
+    this.gliding = null;
+    if (!last || last.level !== target.level || reducedMotion()) return target;
+    const from = { x: last.p.x, y: last.p.y };
+    const pos = { ...from };
+    this.gliding = pos;
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / 650);
+      const k = 1 - (1 - t) ** 3;
+      pos.x = from.x + (target.x - from.x) * k;
+      pos.y = from.y + (target.y - from.y) * k;
+      this.requestDraw();
+      if (t < 1) this.glideFrame = requestAnimationFrame(step);
+      else this.gliding = null;
+    };
+    this.glideFrame = requestAnimationFrame(step);
+    return pos;
   }
 
   // ---------- framing ----------
@@ -1364,21 +1427,42 @@ export class MapView {
     const text = fits(width);
     const beside =
       !!ico && !roomy && text !== undefined && text.length * CHAR_PX + 24 <= width && height >= 22;
+    // Number on top and name below, when both fit (Google's indoor labels).
+    const two = pin.two;
+    const stacked =
+      !!two &&
+      height >= (roomy ? 66 : 34) &&
+      Math.max(two[0].length, two[1].length) * CHAR_PX <= width;
+    // A room too small for any name still shows its icon.
+    const iconOnly = !!ico && text === undefined && width + 6 >= 24 && height >= 24;
     const label = pin.el.firstElementChild as SVGTextElement;
-    if (label.textContent !== (text ?? '')) label.textContent = text ?? '';
+    const mode = stacked ? '\n' : (text ?? '');
+    if (label.dataset['mode'] !== mode) {
+      label.dataset['mode'] = mode;
+      if (stacked && two) {
+        label.replaceChildren(
+          s('tspan', { x: 0, class: 'num' }, two[0]),
+          s('tspan', { x: 0, dy: '1.2em', class: 'name' }, two[1]),
+        );
+      } else label.textContent = text ?? '';
+    }
     // Road names sit on the road itself, so a thin road is enough room.
     const minHeight = pin.run ? 5 : 16;
-    pin.el.style.display = text && height >= minHeight && !hidden ? '' : 'none';
+    pin.el.style.display = (text || iconOnly) && height >= minHeight && !hidden ? '' : 'none';
     if (ico) {
       const half = ((text?.length ?? 0) * CHAR_PX) / 2;
-      ico.style.display = roomy || beside ? '' : 'none';
+      ico.style.display = roomy || beside || iconOnly ? '' : 'none';
       ico.setAttribute(
         'transform',
-        roomy ? 'translate(0 -14)' : `translate(${(-half - 2).toFixed(1)} 0) scale(0.8)`,
+        iconOnly
+          ? 'scale(0.85)'
+          : roomy
+            ? `translate(0 ${stacked ? -20 : -14})`
+            : `translate(${(-half - 2).toFixed(1)} 0) scale(0.8)`,
       );
-      label.setAttribute('y', roomy ? '13' : '4');
+      label.setAttribute('y', stacked ? (roomy ? '6' : '-3') : roomy ? '13' : '4');
       label.setAttribute('x', beside ? '11' : '0');
-    }
+    } else if (stacked) label.setAttribute('y', '-3');
   }
 
   // ---------- gestures: drag to pan, pinch / wheel to zoom ----------

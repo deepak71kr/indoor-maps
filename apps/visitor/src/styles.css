@@ -198,11 +198,6 @@ small {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.icon.huge {
-  width: 64px;
-  height: 64px;
-  stroke-width: 2.4;
-}
 
 /* ---------- Controls ---------- */
 .btn,
@@ -370,20 +365,6 @@ span.floor {
 .tip .icon {
   width: 18px;
   height: 18px;
-}
-.step-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  color: var(--green);
-  background: color-mix(in srgb, var(--green) 14%, var(--surface));
-}
-.step-text {
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.35;
 }
 .code-form > input {
   flex: 1 1 auto;
@@ -774,35 +755,6 @@ span.floor {
   color: #fff;
   box-shadow: var(--shadow);
 }
-.banner-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-}
-.banner .step-icon {
-  width: 52px;
-  height: 52px;
-  background: none;
-  color: #fff;
-}
-.banner .step-icon .icon.huge {
-  width: 46px;
-  height: 46px;
-  stroke-width: 2.6;
-}
-.banner .step-meters {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-.banner .step-text {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 500;
-  line-height: 1.3;
-}
 .then {
   display: flex;
   align-items: center;
@@ -821,44 +773,9 @@ span.floor {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.toast {
-  align-self: center;
-  margin: 0;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: #323232;
-  color: #fff;
-  font-size: 0.9rem;
-  box-shadow: var(--shadow);
-}
 .trip .sheet {
   max-height: 60dvh;
   gap: 12px;
-}
-.trip-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.trip-info p {
-  margin: 0;
-}
-.eta {
-  font-size: 1.05rem;
-  color: var(--muted);
-}
-.eta strong {
-  font-size: 1.45rem;
-  font-weight: 500;
-  color: var(--green);
-}
-.trip-head {
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-.trip-head strong {
-  color: var(--text);
-  font-weight: 500;
 }
 .round.end {
   background: color-mix(in srgb, var(--red) 12%, var(--surface));
@@ -867,25 +784,6 @@ span.floor {
 .round.lost {
   background: var(--blue-soft);
   color: var(--blue);
-}
-.progress {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.dots {
-  display: flex;
-  gap: 4px;
-}
-.dots i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
-}
-.dots i.on {
-  background: var(--lvl);
 }
 .links {
   display: flex;
@@ -908,15 +806,6 @@ span.floor {
   align-items: center;
   text-align: center;
   max-height: 60dvh;
-}
-.arrived .sheet .step-icon {
-  width: 64px;
-  height: 64px;
-}
-.arrived .sheet .step-icon .icon.huge {
-  width: 38px;
-  height: 38px;
-  stroke-width: 3;
 }
 .arrived .sheet h1 {
   font-size: 1.2rem;
@@ -1265,73 +1154,11 @@ span.floor {
 .directions .round {
   color: var(--text);
 }
-.fields {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-}
-/* The dotted line joining the From dot to the To pin. */
-.fields::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 26px;
-  bottom: 26px;
-  border-left: 2px dotted var(--muted);
-}
-.field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 42px;
-  padding: 0 12px 0 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  font: inherit;
-  font-size: 0.95rem;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.field .grow {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.field .mark {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-.field.from .mark {
-  background: var(--blue);
-  border: 2.5px solid #fff;
-  box-shadow: 0 0 0 1.5px var(--blue);
-}
-.field.to .mark {
-  background: #ea4335;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-}
 .preview .sheet {
   max-height: 48dvh;
 }
 .preview .sheet.open {
   max-height: 85dvh;
-}
-.floors-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.floors-row .arrow {
-  color: var(--muted);
 }
 .steps {
   list-style: none;
@@ -1426,61 +1253,12 @@ span.floor {
     max-height: none;
   }
 }
-
-/* ---------- Banner named by checkpoints; map tags, corridor names, scale bar ---------- */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.banner .step-title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.15;
-}
-.banner .step-title .step-meters {
-  flex: none;
-  font-size: 1.1rem;
-  font-weight: 500;
-  opacity: 0.9;
-}
-.banner .route-line {
-  margin: 4px 0 0;
-  font-size: 0.95rem;
-  line-height: 1.3;
-  opacity: 0.95;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.banner .route-line b {
-  font-weight: 700;
-}
-.banner .route-line .arrow {
-  opacity: 0.8;
-}
-.banner .route-line.via {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
 .steps .grow {
   display: flex;
   flex-direction: column;
 }
 .steps .grow b {
   font-weight: 500;
-}
-.steps small.via {
-  font-style: italic;
 }
 .map .tag rect {
   fill: var(--m-floor);
@@ -1546,45 +1324,10 @@ span.floor {
   font-size: 10px;
   text-anchor: start;
 }
-
-/* ---------- Place card (tap a room), swap, recent, step list, voice ---------- */
-.placebar {
-  padding: 0 4px;
-}
-.placebar .back.show {
-  display: grid;
-  margin: 0;
-}
-.placebar .grow {
-  font-weight: 500;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.place-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.place-head .poi {
-  width: 52px;
-  height: 52px;
-  font-size: 1.6rem;
-}
-.place-head h1 {
-  font-size: 1.4rem;
-  margin: 0;
-}
-.place-head p {
-  margin: 2px 0 0;
-}
 .away {
   font-size: 0.9rem;
   color: var(--green);
   font-weight: 500;
-}
-.away.warn {
-  color: var(--red);
 }
 .actions {
   display: flex;
@@ -1598,11 +1341,6 @@ span.floor {
   border-radius: 999px;
   padding: 0 18px;
   font-weight: 500;
-}
-.btn.outline {
-  border-color: var(--line);
-  color: var(--blue);
-  background: var(--surface);
 }
 .actions .icon {
   width: 20px;
@@ -1624,13 +1362,6 @@ span.floor {
 }
 .recent h2 {
   margin-top: 0;
-}
-.round.voice {
-  background: var(--surface-2);
-}
-.round.voice.on {
-  background: var(--blue-soft);
-  color: var(--blue);
 }
 .links .link + .link {
   margin-left: auto;
@@ -1679,15 +1410,6 @@ span.floor {
   position: static;
   width: 44px;
   height: 44px;
-}
-@media (max-height: 720px) {
-  .banner .route-line.via,
-  .banner .route-line.sign {
-    display: none;
-  }
-  .banner-main {
-    padding: 10px 12px;
-  }
 }
 
 /* ================================================================================
@@ -1809,15 +1531,6 @@ html.big-text .map text {
 .banner.move-u-turn {
   --move: var(--back);
 }
-.banner .step-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
-  background: rgb(255 255 255 / 0.2);
-}
-.banner .step-title {
-  font-size: 1.6rem;
-}
 
 /* The one button that matters while walking: big and green. */
 .btn.go {
@@ -1837,12 +1550,6 @@ html.big-text .map text {
   box-shadow: 0 3px 0 color-mix(in srgb, var(--blue) 70%, #000);
 }
 
-/* Progress dots: bigger, in the floor colour. */
-.dots i {
-  width: 10px;
-  height: 10px;
-}
-
 /* Step list: coloured number badges. */
 .steps .num {
   border-color: var(--go);
@@ -1856,36 +1563,6 @@ html.big-text .map text {
 .arrived .sheet {
   position: relative;
   overflow: hidden;
-}
-.arrived .sheet .step-icon {
-  color: #fff;
-  background: var(--arrive);
-  box-shadow: 0 0 0 8px color-mix(in srgb, var(--arrive) 20%, transparent);
-}
-.confetti {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 120px;
-  pointer-events: none;
-}
-.confetti i {
-  position: absolute;
-  top: 40px;
-  left: calc(8% + var(--i) * 6.5%);
-  width: 8px;
-  height: 14px;
-  border-radius: 3px;
-  background: hsl(calc(var(--i) * 37) 85% 55%);
-  animation: burst 1.4s ease-out both;
-  animation-delay: calc(var(--i) * 40ms);
-}
-@keyframes burst {
-  from {
-    transform: translateY(40px) rotate(0);
-  }
-  to {
-    transform: translateY(-30px) rotate(calc(var(--i) * 50deg));
-  }
 }
 
 /* A livelier map: stronger room colours, greener grass, bluer water, a bolder route. */
@@ -1939,22 +1616,6 @@ html.big-text .map text {
 .map circle.tree {
   vector-effect: non-scaling-stroke;
 }
-
-/* Route options (fastest / shortest / step-free) and blocked paths. */
-.options {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.chip.option {
-  --chip: #5f6368;
-  min-height: 40px;
-}
-.chip.option.on {
-  --chip: var(--blue);
-  box-shadow: inset 0 0 0 2px var(--blue);
-}
 .blocked-btn {
   color: var(--red);
 }
@@ -1983,66 +1644,6 @@ html.big-text .map text {
   font-size: 13px;
 }
 
-/* ================================================================================
- * Google Maps Android details (2026 screenshots): card buttons, Exit pill, Re-center,
- * time bubble, Walk / Step-free tabs, Explore · Saved bar, calmer map colours.
- * ================================================================================ */
-.place-head .head-btns {
-  display: flex;
-  gap: 8px;
-  align-self: flex-start;
-}
-.round.grey {
-  width: 40px;
-  height: 40px;
-  background: var(--surface-2);
-  color: var(--text);
-}
-.actions .btn.outline {
-  color: var(--blue);
-  border: 1.5px solid var(--line);
-}
-.actions .btn.save.on {
-  background: var(--blue-soft);
-  border-color: var(--blue);
-}
-.actions .btn.save.on .icon {
-  fill: currentColor;
-}
-
-/* Walking: ? left, time in the middle, red Exit pill right. */
-.nav-bar .trip-info {
-  text-align: center;
-}
-.nav-bar .eta strong {
-  font-size: 1.6rem;
-  font-weight: 700;
-}
-.trip-sub {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-.exit-pill {
-  flex: none;
-  min-height: 44px;
-  padding: 0 20px;
-  border: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--red) 14%, var(--surface));
-  color: var(--red);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-.trip .trip-head {
-  text-align: center;
-  margin-top: -6px;
-}
-.map-btn.report {
-  color: #e37400;
-}
-
 /* Re-center pill (text) once the visitor moves the map while walking. */
 .locate .re {
   display: none;
@@ -2069,37 +1670,6 @@ html.big-text .map text {
 .map .eta-bubble text {
   fill: #fff;
   font-size: 12px;
-}
-
-/* Walk / Step-free tabs with their times (Google's travel-mode tabs). */
-.modes {
-  display: flex;
-  border-bottom: 1px solid var(--line);
-  margin: 0 -16px;
-  padding: 0 16px;
-  gap: 4px;
-}
-.modes .mode {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 4px 8px;
-  border: none;
-  border-bottom: 3px solid transparent;
-  background: none;
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--muted);
-  cursor: pointer;
-}
-.modes .mode b {
-  font-size: 1rem;
-}
-.modes .mode.on {
-  color: var(--blue);
-  border-bottom-color: var(--blue);
 }
 
 /* Explore · Saved bar at the bottom of the home sheet. */
@@ -2167,16 +1737,6 @@ html.big-text .map text {
   --m-green: #c8e8c0;
   --m-building: #e9ecf0;
 }
-
-/* Walking: sound + Report above the bottom bar on the right, Re-center on the left. */
-.trip-tools {
-  position: absolute;
-  right: 12px;
-  bottom: calc(100% + 12px);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 .trip .bottom > .locate {
   right: auto;
   left: 12px;
@@ -2185,12 +1745,6 @@ html.big-text .map text {
   display: none;
 }
 @media (min-width: 900px) {
-  .trip-tools {
-    position: fixed;
-    right: 16px;
-    bottom: 88px;
-    pointer-events: auto;
-  }
   .trip .bottom > .locate {
     left: auto;
     right: 16px;
@@ -2325,56 +1879,6 @@ html.big-text .map text {
     max-width: calc(100% - 560px);
   }
 }
-
-/* Banner: the floor of this instruction; rides get a big floor tile. */
-.banner .floor-chip {
-  float: right;
-  margin: 2px 0 0 8px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--lvl);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.floor-tile {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: #fff;
-  color: var(--lvl);
-  box-shadow: inset 0 0 0 4px var(--lvl);
-}
-.floor-tile .icon {
-  width: 18px;
-  height: 18px;
-  margin-bottom: -6px;
-}
-.floor-tile b {
-  font-size: 1.8rem;
-  line-height: 1;
-}
-.banner .route-line.press {
-  font-weight: 700;
-}
-.floor-btn {
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-.floor-btn span.floor {
-  box-shadow: 0 0 0 2px transparent;
-}
-.floor-btn:hover span.floor,
-.floor-btn:focus-visible span.floor {
-  box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 4px var(--lvl);
-}
 .floor-note[hidden] {
   display: none;
 }
@@ -2454,74 +1958,12 @@ html.big-text .map text {
   border-radius: 16px;
   box-shadow: var(--shadow);
 }
-.banner-main {
-  gap: 10px;
-  padding: 8px 12px;
-}
-.banner .step-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--move);
-  color: #fff;
-}
-.banner .step-icon .icon.huge {
-  width: 26px;
-  height: 26px;
-  stroke-width: 2.6;
-}
-.banner .step-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  gap: 8px;
-}
-.banner .step-title .step-meters {
-  font-size: 0.95rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-.banner .route-line {
-  margin-top: 1px;
-  font-size: 0.85rem;
-  color: var(--muted);
-  opacity: 1;
-  -webkit-line-clamp: 1;
-}
-.banner .route-line b {
-  color: var(--text);
-  font-weight: 600;
-}
-.banner .route-line.via,
-.banner .route-line.sign {
-  display: none;
-}
-.banner .route-line.press {
-  color: var(--text);
-}
 .then {
   padding: 5px 12px;
   font-size: 0.8rem;
   background: var(--surface-2);
   color: var(--muted);
   border-top: 1px solid var(--line);
-}
-.banner .floor-chip {
-  background: color-mix(in srgb, var(--lvl) 12%, var(--surface));
-  font-size: 0.7rem;
-}
-.floor-tile {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 2.5px var(--lvl);
-}
-.floor-tile b {
-  font-size: 1.3rem;
-}
-.floor-tile .icon {
-  width: 14px;
-  height: 14px;
-  margin-bottom: -4px;
 }
 
 /* Walking sheet: compact, so more map shows. */
@@ -2536,16 +1978,9 @@ html.big-text .map text {
 .btn.primary:not(.go) {
   box-shadow: none;
 }
-.nav-bar .eta strong {
-  font-size: 1.4rem;
-}
 .trip .tip,
 .trip .progress {
   display: none;
-}
-.trip .trip-head {
-  font-size: 0.8rem;
-  margin-top: -4px;
 }
 
 /* Map controls: lighter. */
@@ -2559,11 +1994,6 @@ html.big-text .map text {
 }
 .floors button {
   box-shadow: inset 3px 0 0 var(--lvl);
-}
-
-/* Arrival: calm. */
-.arrived .sheet .step-icon {
-  box-shadow: none;
 }
 /* Softer room colours for the minimalist look (the category still shows in the outline). */
 .map .room {
@@ -2904,4 +2334,77 @@ html.big-text .map text {
 }
 .floor-note.wait {
   opacity: 0;
+}
+
+/* ================================================================================
+ * Round 2 (2026-10-18): rooms and route — calmer walls, solid icon pins, number over
+ * name, a picked room lifts while the rest dim, warm corridors, bigger checkpoints,
+ * the destination pin drops in.
+ * ================================================================================ */
+.map-svg .room,
+.map-svg .floor,
+.map-svg .building,
+.map-svg .lift,
+.map-svg .stairs {
+  stroke-linejoin: round;
+}
+.map-svg .room {
+  stroke-width: 1.1;
+  transition:
+    opacity 0.25s,
+    stroke-width 0.2s;
+}
+.map-svg .floor {
+  fill: color-mix(in srgb, var(--lvl) 5%, #fdfbf7);
+  stroke-width: 4.5;
+}
+@media (hover: hover) {
+  .map-svg .room:hover {
+    stroke-width: 2.4;
+    cursor: pointer;
+  }
+}
+.map-svg.picking .room:not(.selected) {
+  opacity: 0.45;
+}
+.map-svg .room.selected {
+  stroke: var(--rw, var(--blue));
+  stroke-width: 3;
+  filter: drop-shadow(0 3px 5px rgb(16 24 40 / 0.25));
+}
+
+/* Icons: a badge tinted in the category colour, ringed in it, with a soft shadow.
+   (White symbol silhouettes were tried: many emoji turn into plain squares.) */
+.map .ico circle {
+  fill: color-mix(in srgb, var(--c, #5f6368) 14%, #fff);
+  stroke: var(--c, #5f6368);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 1px 1.5px rgb(16 24 40 / 0.2));
+}
+.map .ico text {
+  font-size: 12.5px;
+}
+/* Number over name: the number bold, the name smaller and calmer. */
+.map .label .num {
+  font-weight: 800;
+}
+.map .label .name {
+  font-size: 0.86em;
+  font-weight: 500;
+  fill: #4b5563;
+}
+
+/* Checkpoints: bigger; the destination pin drops in with a little bounce. */
+.map .cp text {
+  font-size: 11.5px;
+}
+.map .dest.drop > path,
+.map .dest.drop > circle {
+  animation: pin-drop 0.55s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes pin-drop {
+  from {
+    translate: 0 -36px;
+    opacity: 0;
+  }
 }

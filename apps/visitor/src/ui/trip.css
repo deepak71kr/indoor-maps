@@ -1,0 +1,664 @@
+/* Styles only the trip screens use (room card, preview, walking, arrival): loaded with
+   ui/trip.ts, after the first screen. Moved out of styles.css by class name. */
+.icon.huge {
+  width: 64px;
+  height: 64px;
+  stroke-width: 2.4;
+}
+
+.step-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, var(--surface));
+}
+
+.step-text {
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.banner-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.banner .step-icon {
+  width: 52px;
+  height: 52px;
+  background: none;
+  color: #fff;
+}
+
+.banner .step-icon .icon.huge {
+  width: 46px;
+  height: 46px;
+  stroke-width: 2.6;
+}
+
+.banner .step-meters {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.banner .step-text {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.toast {
+  align-self: center;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #323232;
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+}
+
+.trip-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trip-info p {
+  margin: 0;
+}
+
+.eta {
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.eta strong {
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--green);
+}
+
+.trip-head {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.trip-head strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.dots i.on {
+  background: var(--lvl);
+}
+
+.arrived .sheet .step-icon {
+  width: 64px;
+  height: 64px;
+}
+
+.arrived .sheet .step-icon .icon.huge {
+  width: 38px;
+  height: 38px;
+  stroke-width: 3;
+}
+
+.fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+/* The dotted line joining the From dot to the To pin. */
+.fields::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 26px;
+  bottom: 26px;
+  border-left: 2px dotted var(--muted);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.field .grow {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.field .mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.field.from .mark {
+  background: var(--blue);
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 0 1.5px var(--blue);
+}
+
+.field.to .mark {
+  background: #ea4335;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+}
+
+.floors-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.floors-row .arrow {
+  color: var(--muted);
+}
+
+/* ---------- Banner named by checkpoints; map tags, corridor names, scale bar ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.banner .step-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.banner .step-title .step-meters {
+  flex: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.banner .route-line {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  opacity: 0.95;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.banner .route-line b {
+  font-weight: 700;
+}
+
+.banner .route-line .arrow {
+  opacity: 0.8;
+}
+
+.banner .route-line.via {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.steps small.via {
+  font-style: italic;
+}
+
+/* ---------- Place card (tap a room), swap, recent, step list, voice ---------- */
+.placebar {
+  padding: 0 4px;
+}
+
+.placebar .back.show {
+  display: grid;
+  margin: 0;
+}
+
+.placebar .grow {
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.place-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.place-head .poi {
+  width: 52px;
+  height: 52px;
+  font-size: 1.6rem;
+}
+
+.place-head h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.place-head p {
+  margin: 2px 0 0;
+}
+
+.away.warn {
+  color: var(--red);
+}
+
+.btn.outline {
+  border-color: var(--line);
+  color: var(--blue);
+  background: var(--surface);
+}
+
+.round.voice {
+  background: var(--surface-2);
+}
+
+.round.voice.on {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+@media (max-height: 720px) {
+  .banner .route-line.via,
+  .banner .route-line.sign {
+    display: none;
+  }
+  .banner-main {
+    padding: 10px 12px;
+  }
+}
+
+.banner .step-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.2);
+}
+
+.banner .step-title {
+  font-size: 1.6rem;
+}
+
+/* Progress dots: bigger, in the floor colour. */
+.dots i {
+  width: 10px;
+  height: 10px;
+}
+
+.arrived .sheet .step-icon {
+  color: #fff;
+  background: var(--arrive);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--arrive) 20%, transparent);
+}
+
+.confetti {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 120px;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: 40px;
+  left: calc(8% + var(--i) * 6.5%);
+  width: 8px;
+  height: 14px;
+  border-radius: 3px;
+  background: hsl(calc(var(--i) * 37) 85% 55%);
+  animation: burst 1.4s ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+
+/* Route options (fastest / shortest / step-free) and blocked paths. */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip.option {
+  --chip: #5f6368;
+  min-height: 40px;
+}
+
+.chip.option.on {
+  --chip: var(--blue);
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
+/* ================================================================================
+ * Google Maps Android details (2026 screenshots): card buttons, Exit pill, Re-center,
+ * time bubble, Walk / Step-free tabs, Explore · Saved bar, calmer map colours.
+ * ================================================================================ */
+.place-head .head-btns {
+  display: flex;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+.round.grey {
+  width: 40px;
+  height: 40px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.actions .btn.outline {
+  color: var(--blue);
+  border: 1.5px solid var(--line);
+}
+
+.actions .btn.save.on {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+}
+
+.actions .btn.save.on .icon {
+  fill: currentColor;
+}
+
+/* Walking: ? left, time in the middle, red Exit pill right. */
+.nav-bar .trip-info {
+  text-align: center;
+}
+
+.nav-bar .eta strong {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.trip-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.exit-pill {
+  flex: none;
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--red) 14%, var(--surface));
+  color: var(--red);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.trip .trip-head {
+  text-align: center;
+  margin-top: -6px;
+}
+
+.map-btn.report {
+  color: #e37400;
+}
+
+/* Walk / Step-free tabs with their times (Google's travel-mode tabs). */
+.modes {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  margin: 0 -16px;
+  padding: 0 16px;
+  gap: 4px;
+}
+
+.modes .mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 8px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modes .mode b {
+  font-size: 1rem;
+}
+
+.modes .mode.on {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+/* Walking: sound + Report above the bottom bar on the right, Re-center on the left. */
+.trip-tools {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 900px) {
+  .trip-tools {
+    position: fixed;
+    right: 16px;
+    bottom: 88px;
+    pointer-events: auto;
+  }
+}
+
+/* Banner: the floor of this instruction; rides get a big floor tile. */
+.banner .floor-chip {
+  float: right;
+  margin: 2px 0 0 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--lvl);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.floor-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--lvl);
+  box-shadow: inset 0 0 0 4px var(--lvl);
+}
+
+.floor-tile .icon {
+  width: 18px;
+  height: 18px;
+  margin-bottom: -6px;
+}
+
+.floor-tile b {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.banner .route-line.press {
+  font-weight: 700;
+}
+
+.floor-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.floor-btn span.floor {
+  box-shadow: 0 0 0 2px transparent;
+}
+
+.floor-btn:hover span.floor,
+.floor-btn:focus-visible span.floor {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--lvl);
+}
+
+.banner-main {
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.banner .step-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--move);
+  color: #fff;
+}
+
+.banner .step-icon .icon.huge {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.6;
+}
+
+.banner .step-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.banner .step-title .step-meters {
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.banner .route-line {
+  margin-top: 1px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  opacity: 1;
+  -webkit-line-clamp: 1;
+}
+
+.banner .route-line b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.banner .route-line.via,
+.banner .route-line.sign {
+  display: none;
+}
+
+.banner .route-line.press {
+  color: var(--text);
+}
+
+.banner .floor-chip {
+  background: color-mix(in srgb, var(--lvl) 12%, var(--surface));
+  font-size: 0.7rem;
+}
+
+.floor-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 2.5px var(--lvl);
+}
+
+.floor-tile b {
+  font-size: 1.3rem;
+}
+
+.floor-tile .icon {
+  width: 14px;
+  height: 14px;
+  margin-bottom: -4px;
+}
+
+.nav-bar .eta strong {
+  font-size: 1.4rem;
+}
+
+.trip .trip-head {
+  font-size: 0.8rem;
+  margin-top: -4px;
+}
+
+/* Arrival: calm. */
+.arrived .sheet .step-icon {
+  box-shadow: none;
+}
+
+@keyframes burst {
+  from {
+    transform: translateY(40px) rotate(0);
+  }
+  to {
+    transform: translateY(-30px) rotate(calc(var(--i) * 50deg));
+  }
+}

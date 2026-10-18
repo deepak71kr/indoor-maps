@@ -2,6 +2,7 @@
  * The trip screens: room card, route preview, walking directions, arrival. Loaded just after
  * the first screen (see loadTripScreens in views.ts), so the first visit downloads less.
  */
+import './trip.css';
 import type { Step } from '@innermap/core';
 import { findRoute, roomIcon } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
