@@ -77,31 +77,56 @@ function routeOptions(ctx: ViewContext): HTMLElement {
   );
 }
 
-export function stepView(ctx: ViewContext, index: number): HTMLElement {
+export function stepView(ctx: ViewContext, current: number, peek?: number): HTMLElement {
   const { steps, target, notice, site } = ctx.state;
+  // The card shows the step looked at (swipe left / right), the trip stays at `current`.
+  const index = peek ?? current;
+  const peeking = peek !== undefined;
   const step = steps[index];
   if (!step) return h('section');
+  const last = steps.length - 2; // the last walking step (after it: the arrival message)
+  const look = (to: number) => ctx.dispatch({ type: 'peek', step: to });
   const total = steps.length - 1; // the last one is the arrival message
   // One thing at a time: what to do now, and one button that says where you should be when
   // it is done ("Reached Reception desk"). Tapping it shows the next direction right here.
   const place = step.kind === 'ride' ? step.levelName : step.to ? shortPlace(step.to) : '';
   // A small "✓ Reached" inside the card (its full name says where: "Reached Reception desk").
-  const reached = h(
-    'button',
-    {
-      type: 'button',
-      class: 'btn primary go reached',
-      'aria-label': place ? tr('step.reached', { place }) : tr('step.here'),
-      onClick: () => {
-        navigator.vibrate?.(15);
-        if (voiceOn()) tick();
-        ctx.dispatch({ type: 'confirm' });
+  const reached = peeking
+    ? h(
+        'button',
+        { type: 'button', class: 'btn outline reached now', onClick: () => look(current) },
+        icon('back'),
+        tr('step.now'),
+      )
+    : h(
+        'button',
+        {
+          type: 'button',
+          class: 'btn primary go reached',
+          'aria-label': place ? tr('step.reached', { place }) : tr('step.here'),
+          onClick: () => {
+            navigator.vibrate?.(15);
+            if (voiceOn()) tick();
+            ctx.dispatch({ type: 'confirm' });
+          },
+        },
+        icon('check'),
+        place ? tr('step.reached-short') : tr('step.here'),
+      );
+  const arrow = (to: number, label: string, name: 'back' | 'forward') =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: `step-nav ${name}`,
+        'aria-label': label,
+        title: label,
+        disabled: to < 0 || to > last,
+        onClick: () => look(to),
       },
-    },
-    icon('check'),
-    place ? tr('step.reached-short') : tr('step.here'),
-  );
-  glowWhenNear(reached, index, step.meters);
+      icon('back'),
+    );
+  if (!peeking) glowWhenNear(reached, index, step.meters);
   const toggleMenu = (e: Event) => {
     const sheet = (e.currentTarget as HTMLElement).closest<HTMLElement>('.sheet');
     if (!sheet) return;
@@ -138,6 +163,12 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
           h('span', { class: 'sr-only' }, tr('step.exit')),
         ),
         h(
+          'span',
+          { class: 'step-navs' },
+          arrow(index - 1, tr('step.prev'), 'back'),
+          arrow(index + 1, tr('step.next'), 'forward'),
+        ),
+        h(
           'button',
           {
             type: 'button',
@@ -149,6 +180,8 @@ export function stepView(ctx: ViewContext, index: number): HTMLElement {
           },
           icon('list'),
         ),
+        (dir) => look(index + dir),
+        peeking,
       ),
       // The menu (☰ or pull the card up): everything else, and every step.
       h(
@@ -395,14 +428,32 @@ function banner(
   total = 0,
   action: HTMLElement | null = null,
   exit: HTMLElement | null = null,
+  steppers: HTMLElement | null = null,
   more: HTMLElement | null = null,
+  onSwipe: ((dir: 1 | -1) => void) | null = null,
+  peeking = false,
 ): HTMLElement {
+  let startX = 0;
+  let startY = 0;
   // "Then …" only when the next move comes right after this one.
   const soon = next && next.kind !== 'arrive' && step.meters > 0 && step.meters < 12;
   return h(
     'article',
     // Coloured by the move (on the arrow tile), so "follow the colour" works for everyone.
-    { class: `banner step move-${step.icon}`, 'data-step': index },
+    {
+      class: `banner step move-${step.icon}${peeking ? ' peeking' : ''}`,
+      'data-step': index,
+      // Swipe the card left for the next step, right for the one before.
+      onPointerdown: (e: PointerEvent) => {
+        startX = e.clientX;
+        startY = e.clientY;
+      },
+      onPointerup: (e: PointerEvent) => {
+        const dx = e.clientX - startX;
+        if (onSwipe && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(e.clientY - startY) * 1.5)
+          onSwipe(dx < 0 ? 1 : -1);
+      },
+    },
     h('p', { class: 'step-text sr-only', 'aria-live': 'polite' }, step.text),
     total > 0 && h('p', { class: 'sr-only' }, tr('step.of', { n: index + 1, total })),
     h(
@@ -472,7 +523,9 @@ function banner(
       { class: 'card-foot' },
       exit,
       h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
+      peeking ? h('span', { class: 'peek-tag' }, tr('step.of', { n: index + 1, total })) : null,
       h('span', { class: 'grow' }),
+      steppers,
       more,
     ),
   );

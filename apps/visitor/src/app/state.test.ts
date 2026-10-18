@@ -37,6 +37,22 @@ describe('visitor state machine', () => {
     expect(nav.steps[0]?.text).toMatch(/^With the sign in front of you/); // QR facing used
   });
 
+  it('looks ahead and back at other steps without moving the trip', () => {
+    let s = loaded(
+      { type: 'set-position', position: atMain },
+      { type: 'choose', target: radiology },
+      { type: 'start' },
+      { type: 'peek', step: 2 },
+    );
+    expect(s.screen).toEqual({ name: 'navigate', step: 0, peek: 2 });
+    s = reducer(s, { type: 'peek', step: 99 }); // clamped to the last walking step
+    expect(s.screen).toEqual({ name: 'navigate', step: 0, peek: s.steps.length - 2 });
+    s = reducer(s, { type: 'peek', step: 0 }); // back to now
+    expect(s.screen).toEqual({ name: 'navigate', step: 0 });
+    s = reducer(reducer(s, { type: 'peek', step: 3 }), { type: 'confirm' });
+    expect(s.screen).toEqual({ name: 'navigate', step: 1 }); // "Reached" ends the look-ahead
+  });
+
   it('confirming every step ends on Arrived (the arrive message is not a card)', () => {
     let s = loaded(
       { type: 'set-position', position: atMain },

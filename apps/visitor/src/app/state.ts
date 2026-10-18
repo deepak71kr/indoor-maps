@@ -28,7 +28,12 @@ export type Screen =
   | { readonly name: 'place'; readonly roomId: string }
   /** The whole route from start to destination, before walking (Google's "Start" screen). */
   | { readonly name: 'preview' }
-  | { readonly name: 'navigate'; readonly step: number }
+  | {
+      readonly name: 'navigate';
+      readonly step: number;
+      /** Looking ahead or back at another step (swipe the card); the trip stays at `step`. */
+      readonly peek?: number;
+    }
   | { readonly name: 'lost'; readonly step: number }
   | { readonly name: 'arrived' }
   | { readonly name: 'no-route'; readonly reason: RouteError['code'] };
@@ -90,6 +95,7 @@ export type Action =
   | { readonly type: 'swap' }
   | { readonly type: 'recent-loaded'; readonly recent: readonly Target[] }
   | { readonly type: 'confirm' }
+  | { readonly type: 'peek'; readonly step: number }
   | { readonly type: 'back' }
   | { readonly type: 'lost' }
   | { readonly type: 'found-way' }
@@ -206,6 +212,18 @@ export function reducer(state: State, action: Action): State {
       return next >= s.steps.length - 1
         ? { ...s, screen: { name: 'arrived' } }
         : { ...s, screen: { name: 'navigate', step: next } };
+    }
+
+    case 'peek': {
+      if (s.screen.name !== 'navigate') return state;
+      const shown = Math.max(0, Math.min(action.step, s.steps.length - 2));
+      return {
+        ...s,
+        screen:
+          shown === s.screen.step
+            ? { name: 'navigate', step: s.screen.step }
+            : { name: 'navigate', step: s.screen.step, peek: shown },
+      };
     }
 
     case 'back':

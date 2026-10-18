@@ -449,6 +449,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): one card, zoom out / zoom in.** The step card and its button are one piece: the direction with a small "✓ Reached" beside it (its full name says where: "Reached Reception desk"), then a progress bar and a slim footer (✕ · floor · ☰). The floor change zooms out of the old floor and then into the new one (a little from above when going up, from below when going down).
 
+**Follow-up (2026-10-18): look ahead and back; a gentler focus blur.** Swipe the step card left (next) or right (previous), or tap ‹ › in its footer, to look at other steps without moving the trip (state `navigate.peek`): the card shows that step, outlined, with "Step 4 of 5"; the map frames its stretch on its floor; "Back to now" (in place of ✓ Reached) returns, and Reached always ends the look. The focus blur leaves an 18 px margin round the building so its walls stay sharp, and fades with the zoom (full when the building fills the screen, gone when it is small).
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.

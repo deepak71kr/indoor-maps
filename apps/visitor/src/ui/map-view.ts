@@ -1474,16 +1474,40 @@ export class MapView {
       }
       return;
     }
-    const hole = shapePoints(focus)
-      .map((p, i) => {
-        const q = this.project(p);
-        return `${i ? 'L' : 'M'}${q.x.toFixed(0)} ${q.y.toFixed(0)}`;
+    // The hole is the building plus a margin, so its outer walls stay sharp.
+    const corners = shapePoints(focus).map((p) => this.project(p));
+    const mid = {
+      x: corners.reduce((sum, q) => sum + q.x, 0) / corners.length,
+      y: corners.reduce((sum, q) => sum + q.y, 0) / corners.length,
+    };
+    const MARGIN = 18;
+    const hole = corners
+      .map((q, i) => {
+        const len = Math.hypot(q.x - mid.x, q.y - mid.y) || 1;
+        const x = q.x + ((q.x - mid.x) / len) * MARGIN;
+        const y = q.y + ((q.y - mid.y) / len) * MARGIN;
+        return `${i ? 'L' : 'M'}${x.toFixed(0)} ${y.toFixed(0)}`;
       })
       .join('');
+    // Zoomed out, the building is small and its surroundings matter: blur less, then none.
+    const box = boundsOf(corners);
+    const share = box
+      ? ((box.maxX - box.minX) * (box.maxY - box.minY)) / Math.max(1, this.width * this.height)
+      : 1;
+    const strength = Math.max(0, Math.min(1, (share - 0.04) / 0.3));
+    if (strength < 0.05) {
+      if (this.veilKey) {
+        this.veilKey = '';
+        this.focusVeil.classList.remove('on');
+      }
+      return;
+    }
     const path = `path(evenodd, 'M0 0H${this.width}V${this.height}H0Z${hole}Z')`;
-    if (path === this.veilKey) return;
-    this.veilKey = path;
+    const key = `${path}|${strength.toFixed(2)}`;
+    if (key === this.veilKey) return;
+    this.veilKey = key;
     this.focusVeil.style.clipPath = path;
+    this.focusVeil.style.setProperty('--k', strength.toFixed(2));
     this.focusVeil.classList.add('on');
   }
 

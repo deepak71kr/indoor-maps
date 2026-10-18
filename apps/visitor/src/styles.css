@@ -2317,3 +2317,11 @@ html.big-text .map text {
   background: #d93025;
   animation: pulse 1.2s ease-in-out infinite;
 }
+
+/* The focus blur follows the zoom: full when the building fills the screen, fading out as
+   you zoom out (--k from map-view). */
+.map .focus-veil.on {
+  opacity: var(--k, 1);
+  -webkit-backdrop-filter: blur(calc(3px * var(--k, 1))) saturate(0.7);
+  backdrop-filter: blur(calc(3px * var(--k, 1))) saturate(0.7);
+}

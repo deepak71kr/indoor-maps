@@ -83,6 +83,19 @@ export function sceneFor(state: State): MapScene | null {
         bubble: `${tripStats(steps, 0).minutes} min`,
       };
     case 'navigate': {
+      if (screen.peek !== undefined) {
+        // Looking ahead or back: frame that step's stretch, on its floor.
+        const step = steps[screen.peek];
+        const from = screen.peek > 0 ? path.indexOf(steps[screen.peek - 1]?.target ?? '') : 0;
+        const to = step ? path.indexOf(step.target, Math.max(0, from)) : -1;
+        return {
+          ...base,
+          ...(step && { levelId: step.levelId }),
+          done: screen.step,
+          next: steps[screen.step]?.target ?? null,
+          focus: to >= 0 ? path.slice(Math.max(0, from), to + 1) : [here],
+        };
+      }
       // Frame this step and the one after, so the next turn is already in view.
       const next = steps[screen.step]?.target ?? null;
       const after = steps[screen.step + 1]?.target ?? next;

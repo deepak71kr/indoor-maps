@@ -908,3 +908,68 @@
   width: 18px;
   height: 18px;
 }
+
+/* Look ahead / back (2026-10-18): swipe the card or tap ‹ ›; the map follows that step.
+   While looking, the card is outlined and "Back to now" returns to the current step. */
+.trip .banner {
+  touch-action: pan-y;
+}
+.trip .banner.peeking {
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+.trip .peek-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+.trip .step-navs {
+  display: flex;
+  gap: 4px;
+}
+.trip .step-nav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.trip .step-nav .icon {
+  width: 18px;
+  height: 18px;
+}
+.trip .step-nav.forward .icon {
+  rotate: 180deg;
+}
+.trip .step-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.trip .reached.now {
+  background: var(--surface);
+  color: var(--blue);
+  border: 1.5px solid var(--blue);
+}
+.screen.step-back .banner-main,
+.screen.step-back .then {
+  animation: step-from-left 0.26s ease-out;
+}
+.screen.step-in .banner-main,
+.screen.step-in .then {
+  animation: step-from-right 0.26s ease-out;
+}
+@keyframes step-from-right {
+  from {
+    translate: 28px 0;
+    opacity: 0;
+  }
+}
+@keyframes step-from-left {
+  from {
+    translate: -28px 0;
+    opacity: 0;
+  }
+}

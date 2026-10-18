@@ -53,9 +53,10 @@ function render(): void {
   replace(root, view({ state, dispatch: store.dispatch, scan: scanner }));
   // A new screen's panels slide in; a new walking step slides in from the right.
   const screen = root.firstElementChild;
-  const step = state.screen.name === 'navigate' ? state.screen.step : -1;
+  const step = state.screen.name === 'navigate' ? (state.screen.peek ?? state.screen.step) : -1;
   if (state.screen.name !== lastScreen) screen?.classList.add('enter');
   else if (step > lastStep) screen?.classList.add('step-in');
+  else if (step >= 0 && step < lastStep) screen?.classList.add('step-back');
   lastStep = step;
   if (state.screen.name !== lastScreen) {
     lastScreen = state.screen.name;
