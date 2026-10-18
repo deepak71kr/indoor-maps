@@ -41,6 +41,7 @@ test('full trip on 2G with a 4× slower CPU', async ({ page }) => {
   await iAmHere(page).click();
 
   // Lost → type the code of a sticker on Floor 1 → re-routed to the SAME destination.
+  await page.getByRole('button', { name: 'Steps' }).click(); // the menu (☰)
   await page.getByRole('button', { name: "I'm lost" }).click();
   await page.getByRole('textbox').fill('1-LIFT');
   await page.getByRole('button', { name: 'Go' }).click();
@@ -383,6 +384,7 @@ test('route options and "Path blocked?": shortest / fastest, detour around a blo
   // Walk one step, then the way to the lift is blocked: a new way round, the blockage in red.
   await page.getByRole('button', { name: 'Start' }).click();
   await iAmHere(page).click();
+  await page.getByRole('button', { name: 'Steps' }).click(); // the menu (☰)
   await page.getByRole('button', { name: 'Path blocked?' }).click();
   await expect(page.getByText('New way around the blocked path')).toBeVisible();
   await expect(page.locator('.map .closed')).not.toHaveCount(0);

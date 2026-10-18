@@ -2347,3 +2347,11 @@ html.big-text .map text {
   -webkit-backdrop-filter: blur(calc(1.2px * var(--k, 1))) saturate(0.85);
   backdrop-filter: blur(calc(1.2px * var(--k, 1))) saturate(0.85);
 }
+
+/* Checkpoint tags: one line, a touch bigger and bolder, easy to read on the map. */
+.map .next .tag text,
+.map .tag text {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}

@@ -723,29 +723,19 @@ export class MapView {
   }
 
   /**
-   * A name tag that keeps every word: long names wrap onto more lines (about 24 letters
-   * each) instead of being cut. Its bottom line sits at `bottom` above the pin; returns the
-   * box the label takes (for decluttering).
+   * A one-line name tag that keeps every word: "Reception desk (blue board), Lift A lobby".
+   * Only a name wider than the map gets smaller letters, so it still fits on screen.
+   * Its middle sits at `y` above the pin; returns the box it takes (for decluttering).
    */
-  private wrapTag(g: SVGGElement, text: string, bottom: number): NonNullable<Pin['box']> {
-    const lines: string[] = [];
-    for (const word of text.split(' ')) {
-      const last = lines[lines.length - 1];
-      if (last !== undefined && (last + ' ' + word).length <= 24)
-        lines[lines.length - 1] = last + ' ' + word;
-      else lines.push(word);
-    }
-    const LINE = 14;
-    const width = Math.max(...lines.map((l) => l.length)) * 6.4 + 16;
-    const height = lines.length * LINE + 6;
-    const top = bottom + 10 - height;
-    g.append(s('rect', { x: -width / 2, y: top, width, height, rx: Math.min(10, height / 2) }));
-    const label = s('text', {});
-    lines.forEach((line, i) =>
-      label.append(s('tspan', { x: 0, y: top + 3 + LINE * (i + 1) - 3 }, line)),
-    );
+  private wrapTag(g: SVGGElement, text: string, y: number): NonNullable<Pin['box']> {
+    const full = text.length * 7 + 18;
+    const fit = Math.min(1, (this.width - 24) / full);
+    const width = full * fit;
+    g.append(s('rect', { x: -width / 2, y: y - 11, width, height: 22, rx: 11 }));
+    const label = s('text', { x: 0, y: y + 4.5 }, text);
+    if (fit < 1) label.style.fontSize = `${(12 * fit).toFixed(1)}px`;
     g.append(label);
-    return { w: width, h: height, dy: top + height / 2 };
+    return { w: width, h: 22, dy: y };
   }
 
   /**

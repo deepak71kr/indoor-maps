@@ -990,3 +990,79 @@
   display: block;
   line-height: 1.3;
 }
+
+/* Compact bottom (2026-10-18): no drag handle (☰ opens the menu), little padding, the
+   progress bar along the card's top, "Then …" inside the footer row. */
+.trip .sheet {
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  max-height: 200px;
+}
+.trip .sheet > .handle {
+  display: none;
+}
+.trip .sheet.open {
+  padding-top: 10px;
+}
+.trip .sheet .banner {
+  margin: 0;
+}
+.trip .step-progress {
+  height: 3px;
+}
+.trip .card-row {
+  padding: 2px 8px 0 0;
+}
+.trip .banner .banner-main {
+  padding: 6px 8px 4px 8px;
+}
+.trip .card-foot {
+  padding: 2px 8px 6px;
+  gap: 6px;
+}
+.trip .card-foot .then {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.trip .card-foot .then .icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.trip .card-foot .then-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-weight: 600;
+}
+/* At rest the sheet is just the card: the menu appears only when ☰ opens it, and the
+   map's buttons step aside meanwhile so they don't cover the card. */
+.trip .sheet:not(.open) {
+  max-height: none;
+}
+.trip .sheet:not(.open) .trip-menu {
+  display: none;
+}
+.trip:has(.sheet.open) .map-tools,
+.trip:has(.sheet.open) .map-btn.locate {
+  visibility: hidden;
+}
+.trip .card-to {
+  margin: 0;
+  padding: 5px 10px 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trip .card-to strong {
+  color: var(--text);
+}

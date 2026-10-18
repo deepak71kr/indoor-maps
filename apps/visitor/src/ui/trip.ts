@@ -182,17 +182,12 @@ export function stepView(ctx: ViewContext, current: number, peek?: number): HTML
         ),
         (dir) => look(index + dir),
         peeking,
+        target?.label ?? '',
       ),
       // The menu (☰ or pull the card up): everything else, and every step.
       h(
         'div',
         { class: 'trip-menu' },
-        h(
-          'p',
-          { class: 'trip-head' },
-          tr('step.to', { place: '' }),
-          h('strong', {}, target?.label ?? ''),
-        ),
         h(
           'div',
           { class: 'menu-row' },
@@ -431,6 +426,7 @@ function banner(
   more: HTMLElement | null = null,
   onSwipe: ((dir: 1 | -1) => void) | null = null,
   peeking = false,
+  destination = '',
 ): HTMLElement {
   let startX = 0;
   let startY = 0;
@@ -455,6 +451,16 @@ function banner(
     },
     h('p', { class: 'step-text sr-only', 'aria-live': 'polite' }, step.text),
     total > 0 && h('p', { class: 'sr-only' }, tr('step.of', { n: index + 1, total })),
+    // How far along the trip: a thin bar along the card's top.
+    total > 0 &&
+      h(
+        'div',
+        { class: 'step-progress', 'aria-hidden': 'true' },
+        h('i', { style: { width: `${Math.round(((index + 1) / total) * 100)}%` } }),
+      ),
+    // Where the trip goes, always in sight.
+    destination &&
+      h('p', { class: 'card-to' }, tr('step.to', { place: '' }), h('strong', {}, destination)),
     h(
       'div',
       { class: 'card-row' },
@@ -496,28 +502,22 @@ function banner(
       ),
       action,
     ),
-    soon &&
-      h(
-        'p',
-        { class: 'then' },
-        h('span', {}, tr('step.then')),
-        icon(next.icon),
-        h('span', { class: 'grow' }, next.title),
-      ),
-    // How far along the trip: a thin bar, then ✕ · floor · ☰ in a slim footer.
-    total > 0 &&
-      h(
-        'div',
-        { class: 'step-progress', 'aria-hidden': 'true' },
-        h('i', { style: { width: `${Math.round(((index + 1) / total) * 100)}%` } }),
-      ),
     h(
       'div',
       { class: 'card-foot' },
       exit,
       h('span', { class: `floor-chip lvl-${step.levelColor}` }, floorLabel),
       peeking ? h('span', { class: 'peek-tag' }, tr('step.of', { n: index + 1, total })) : null,
-      h('span', { class: 'grow' }),
+      // "Then …" only when the next move comes right after this one.
+      soon
+        ? h(
+            'span',
+            { class: 'then grow' },
+            h('span', {}, tr('step.then')),
+            icon(next.icon),
+            h('span', { class: 'then-text' }, next.title),
+          )
+        : h('span', { class: 'grow' }),
       steppers,
       more,
     ),

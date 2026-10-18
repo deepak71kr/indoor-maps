@@ -455,6 +455,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): checkpoint names in full on the map.** The next checkpoint's tag (and every checkpoint tag in the preview) shows the landmark's full name, every word, wrapping onto more lines (about 24 letters each) instead of being shortened.
 
+**Follow-up (2026-10-18): one-line checkpoint tags; a compact bottom.** Checkpoint tags on the map are one line with the full name, 12 px bold; only a name wider than the map gets smaller letters. The walking sheet is just the card at rest (no drag handle, little padding, no empty strip): "Route to …" on top, the progress bar along its top edge, the direction with ✓ Reached, and one footer row (✕ · floor · Then … · ‹ › · ☰). The menu shows only when ☰ opens it, and the map's buttons step aside meanwhile.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
