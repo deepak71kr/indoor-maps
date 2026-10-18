@@ -2,7 +2,7 @@
 import type { Site } from '@innermap/core';
 import { facingAt } from '@innermap/core';
 import type { State } from './state';
-import { currentNode, tripStats } from './state';
+import { currentNode } from './state';
 
 export interface MapScene {
   readonly site: Site;
@@ -80,7 +80,6 @@ export function sceneFor(state: State): MapScene | null {
         ...base,
         next: null,
         focus: path,
-        bubble: `${tripStats(steps, 0).minutes} min`,
       };
     case 'navigate': {
       if (screen.peek !== undefined) {

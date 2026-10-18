@@ -7,7 +7,7 @@ import type { Step } from '@innermap/core';
 import { findRoute, roomIcon } from '@innermap/core';
 import { CATEGORY, tr } from '../app/i18n';
 import { amenityChips } from '../app/search';
-import { currentNode, tripStats, walkMinutes } from '../app/state';
+import { currentNode } from '../app/state';
 import { h, replace } from './dom';
 import { icon } from './icons';
 import { shortName, shortPlace } from './map-view';
@@ -316,13 +316,8 @@ export function placeView(ctx: ViewContext, roomId: string): HTMLElement {
   const route = here
     ? findRoute(site, { from: here, to: target.destination, profile: { stepFree } })
     : null;
-  const away =
-    route?.ok === true
-      ? tr('place.from-you', {
-          min: walkMinutes(route.value.walkingMeters, route.value.floorChanges),
-          m: Math.round(route.value.walkingMeters),
-        })
-      : tr('place.no-route');
+  // No time or distance for now: only say so when there is no way there.
+  const away = route?.ok === true ? '' : tr('place.no-route');
   const close = () => ctx.dispatch({ type: 'close-place' });
 
   const share = async (el: HTMLElement) => {
@@ -381,7 +376,7 @@ export function placeView(ctx: ViewContext, roomId: string): HTMLElement {
         'div',
         { class: 'floors-row' },
         level ? floorBadge(level.name, level.color, buildingOf(ctx.state, door?.id ?? '')) : null,
-        h('span', { class: `away${route?.ok ? '' : ' warn'}` }, '🚶 ', away),
+        away ? h('span', { class: 'away warn' }, '🚶 ', away) : null,
       ),
       room.visibility === 'locked' && h('p', { class: 'hint' }, icon('lock'), tr('place.locked')),
       h(
@@ -531,7 +526,6 @@ function banner(
 export function previewView(ctx: ViewContext): HTMLElement {
   const { site, steps, target, position } = ctx.state;
   if (!site) return h('section');
-  const { minutes } = tripStats(steps, 0);
   const startName =
     (position && site.graph.nodes.get(position.node)?.landmark) ?? position?.node ?? '';
   const checkpoints = steps.length - 1;
@@ -541,24 +535,8 @@ export function previewView(ctx: ViewContext): HTMLElement {
     return list;
   }, []);
   const via = steps.find((s) => s.kind === 'ride');
-  // The other mode's time, for the tabs (Google shows car · transit · walk with their times).
-  const other =
-    position && target
-      ? findRoute(site, {
-          from: position.node,
-          to: target.destination,
-          profile: {
-            stepFree: !ctx.state.stepFree,
-            preference: ctx.state.preference,
-            blocked: ctx.state.blocked,
-          },
-        })
-      : null;
-  const otherMinutes =
-    other?.ok === true ? walkMinutes(other.value.walkingMeters, other.value.floorChanges) : null;
   const modeTab = (stepFreeTab: boolean, label: string) => {
     const on = ctx.state.stepFree === stepFreeTab;
-    const time = on ? minutes : otherMinutes;
     return h(
       'button',
       {
@@ -569,7 +547,6 @@ export function previewView(ctx: ViewContext): HTMLElement {
         onClick: () => !on && ctx.dispatch({ type: 'toggle-step-free' }),
       },
       label,
-      h('b', {}, time === null ? '—' : tr('step.min', { min: time })),
     );
   };
 
@@ -613,7 +590,6 @@ export function previewView(ctx: ViewContext): HTMLElement {
         h(
           'div',
           { class: 'grow trip-info' },
-          h('p', { class: 'eta' }, h('strong', {}, tr('step.min', { min: minutes }))),
           h(
             'p',
             { class: 'trip-sub' },

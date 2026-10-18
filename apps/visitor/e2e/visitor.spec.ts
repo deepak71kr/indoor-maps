@@ -155,6 +155,9 @@ test('Google Maps layout: full-screen map, search bar, bottom sheet / side panel
   await expect(page.getByRole('region', { name: 'Popular places' })).toContainText('Emergency');
   await page.getByRole('button', { name: 'Got it' }).click();
   await expect(page.getByRole('note')).toHaveCount(0);
+  // The sheet eases down to its resting height (a short transition) once the welcome goes.
+  const viewport = page.viewportSize()?.height ?? 0;
+  await expect.poll(async () => (await sheet.boundingBox())?.y ?? 0).toBeGreaterThan(viewport / 2);
 
   // Phone: the map fills the screen; search bar on top, sheet at the bottom.
   const mapBox = await map.boundingBox();
@@ -230,9 +233,8 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
   const room = await map.locator('.label', { hasText: 'Pharmacy' }).first().boundingBox();
   if (!room) throw new Error('no Pharmacy label');
   await page.mouse.click(room.x + room.width / 2, room.y + room.height / 2 + 8);
-  // Its card opens (Google style): name, floor, how far, Directions / Start / Share.
+  // Its card opens (Google style): name, floor, Directions / Start / Share.
   await expect(page.getByRole('heading', { name: 'Pharmacy' })).toBeVisible();
-  await expect(page.getByText('from you')).toBeVisible();
   await expect(map.locator('.room.selected')).toHaveCount(1);
   await page.getByRole('button', { name: 'Directions' }).click();
   await expect(page.getByRole('button', { name: 'To: Pharmacy' })).toBeVisible();
@@ -406,7 +408,7 @@ test('Google-style details: Walk / Step-free tabs, Exit and arrival time', async
     'aria-selected',
     'true',
   );
-  await expect(page.locator('.map .eta-bubble')).toHaveCount(1);
+  await expect(page.locator('.map .eta-bubble')).toHaveCount(0); // no times for now
 
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('button', { name: 'End route' })).toHaveText('Exit');

@@ -1066,3 +1066,10 @@
 .trip .card-to strong {
   color: var(--text);
 }
+/* Route preview at rest: the summary and Start only, so the map gets the rest; the steps are
+   a pull-up away. */
+.preview .sheet:not(.open) {
+  max-height: min(300px, 42dvh);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 26px), transparent);
+}

@@ -457,6 +457,8 @@ A phase is done only when **all** of these are true:
 
 **Follow-up (2026-10-18): one-line checkpoint tags; a compact bottom.** Checkpoint tags on the map are one line with the full name, 12 px bold; only a name wider than the map gets smaller letters. The walking sheet is just the card at rest (no drag handle, little padding, no empty strip): "Route to …" on top, the progress bar along its top edge, the direction with ✓ Reached, and one footer row (✕ · floor · Then … · ‹ › · ☰). The menu shows only when ☰ opens it, and the map's buttons step aside meanwhile.
 
+**Follow-up (2026-10-18): no times; a shorter preview.** No walking time or distance anywhere for now: the room card shows only the floor (and says so when there is no way there), the preview's Walk / Step-free tabs carry no times (no second route is worked out for them), there is no "1 min" headline and no time bubble on the route. At rest the preview sheet ends after Start and Fastest / Shortest (the steps are a pull-up away), so the map gets about two thirds of the screen.
+
 **Decisions made in Phase 10**
 - **Shared Ground level** for the outdoors and all ground floors, instead of a separate "campus floor" joined to each building by special doors. Walking in is a normal line; the router, directions and checks needed no new concepts.
 - **Floor order is unique per building** (counting shared levels); a lift's "floors travelled" is counted inside its own building.
