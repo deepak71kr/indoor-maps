@@ -54,6 +54,9 @@ sw.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== sw.location.origin) return;
+  // The editor lives under the same address (…/editor/): it is not part of this app, so
+  // its pages and files go straight to the network (else the app would answer for it).
+  if (url.pathname.startsWith(`${BASE}editor/`) || url.pathname === `${BASE}editor`) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(cachedShell(request));
