@@ -18,6 +18,7 @@ import {
 import { BuildingsPanel, FloorBuildingField } from './CampusPanels';
 import { OutlinePanel } from './PlanPanels';
 import { Properties } from './Properties';
+import { QuickBuild } from './QuickBuild';
 import { useEditor } from './use-editor';
 
 // ---------- top bar ----------
@@ -290,6 +291,7 @@ export function SidePanel() {
         </section>
       )}
 
+      <QuickBuild />
       <Checks />
     </aside>
   );
