@@ -3,3 +3,6 @@ coverage/
 pnpm-lock.yaml
 docs/
 samples/**/*.json
+
+# Generated QR stickers (tools/make-qr.mjs)
+qr/

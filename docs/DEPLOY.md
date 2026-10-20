@@ -6,7 +6,8 @@
 | --- | --- |
 | Visitor app (what QR stickers open) | https://deepak71kr.github.io/indoor-maps/ |
 | Big demo campus at the main gate | https://deepak71kr.github.io/indoor-maps/?site=demo-mesra&at=MAIN-GATE |
-| Demo hospital | https://deepak71kr.github.io/indoor-maps/?at=G-MAIN |
+| BIT Mesra campus (main page) | https://deepak71kr.github.io/indoor-maps/ or …/?at=MAIN-GATE |
+| Demo hospital | https://deepak71kr.github.io/indoor-maps/?site=demo-hospital&at=G-MAIN |
 | Demo college (small campus) | https://deepak71kr.github.io/indoor-maps/?site=demo-campus&at=GATE |
 | Map editor | https://deepak71kr.github.io/indoor-maps/editor/ |
 

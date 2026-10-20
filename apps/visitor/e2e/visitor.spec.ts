@@ -26,7 +26,7 @@ test('full trip on 2G with a 4× slower CPU', async ({ page }) => {
   await slowPhone(page);
 
   const started = Date.now();
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   const firstScreenMs = Date.now() - started;
   test.info().annotations.push({ type: 'first screen on 2G', description: `${firstScreenMs} ms` });
@@ -54,7 +54,7 @@ test('full trip on 2G with a 4× slower CPU', async ({ page }) => {
 
 test('second visit works in airplane mode', async ({ page, context }) => {
   // First visit online: the service worker installs and the map is saved.
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
@@ -67,7 +67,7 @@ test('second visit works in airplane mode', async ({ page, context }) => {
 
   // A QR scan while offline opens the app from the phone's cache.
   const offline = await context.newPage();
-  await offline.goto('/?at=2-WEST');
+  await offline.goto('/?site=demo-hospital&at=2-WEST');
   await expect(offline.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   await offline.getByRole('button', { name: /CT scan/ }).click();
   await offline.getByRole('button', { name: 'Start' }).click();
@@ -77,7 +77,7 @@ test('second visit works in airplane mode', async ({ page, context }) => {
 });
 
 test('an unfinished trip survives closing the browser', async ({ page }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await page
     .locator('.places')
     .getByRole('button', { name: /Radiology/ })
@@ -95,7 +95,7 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 640 }); // a small phone
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   const map = page.getByRole('img', { name: /^Map of / });
   await expect(map).toHaveAccessibleName('Map of Ground');
   await expect(map.getByText('You are here')).toBeVisible();
@@ -145,7 +145,7 @@ test('the 2D map follows the trip: route line, floor change, pan and re-centre',
 test('Google Maps layout: full-screen map, search bar, bottom sheet / side panel', async ({
   page,
 }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   const map = page.getByRole('img', { name: /^Map of / });
   const sheet = page.locator('.sheet');
   await expect(map).toBeVisible();
@@ -226,7 +226,7 @@ test('campus: gate → a lab on another building’s Floor 2, with the campus ma
 test('pick on the map → preview the whole route → walk: colours, checkpoints, rotate', async ({
   page,
 }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   const map = page.getByRole('img', { name: /^Map of / });
 
   // Tap the Pharmacy room on the map: it becomes the destination.
@@ -295,7 +295,7 @@ test('pick on the map → preview the whole route → walk: colours, checkpoints
 });
 
 test('recent places and a shared room link', async ({ page }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await page
     .locator('.places')
     .getByRole('button', { name: /Pharmacy/ })
@@ -305,7 +305,7 @@ test('recent places and a shared room link', async ({ page }) => {
   await expect(page.locator('.recent')).toContainText('Pharmacy');
 
   // Someone shares a link to Radiology: it opens the route there from the scanned sticker.
-  await page.goto('/?at=G-MAIN&to=radiology');
+  await page.goto('/?site=demo-hospital&at=G-MAIN&to=radiology');
   await expect(page.getByRole('button', { name: 'To: Radiology' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start' })).toBeVisible();
 });
@@ -331,7 +331,7 @@ test('big campus (stress test): opens fast, finds a lab, walks through floors', 
 });
 
 test('compass: the beam turns with the phone, calibrated at the QR sticker', async ({ page }) => {
-  await page.goto('/?at=G-MAIN'); // this sticker faces "up" on the map (0°)
+  await page.goto('/?site=demo-hospital&at=G-MAIN'); // this sticker faces "up" on the map (0°)
   await expect(page.getByRole('heading', { name: 'Where to?' })).toBeVisible();
   /** Pretend the phone points `heading` degrees from north (Android's absolute alpha). */
   const point = (heading: number) =>
@@ -366,7 +366,7 @@ test('compass: the beam turns with the phone, calibrated at the QR sticker', asy
 test('route options and "Path blocked?": shortest / fastest, detour around a blockage', async ({
   page,
 }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await page
     .locator('.places')
     .getByRole('button', { name: /Radiology/ })
@@ -395,7 +395,7 @@ test('route options and "Path blocked?": shortest / fastest, detour around a blo
 });
 
 test('Google-style details: Walk / Step-free tabs, Exit and arrival time', async ({ page }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   await page
     .locator('.places')
     .getByRole('button', { name: /Radiology/ })
@@ -418,7 +418,7 @@ test('Google-style details: Walk / Step-free tabs, Exit and arrival time', async
 test('forgiving search: misspellings, spacing, other words, nearest service, nothing found', async ({
   page,
 }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   const search = page.getByRole('searchbox');
   const results = page.locator('.search-page');
   await search.fill('radiolgy'); // a typo
@@ -434,7 +434,7 @@ test('forgiving search: misspellings, spacing, other words, nearest service, not
 test('floors: colour per floor, "viewing another floor" note, floor chips, lift tile', async ({
   page,
 }) => {
-  await page.goto('/?at=G-MAIN');
+  await page.goto('/?site=demo-hospital&at=G-MAIN');
   const map = page.getByRole('img', { name: /^Map of / });
   await expect(map).toHaveClass(/lvl-teal/); // Ground is teal
   await expect(page.locator('.map .entry-bar')).not.toHaveCount(0); // ways in and out, in green

@@ -44,6 +44,12 @@ export function TopBar() {
     const doc = parseDraft(campus);
     if (doc) store.load('Load Demo College', doc);
   };
+  // The big campus (34 buildings, ~480 KB): fetched only when asked for.
+  const loadMesra = async () => {
+    const big = await import('../../../../samples/demo-mesra/map.json');
+    const doc = parseDraft(big.default);
+    if (doc) store.load('Load BIT Mesra', doc);
+  };
 
   return (
     <header class="topbar">
@@ -58,6 +64,13 @@ export function TopBar() {
       </button>
       <button type="button" onClick={loadCampus} title="A 3-building college campus">
         Load campus
+      </button>
+      <button
+        type="button"
+        onClick={() => void loadMesra()}
+        title="The big campus: 34 buildings, 758 rooms"
+      >
+        Load BIT Mesra
       </button>
       <button type="button" onClick={() => void importMap()}>
         Import

@@ -26,7 +26,8 @@ import { CALIBRATE_WINDOW_MS, northOffset, toMapHeading } from './app/heading';
 import { startCompass } from './infra/compass';
 import './styles.css';
 
-const DEFAULT_SITE = 'demo-hospital';
+/** The main page (no ?site=…) opens the BIT Mesra campus; ?site=demo-hospital for the hospital. */
+const DEFAULT_SITE = 'demo-mesra';
 
 const params = new URLSearchParams(location.search);
 const siteId = (params.get('site') ?? DEFAULT_SITE).replace(/[^a-z0-9-]/g, '');
